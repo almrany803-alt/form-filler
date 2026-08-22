@@ -167,7 +167,10 @@ def extract_text(path: str) -> str:
     if ext == "docx":
         return _docx_text(path)
     if ext == "pdf":
-        return _pdf_text(path)
+        # PDF reading needs a library that fits NVDA's trimmed Python; that is a
+        # separate, focused piece of work. For now Word and text are supported.
+        raise NotImplementedError(
+            "PDF import is not available yet; please use a Word or text CV.")
     raise NotImplementedError(f"unsupported CV format: .{ext}")
 
 
@@ -186,13 +189,3 @@ def _docx_text(path: str) -> str:
         lines.append("".join(node.text or "" for node in para.iter(W + "t")))
     return "\n".join(lines)
 
-
-def _pdf_text(path: str) -> str:
-    """Read a .pdf with the bundled pure-Python pypdf (add-on lib folder)."""
-    import sys
-    lib = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lib")
-    if lib not in sys.path:
-        sys.path.insert(0, lib)
-    from pypdf import PdfReader
-    reader = PdfReader(path)
-    return "\n".join((page.extract_text() or "") for page in reader.pages)
