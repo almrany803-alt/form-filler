@@ -8,7 +8,7 @@ import profile  # noqa: E402
 
 cfg = os.environ["JFF_CFG"]
 store = profile.ProfileStore(
-    os.path.join(cfg, "jobFormFiller", "profile.dat"), profile.DpapiCrypto())
+    os.path.join(cfg, "jobFormFiller", "profile.dat"), profile.default_crypto())
 store.load()
 p = store.get_active() or {}
 print("profile loaded from disk:", p)

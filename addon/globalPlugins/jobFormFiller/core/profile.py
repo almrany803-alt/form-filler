@@ -45,18 +45,19 @@ class DpapiCrypto(Crypto):
 
 
 class NullCrypto(Crypto):
-    """NOT SECURE. A no-op used only for tests and non-Windows development.
-    The store must never ship with this on a real machine."""
+    """Plain storage: no encryption. Used for the profile store, which holds
+    ordinary contact details (not secrets), and for tests."""
     def encrypt(self, data: bytes) -> bytes: return data
     def decrypt(self, data: bytes) -> bytes: return data
 
 
 def default_crypto() -> Crypto:
-    """DPAPI on Windows; refuse to silently fall back to no encryption."""
-    if os.name == "nt":
-        return DpapiCrypto()
-    raise RuntimeError("No secure crypto available on this platform; "
-                       "inject a Crypto explicitly for development.")
+    # The profile holds ordinary contact details, not secrets, and the CV they
+    # came from is already on the device in plain form, so the store is plain
+    # JSON for now. The Crypto slot stays, so encryption can return later (for
+    # example if the AI feature ever handles anything sensitive). DpapiCrypto is
+    # kept above for that day.
+    return NullCrypto()
 
 
 _EMPTY = {"active": None, "profiles": {}}

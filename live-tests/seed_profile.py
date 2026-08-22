@@ -10,7 +10,7 @@ import profile  # noqa: E402
 cfg = os.environ["JFF_CFG"]
 os.makedirs(os.path.join(cfg, "jobFormFiller"), exist_ok=True)
 store = profile.ProfileStore(
-    os.path.join(cfg, "jobFormFiller", "profile.dat"), profile.DpapiCrypto())
+    os.path.join(cfg, "jobFormFiller", "profile.dat"), profile.default_crypto())
 store.add_profile("default", {
     "given_name": "Mohammed", "family_name": "Al Omrani",
     "email": "test@example.com", "phone": "+44 7700 900000",

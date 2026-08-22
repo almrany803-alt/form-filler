@@ -15,7 +15,7 @@ import profile  # noqa: E402
 
 cfg = os.environ["JFF_CFG"]
 path = os.path.join(cfg, "jobFormFiller", "profile.dat")
-store = profile.ProfileStore(path, profile.DpapiCrypto())
+store = profile.ProfileStore(path, profile.default_crypto())
 
 cmd = sys.argv[1]
 
