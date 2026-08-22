@@ -49,22 +49,23 @@ jobs:
             -ArgumentList "-c `"$cfg`" -f `"$cfg\nvda.log`" -l 10 -m"
           Start-Sleep -Seconds 20
 
-      - name: Install Playwright + run the beta fill test
+      - name: Install Playwright + run the beta fill tests
         working-directory: betatest
         shell: pwsh
         run: |
           npm install | Out-Null
           npx playwright install chromium | Out-Null
-          node fill_test.mjs
-          Write-Host "----- now the messy stress test -----"
-          node fill_messy.mjs
+          $failed = $false
+          Write-Host "===== clean form ====="
+          node fill_test.mjs;  if ($LASTEXITCODE -ne 0) { $failed = $true }
+          Write-Host "===== messy stress form ====="
+          node fill_messy.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
+          if ($failed) { Write-Host "one or more beta tests failed"; exit 1 }
 
-      - name: Dump the add-on's log lines (always)
+      - name: Upload the full NVDA log
         if: always()
-        shell: pwsh
-        run: |
-          $log = "$env:RUNNER_TEMP\nvdacfg\nvda.log"
-          if (Test-Path $log) {
-            Write-Host "===== JFF lines from the real NVDA log ====="
-            Get-Content $log | Select-String -Pattern "JFF|jobFormFiller"
-          } else { Write-Host "no NVDA log found" }
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-log
+          path: ${{ runner.temp }}\nvdacfg\nvda.log
+          if-no-files-found: warn
