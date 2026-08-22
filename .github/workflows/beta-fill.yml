@@ -50,11 +50,10 @@ jobs:
           Start-Sleep -Seconds 20
 
       - name: Install Playwright + run the beta fill test
-        working-directory: live-tests
+        working-directory: betatest
         shell: pwsh
         run: |
-          npm init -y | Out-Null
-          npm install playwright | Out-Null
+          npm install | Out-Null
           npx playwright install chromium | Out-Null
           node fill_test.mjs
 
