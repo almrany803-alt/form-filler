@@ -38,6 +38,10 @@ elif cmd == "check":
         "edit":    {"given_name": "Edited"},            # edit must persist
         "unicode": {"given_name": "محمد",               # Arabic must round-trip
                     "family_name": "O'Brien-李"},        # apostrophe + CJK too
+        "cv_en":   {"given_name": "John", "family_name": "Smith",
+                    "email": "john.smith@example.com"},
+        "cv_ar":   {"given_name": "محمد", "family_name": "العمراني",
+                    "email": "mohammed.alomrani@example.com"},
     }
     exp = EXPECT[mode]
     bad = {k: (p.get(k), v) for k, v in exp.items() if p.get(k) != v}

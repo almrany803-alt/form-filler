@@ -134,6 +134,25 @@ def parse_cv_text(text: str) -> dict:
     return result
 
 
+def cv_to_fields(parsed: dict) -> dict:
+    """Map a parsed CV (the parse_cv_text output) to the My-details field keys,
+    for review in the dialog. Only the fields a CV reliably yields are mapped;
+    the rest (address, city, ...) stay blank for the user to fill. The name is
+    split on whitespace, which works across scripts (Latin, Arabic, and so on)."""
+    out = {}
+    for key in ("email", "phone", "linkedin"):
+        value = parsed.get(key)
+        if value:
+            out[key] = value
+    name = (parsed.get("full_name") or "").strip()
+    if name:
+        parts = name.split()
+        out["given_name"] = parts[0]
+        if len(parts) > 1:
+            out["family_name"] = " ".join(parts[1:])
+    return out
+
+
 def extract_text(path: str) -> str:
     """Get plain text out of a CV file. .docx and .pdf are what CVs actually
     come in. Both libraries used here are pure Python, so they bundle into the

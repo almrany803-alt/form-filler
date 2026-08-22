@@ -9,6 +9,8 @@ import gui
 from gui import guiHelper
 import ui
 
+from .core import cvparse
+
 try:
     from logHandler import log
 except Exception:
@@ -48,10 +50,41 @@ class DetailsDialog(wx.Dialog):
             ctrl.SetValue(values.get(key, "") or "")
             self._ctrls[key] = ctrl
 
+        importBtn = wx.Button(self, label=_("&Import from CV..."))
+        importBtn.Bind(wx.EVT_BUTTON, self._on_import)
+        mainSizer.Add(importBtn, flag=wx.ALL, border=8)
+
         buttons = self.CreateButtonSizer(wx.OK | wx.CANCEL)
         mainSizer.Add(buttons, flag=wx.EXPAND | wx.ALL, border=8)
 
         self.SetSizerAndFit(mainSizer)
+        self._ctrls["given_name"].SetFocus()
+
+    def _on_import(self, evt):
+        """Read a CV file the user chooses, map it to the fields, and populate
+        them for review. Nothing is saved here; the user still presses OK."""
+        with wx.FileDialog(
+                self, _("Choose your CV"),
+                wildcard=_("CV files (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt"),
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fd:
+            if fd.ShowModal() != wx.ID_OK:
+                return
+            path = fd.GetPath()
+        try:
+            text = cvparse.extract_text(path)
+            fields = cvparse.cv_to_fields(cvparse.parse_cv_text(text))
+        except Exception:
+            log.error("JFF: CV import failed", exc_info=True)
+            ui.message(_("Could not read that CV. Check the file and try again."))
+            return
+        count = 0
+        for key, value in fields.items():
+            if key in self._ctrls and value:
+                self._ctrls[key].SetValue(value)
+                count += 1
+        log.info("JFF: imported %d field(s) from CV" % count)
+        ui.message(_("Imported %d detail(s) from your CV. Review them, then save.")
+                   % count)
         self._ctrls["given_name"].SetFocus()
 
     def get_values(self):

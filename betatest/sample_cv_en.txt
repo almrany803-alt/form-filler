@@ -1,0 +1,10 @@
+John Smith
+john.smith@example.com
++44 7700 900123
+linkedin.com/in/johnsmith
+
+EXPERIENCE
+Software Engineer, Acme Ltd
+
+EDUCATION
+BSc Computing, University of Bristol
