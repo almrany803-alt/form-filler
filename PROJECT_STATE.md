@@ -33,8 +33,12 @@ Working and proven on real hardware (see section 3):
 - Correctly declines fields it cannot identify; leaves dropdowns alone (for now).
 - Handles multi-section applications: fill a section, press Next, fill the next.
 
+Working (text CVs), and proven end to end:
+- CV import: pick a CV in the dialog, the fields populate for review, save. Text
+  CVs work now, tested on real NVDA in English and Arabic (`cv-import.yml`).
+
 Built and tested but NOT yet wired into the live add-on:
-- CV import (parse a Word/PDF/text CV into the profile).
+- CV import for Word and PDF (needs the docx/pdf readers bundled).
 - Dropdown / choice-control filling.
 - The post-CV-attach duplicate-and-extras audit.
 
@@ -129,7 +133,7 @@ GitHub API. On a real Windows runner with NVDA 2026.1.1 and real Chrome:
     random unbound combos, then prove a normal fill still works and that no
     uncaught error was logged.
 
-The pure-Python brain has 74 checks that run in the sandbox and on Linux CI
+The pure-Python brain has 80 checks that run in the sandbox and on Linux CI
 (`tests.yml`) on every push, including an adversarial "sabotage" suite
 (`test_adversarial.py`) that throws malformed and hostile input at every module
 and asserts nothing crashes.
@@ -197,7 +201,7 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
   `announce.py` (spoken summaries + the audit summary), `profile.py` (encrypted
   ProfileStore + DPAPI), `cvparse.py` (extract text from docx/pdf/txt + parse CV
   sections), `audit.py` (duplicate/extra/mismatch detector).
-- `tests/` — 74 pure-Python checks (matcher, data, cv extract, audit, langs, and
+- `tests/` — 80 pure-Python checks (matcher, data, cv extract, audit, langs, and
   `test_adversarial.py` sabotage/hostile-input cases), all runnable without NVDA.
 - `betatest/` — the real-NVDA-real-Chrome tests: `fill_test.mjs` (clean),
   `fill_messy.mjs` (messy stress), `fill_journey.mjs` (tabbing + multi-section),
@@ -207,7 +211,7 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
   profile as the runner user).
 - `.github/workflows/` — `tests.yml` (Linux, brain), `nvda-load.yml` (Windows,
   real NVDA load), `beta-fill.yml` (Windows, real Chrome fill), `dialog-test.yml`
-  and `dialog-scenarios.yml` (Windows, the My details dialog driven by keyboard), `nvda-live.yml` (a guidepup
+  and `dialog-scenarios.yml`, `cv-import.yml` (Windows, the My details dialog and CV import driven by keyboard), `nvda-live.yml` (a guidepup
   scaffold, secondary).
 - `build.py` — one command to package the `.nvda-addon` and print its SHA256.
 - `buildVars.py` — the manifest source (name, version, NVDA version range).
@@ -276,11 +280,10 @@ needs the Actions permission), which is why the workflows run `on: push`.
 
 ## 9. Roadmap (what is next, roughly in order)
 
-1. **Wire CV import into the "My details" form.** The parser and audit are built
-   and tested in pure Python; they need connecting to the dialog (which becomes
-   the shared review form for both manual entry and CV import), and the docx/pdf
-   readers bundling so they work on the user's machine. This unlocks the real
-   goal: import a CV, review, then fill applications.
+1. **CV import: finish Word and PDF.** Text CV import is wired and proven on
+   real NVDA (English + Arabic). Remaining: bundle the readers so Word and PDF
+   work on the user's machine (docx via stdlib zip+xml to avoid lxml; pypdf is
+   pure Python), then chain import → fill an application end to end.
 2. **Real multilingual, end-to-end CV testing.** Once import is wired: drive
    Word/PDF/text CVs in English, Spanish, Polish, Arabic through import ->
    review -> fill, as beta scenarios, using CVs modelled on real-world

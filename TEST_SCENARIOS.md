@@ -83,10 +83,18 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
 - [done] Crime-spree (unit level): hostile/malformed input to every brain module
   (`test_adversarial.py`), nothing crashes.
 
-## Feature: CV import (not yet wired)
+## Feature: CV import
 
-- [todo] once wired: Guidebook import of a Word CV, then a PDF, then plain text.
-- [todo] FedEx: CVs in English, Spanish, Polish, Arabic through import → review →
-  fill, using CVs modelled on real-world structures.
+- [done] Guidebook (plain text): open the dialog, press Import, pick a .txt CV,
+  the fields populate for review, save; the parsed details are in the profile.
+- [done] FedEx (multilingual): an English CV and an Arabic CV imported end to end
+  on real NVDA; name, email, phone parsed and saved, Arabic intact. Spanish and
+  Polish mapping (incl. two-part surnames and diacritics) is unit-tested.
+- [done] Couch-Potato / layering, observed: importing a second CV overwrites only
+  the fields the new CV provides and leaves the rest as they were. Deliberate for
+  one person updating their own details; revisit if it surprises users.
+- [todo] Guidebook (Word, PDF): needs the docx/pdf readers bundled (docx via
+  stdlib zip+xml to avoid lxml; pypdf is pure Python).
+- [todo] chain import → fill: import a CV, then fill a real application with it.
 - [todo] Antisocial: a password-protected PDF; an image-only (scanned) PDF; a CV
   with no recognisable sections; a 40-page CV. Each must fail or degrade cleanly.
