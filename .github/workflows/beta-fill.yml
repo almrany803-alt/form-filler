@@ -62,7 +62,21 @@ jobs:
           node fill_messy.mjs;   if ($LASTEXITCODE -ne 0) { $failed = $true }
           Write-Host "===== user journeys (tabbing + multi-section) ====="
           node fill_journey.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
+          Write-Host "===== abuse / survival ====="
+          node fill_abuse.mjs;   if ($LASTEXITCODE -ne 0) { $failed = $true }
           if ($failed) { Write-Host "one or more beta tests failed"; exit 1 }
+
+      - name: Fail if the add-on threw an uncaught error
+        if: always()
+        shell: pwsh
+        run: |
+          $log = "$env:RUNNER_TEMP\nvdacfg\nvda.log"
+          if (Test-Path $log) {
+            $bad = Get-Content $log | Select-String -Pattern "error executing script" |
+                   Select-String -Pattern "jobFormFiller"
+            if ($bad) { Write-Host "Uncaught add-on error during abuse:"; $bad; exit 1 }
+            Write-Host "No uncaught add-on errors."
+          }
 
       - name: Upload the full NVDA log
         if: always()
