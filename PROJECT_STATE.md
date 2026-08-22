@@ -73,9 +73,26 @@ the Zul Simulator project, is: **be the beta tester, not the author.**
   parser. Make scenarios a real, impatient, non-linear user would produce.
 
 - **Be explicit about what can and cannot be verified where.** The Linux
-  sandbox can prove the pure-Python "brain". Only real Windows + real NVDA can
-  prove the fill. The interactive dialog (opening it, tabbing, saving) is the
-  one thing headless CI still cannot fully drive; that stays a human check.
+  sandbox proves the pure-Python "brain". Only real Windows + real NVDA proves
+  the fill and the dialog. Both are now driven in CI; the one step still not
+  automated is navigating the actual NVDA Tools menu to open the dialog.
+
+**The questions that keep finding things** (carried from Zul). Before saying a
+feature works, ask what a person on a screen reader would actually do, not what
+the code does: can the user reach this, or only the code? If I do it twice, is
+anybody told? If the data goes to storage and comes back, does it arrive whole,
+including in Arabic and other scripts? What does the user HEAR when it goes
+wrong, a sentence or a key name? Does it survive a save, a reload, a cancel?
+What if I leave it empty, set it to nothing, or half-fill it?
+
+**Count before you claim.** Never say "tested end to end" without counting what
+was actually driven. Say the number.
+
+**Testing is a routine, not a reminder.** Every new feature, or change to one, is
+tested this way, has its stories added to `TEST_SCENARIOS.md`, and has its result
+recorded here, as a step in the work rather than something done when asked. If a
+change touches nothing a user can reach, that is a decision recorded, not a step
+skipped.
 
 Bugs this approach has already caught, that a happy-path suite would have
 missed: a name-collision crash (see gotchas), a stale-field-position bug that
