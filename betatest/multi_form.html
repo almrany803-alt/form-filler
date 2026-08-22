@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Multi-section application</title></head>
+<body>
+  <h1>Application (2 steps)</h1>
+
+  <section id="s1">
+    <h2>Step 1 of 2: About you</h2>
+    <p><label for="fn">First name</label><br>
+       <input id="fn" name="given-name" type="text"></p>
+    <p><label for="em">Email address</label><br>
+       <input id="em" name="email" type="email"></p>
+    <button id="next" type="button" onclick="toStep2()">Next</button>
+  </section>
+
+  <section id="s2" style="display:none">
+    <h2>Step 2 of 2: Contact</h2>
+    <p><label for="ph">Phone</label><br>
+       <input id="ph" name="tel" type="tel"></p>
+    <p><label for="ct">City</label><br>
+       <input id="ct" name="city" type="text"></p>
+    <button type="submit">Submit</button>
+  </section>
+
+  <script>
+    function toStep2() {
+      document.getElementById("s1").style.display = "none";
+      document.getElementById("s2").style.display = "block";
+      document.getElementById("ph").focus();
+    }
+  </script>
+</body>
+</html>

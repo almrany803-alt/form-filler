@@ -57,9 +57,11 @@ jobs:
           npx playwright install chromium | Out-Null
           $failed = $false
           Write-Host "===== clean form ====="
-          node fill_test.mjs;  if ($LASTEXITCODE -ne 0) { $failed = $true }
+          node fill_test.mjs;    if ($LASTEXITCODE -ne 0) { $failed = $true }
           Write-Host "===== messy stress form ====="
-          node fill_messy.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
+          node fill_messy.mjs;   if ($LASTEXITCODE -ne 0) { $failed = $true }
+          Write-Host "===== user journeys (tabbing + multi-section) ====="
+          node fill_journey.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
           if ($failed) { Write-Host "one or more beta tests failed"; exit 1 }
 
       - name: Upload the full NVDA log
