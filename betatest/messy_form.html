@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Messy application form</title></head>
+<body>
+  <h1>Messy application form</h1>
+  <p>Models the failure modes real application sites actually ship.</p>
+
+  <!-- 1. placeholder used as the ONLY label (no label element) -->
+  <div><div>
+    <input id="ph_fn" type="text" placeholder="First name">
+  </div></div>
+
+  <!-- 2. aria-label instead of a visible label -->
+  <p><input id="aria_em" type="text" aria-label="Email address"></p>
+
+  <!-- 3. meaningful name attribute, no visible or aria label -->
+  <p><input id="name_ph" type="text" name="phone"></p>
+
+  <!-- 4. right-to-left / Arabic label, properly associated -->
+  <p>
+    <label for="rtl_city">المدينة</label>
+    <input id="rtl_city" type="text">
+  </p>
+
+  <!-- 5. a label that is NOT associated with its field (no for/id link) -->
+  <p>
+    <label>Surname</label>
+    <input id="surn" type="text">
+  </p>
+
+  <!-- 6. completely unlabelled, opaque id -->
+  <p><input id="q9f2" type="text"></p>
+
+  <!-- 7. native select (country) - a dropdown; not wired yet, must be left -->
+  <p>
+    <label for="country_sel">Country</label>
+    <select id="country_sel">
+      <option value="">Select a country</option>
+      <option value="fr">France</option>
+      <option value="uk">United Kingdom</option>
+      <option value="us">United States</option>
+    </select>
+  </p>
+
+  <!-- 8. Workday-style custom combobox (editable, type to filter) - must be left -->
+  <p>
+    <label for="combo">Nationality</label>
+    <input id="combo" type="text" role="combobox" aria-expanded="false"
+           aria-autocomplete="list">
+  </p>
+
+  <!-- 9. date input (we store no DOB, so it must be left) -->
+  <p>
+    <label for="dob">Date of birth</label>
+    <input id="dob" type="date">
+  </p>
+</body>
+</html>
