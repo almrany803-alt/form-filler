@@ -65,5 +65,18 @@ class TestMultiProfile(unittest.TestCase):
         self.assertEqual(s.active_name(), "English (engineering)")
 
 
+    def test_delete_repoints_active(self):
+        s = self._store()
+        s.add_profile("English", {"given_name": "John"})
+        s.add_profile("Arabic", {"given_name": "محمد"})
+        s.set_active("English")
+        s.delete_profile("English")
+        self.assertNotIn("English", s.profile_names())
+        self.assertEqual(s.active_name(), "Arabic")
+        s.delete_profile("Arabic")
+        self.assertEqual(s.profile_names(), [])
+        self.assertIsNone(s.active_name())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

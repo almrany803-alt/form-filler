@@ -1,8 +1,9 @@
 # dialogs.py - the "My details" form. Named 'dialogs' (not 'gui') on purpose,
 # so it does not shadow NVDA's own top-level 'gui' module.
 #
-# NVDA-dependent (wx + NVDA's gui). Cannot run in the Linux sandbox; written to
-# the settings/dialog patterns from clipContentsDesigner and AI-Hub.
+# Holds several profiles, each a version (English, Arabic, a teaching CV). You
+# pick a version from the selector, edit its fields, create new ones, delete
+# ones you no longer want, and import a CV into the version you have selected.
 
 import wx
 import gui
@@ -23,7 +24,6 @@ except NameError:
     def _(s):
         return s
 
-# (profile key, label) in a sensible reading order.
 FIELDS = [
     ("given_name", _("First name")),
     ("family_name", _("Last name")),
@@ -39,30 +39,120 @@ FIELDS = [
 
 
 class DetailsDialog(wx.Dialog):
-    def __init__(self, parent, values):
+    NEW_LABEL = _("New profile...")
+
+    def __init__(self, parent, store):
         super().__init__(parent, title=_("Job Form Filler: My details"))
+        self._store = store
         self._ctrls = {}
-        mainSizer = wx.BoxSizer(wx.VERTICAL)
-        helper = guiHelper.BoxSizerHelper(self, sizer=mainSizer)
+        self._current = store.active_name()
+
+        main = wx.BoxSizer(wx.VERTICAL)
+        helper = guiHelper.BoxSizerHelper(self, sizer=main)
+
+        # Version selector.
+        self._choice = helper.addLabeledControl(
+            _("Profile (version):"), wx.Choice, choices=self._items())
+        self._selectCurrent()
+        self._choice.Bind(wx.EVT_CHOICE, self._onChoose)
+
+        delBtn = wx.Button(self, label=_("De&lete this profile"))
+        delBtn.Bind(wx.EVT_BUTTON, self._onDelete)
+        main.Add(delBtn, flag=wx.ALL, border=8)
 
         for key, label in FIELDS:
-            ctrl = helper.addLabeledControl(label + ":", wx.TextCtrl)
-            ctrl.SetValue(values.get(key, "") or "")
-            self._ctrls[key] = ctrl
+            self._ctrls[key] = helper.addLabeledControl(label + ":", wx.TextCtrl)
+        self._loadFields(self._current)
 
         importBtn = wx.Button(self, label=_("&Import from CV..."))
-        importBtn.Bind(wx.EVT_BUTTON, self._on_import)
-        mainSizer.Add(importBtn, flag=wx.ALL, border=8)
+        importBtn.Bind(wx.EVT_BUTTON, self._onImport)
+        main.Add(importBtn, flag=wx.ALL, border=8)
 
         buttons = self.CreateButtonSizer(wx.OK | wx.CANCEL)
-        mainSizer.Add(buttons, flag=wx.EXPAND | wx.ALL, border=8)
+        main.Add(buttons, flag=wx.EXPAND | wx.ALL, border=8)
 
-        self.SetSizerAndFit(mainSizer)
+        self.SetSizerAndFit(main)
         self._ctrls["given_name"].SetFocus()
 
-    def _on_import(self, evt):
-        """Read a CV file the user chooses, map it to the fields, and populate
-        them for review. Nothing is saved here; the user still presses OK."""
+    # --- profile selector ----------------------------------------------------
+    def _items(self):
+        return list(self._store.profile_names()) + [self.NEW_LABEL]
+
+    def _selectCurrent(self):
+        names = self._store.profile_names()
+        if self._current in names:
+            self._choice.SetSelection(names.index(self._current))
+        elif names:
+            self._choice.SetSelection(0)
+            self._current = names[0]
+        else:
+            self._choice.SetSelection(len(self._items()) - 1)  # New profile...
+
+    def _refresh(self):
+        self._choice.Set(self._items())
+        self._selectCurrent()
+
+    def _fieldValues(self):
+        return {k: c.GetValue().strip() for k, c in self._ctrls.items()}
+
+    def _loadFields(self, name):
+        vals = self._store.get_profile(name) if name else {}
+        for k, c in self._ctrls.items():
+            c.SetValue(vals.get(k, "") or "")
+
+    def _stash(self):
+        if self._current:
+            for k, v in self._fieldValues().items():
+                self._store.set_field(k, v, profile=self._current)
+
+    def _onChoose(self, evt):
+        sel = self._choice.GetStringSelection()
+        if sel == self.NEW_LABEL:
+            name = self._promptName()
+            if not name:
+                self._selectCurrent()
+                return
+            self._stash()
+            self._store.add_profile(name, {})
+            self._store.set_active(name)
+            self._current = name
+            self._refresh()
+            self._loadFields(name)
+            ui.message(_("New profile %s. Enter or import details.") % name)
+        elif sel != self._current:
+            self._stash()
+            self._current = sel
+            self._store.set_active(sel)
+            self._loadFields(sel)
+            ui.message(_("Profile %s.") % sel)
+
+    def _promptName(self):
+        with wx.TextEntryDialog(
+                self,
+                _("Name for this version (for example English, Arabic, Teaching):"),
+                _("New profile")) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return None
+            return dlg.GetValue().strip() or None
+
+    def _onDelete(self, evt):
+        if not self._current:
+            return
+        with wx.MessageDialog(
+                self,
+                _("Delete the profile %s? This cannot be undone.") % self._current,
+                _("Delete profile"), wx.YES_NO | wx.ICON_WARNING) as dlg:
+            if dlg.ShowModal() != wx.ID_YES:
+                return
+        gone = self._current
+        self._store.delete_profile(gone)
+        self._current = self._store.active_name()
+        self._refresh()
+        self._loadFields(self._current)
+        ui.message(_("Deleted %s.") % gone)
+
+    # --- CV import -----------------------------------------------------------
+    def _onImport(self, evt):
         with wx.FileDialog(
                 self, _("Choose your CV"),
                 wildcard=_("CV files (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt"),
@@ -87,35 +177,34 @@ class DetailsDialog(wx.Dialog):
                    % count)
         self._ctrls["given_name"].SetFocus()
 
-    def get_values(self):
-        return {k: c.GetValue().strip() for k, c in self._ctrls.items()}
+    # --- save ----------------------------------------------------------------
+    def commit(self):
+        """Write the current form into the active version. If every profile was
+        deleted, create one from the form so the details are not lost."""
+        if self._current:
+            self._stash()
+            return
+        vals = self._fieldValues()
+        if any(vals.values()):
+            self._store.add_profile("default", vals)
+            self._store.set_active("default")
+            self._current = "default"
 
 
 def edit_details(store, prefill=None):
-    """Open the details form, prefilled from the store (and optionally from a
-    parsed CV). On OK, save to the store. Returns the saved dict, or None if
-    cancelled. Must be called on the main (GUI) thread, e.g. a menu handler."""
-    values = dict(store.get_active() or {})
-    if prefill:
-        values.update({k: v for k, v in prefill.items() if v})
-
+    """Open the details form. On OK, save to the store. Returns the saved dict,
+    or None if cancelled. Must be called on the main (GUI) thread."""
     gui.mainFrame.prePopup()
     saved = None
     try:
-        dlg = DetailsDialog(gui.mainFrame, values)
+        dlg = DetailsDialog(gui.mainFrame, store)
         if dlg.ShowModal() == wx.ID_OK:
-            vals = dlg.get_values()
-            if not store.profile_names():
-                store.add_profile("default", vals)
-            else:
-                for k, v in vals.items():
-                    store.set_field(k, v)
+            dlg.commit()
             try:
                 store.save()
-                saved = vals
+                saved = store.get_active()
                 ui.message(_("Details saved."))
-                log.info("JFF: details saved (%d fields set)"
-                         % sum(1 for v in vals.values() if v))
+                log.info("JFF: details saved for profile %r" % store.active_name())
             except Exception:
                 log.error("JFF: could not save details", exc_info=True)
                 ui.message(_("Could not save your details."))

@@ -42,6 +42,10 @@ elif cmd == "check":
                     "email": "john.smith@example.com"},
         "cv_ar":   {"given_name": "محمد", "family_name": "العمراني",
                     "email": "mohammed.alomrani@example.com"},
+        "cv_docx": {"given_name": "Jane", "family_name": "Doe",
+                    "email": "jane.doe@example.co.uk"},
+        "cv_pdf":  {"given_name": "Michael", "family_name": "Brown",
+                    "email": "michael.brown@example.com"},
     }
     exp = EXPECT[mode]
     bad = {k: (p.get(k), v) for k, v in exp.items() if p.get(k) != v}

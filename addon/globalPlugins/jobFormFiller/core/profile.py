@@ -119,6 +119,12 @@ class ProfileStore:
         if self._data["active"] == old:
             self._data["active"] = new
 
+    def delete_profile(self, name: str):
+        self._data["profiles"].pop(name, None)
+        if self._data["active"] == name:
+            names = self.profile_names()
+            self._data["active"] = names[0] if names else None
+
     def set_field(self, key: str, value: str, profile: str | None = None):
         name = profile or self._data["active"]
         self._data["profiles"][name][key] = value

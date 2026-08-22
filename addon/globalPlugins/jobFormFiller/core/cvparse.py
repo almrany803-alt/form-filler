@@ -10,6 +10,7 @@
 # done with bundled libraries in the real add-on. The parsing logic here works
 # on plain text so it is fully testable.
 
+import os
 import re
 import unicodedata
 
@@ -154,24 +155,44 @@ def cv_to_fields(parsed: dict) -> dict:
 
 
 def extract_text(path: str) -> str:
-    """Get plain text out of a CV file. .docx and .pdf are what CVs actually
-    come in. Both libraries used here are pure Python, so they bundle into the
-    add-on cleanly. Image-only (scanned) PDFs yield little or no text and are
-    the OCR case, handled by the fallback rung, not here."""
+    """Get plain text out of a CV file. Text, Word and PDF are what CVs actually
+    come in. .docx is read with the standard library (a docx is just a zip of
+    XML, so no lxml is needed); .pdf is read with the bundled pure-Python pypdf.
+    Image-only (scanned) PDFs yield little or no text and are the OCR case,
+    handled by the fallback rung, not here."""
     ext = path.lower().rsplit(".", 1)[-1] if "." in path else ""
     if ext in ("txt", "md"):
         with open(path, encoding="utf-8", errors="replace") as f:
             return f.read()
     if ext == "docx":
-        import docx
-        d = docx.Document(path)
-        parts = [p.text for p in d.paragraphs]
-        for table in d.tables:                    # CVs often use tables
-            for row in table.rows:
-                parts.append("\t".join(c.text for c in row.cells))
-        return "\n".join(parts)
+        return _docx_text(path)
     if ext == "pdf":
-        from pypdf import PdfReader
-        reader = PdfReader(path)
-        return "\n".join((page.extract_text() or "") for page in reader.pages)
+        return _pdf_text(path)
     raise NotImplementedError(f"unsupported CV format: .{ext}")
+
+
+def _docx_text(path: str) -> str:
+    """Read a .docx using only the standard library. A .docx is a zip archive;
+    the body text lives in word/document.xml as <w:t> runs inside <w:p> paras.
+    Iterating paragraphs in document order also picks up table cells in place."""
+    import zipfile
+    from xml.etree import ElementTree as ET
+    W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+    with zipfile.ZipFile(path) as z:
+        xml = z.read("word/document.xml")
+    root = ET.fromstring(xml)
+    lines = []
+    for para in root.iter(W + "p"):
+        lines.append("".join(node.text or "" for node in para.iter(W + "t")))
+    return "\n".join(lines)
+
+
+def _pdf_text(path: str) -> str:
+    """Read a .pdf with the bundled pure-Python pypdf (add-on lib folder)."""
+    import sys
+    lib = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lib")
+    if lib not in sys.path:
+        sys.path.insert(0, lib)
+    from pypdf import PdfReader
+    reader = PdfReader(path)
+    return "\n".join((page.extract_text() or "") for page in reader.pages)
