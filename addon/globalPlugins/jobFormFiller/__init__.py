@@ -82,7 +82,11 @@ def _descriptor_from_object(obj):
     ia2 = getattr(obj, "IA2Attributes", {}) or {}
     role = ""
     try:
-        role = controlTypes.roleLabels.get(obj.role, "").lower() or str(obj.role)
+        # Use the role TOKEN (Role.COMBOBOX -> "combobox"), NOT the localized
+        # label ("combo box"), so classify_control matches. This is the bug the
+        # messy-form stress test caught: comboboxes were slipping through as text.
+        r = obj.role
+        role = getattr(r, "name", str(r)).lower()
     except Exception:
         pass
     return matcher.FieldDescriptor(

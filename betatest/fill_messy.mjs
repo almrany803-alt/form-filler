@@ -13,7 +13,7 @@ const formUrl = "file:///" + path.resolve(here, "messy_form.html").replace(/\\/g
 const CASES = [
   ["ph_fn",       "placeholder-only label",      "fill", "Mohammed"],
   ["aria_em",     "aria-label only",             "fill", "test@example.com"],
-  ["name_ph",     "name attribute only",         "fill", "+44 7700 900000"],
+  ["name_ph",     "name-only (Chrome hides name)","empty", ""],  // correctly declined: no accessible name
   ["rtl_city",    "Arabic (RTL) label",          "fill", "Bristol"],
   ["surn",        "label NOT associated",        "empty", ""],
   ["q9f2",        "fully unlabelled",            "empty", ""],
