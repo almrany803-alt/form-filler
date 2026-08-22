@@ -98,18 +98,24 @@ Confirmed by the user reading fields back and pasting NVDA logs.
 GitHub API. On a real Windows runner with NVDA 2026.1.1 and real Chrome:
 - The add-on loads with no error (`nvda-load.yml`).
 - A beta-tester fill test (`beta-fill.yml`) opens the form in Chrome, presses
-  the add-on's key, and checks what landed. It covers, as of now, 40 assertions
-  across four scenarios, all passing:
+  the add-on's key, and checks what actually landed. A warm-up run first absorbs
+  the NVDA+Chrome cold start (see gotchas). It covers five scenarios, all
+  passing (46 assertions as of this writing):
   - clean form (labelled fields fill),
   - messy form (placeholder-only, aria-label, Arabic RTL label fill; unlabelled,
     label-not-associated, native select, custom combobox, date picker all
     correctly left),
   - user journey A: tab from field to field, filling each with the single-field
     key,
-  - user journey B: a two-step form, filling each step and pressing Next.
+  - user journey B: a two-step form, filling each step and pressing Next,
+  - abuse / survival: fire the keys in the wrong context, hammer them, press
+    random unbound combos, then prove a normal fill still works and that no
+    uncaught error was logged.
 
-The pure-Python brain has 64 checks that run in the sandbox and on Linux CI
-(`tests.yml`) on every push.
+The pure-Python brain has 74 checks that run in the sandbox and on Linux CI
+(`tests.yml`) on every push, including an adversarial "sabotage" suite
+(`test_adversarial.py`) that throws malformed and hostile input at every module
+and asserts nothing crashes.
 
 What CI cannot yet verify: the interactive "My details" wx dialog (open it, tab
 the fields, type, save). That remains a manual check on the user's machine.
@@ -166,12 +172,14 @@ the fields, type, save). That remains a manual check on the user's machine.
   `announce.py` (spoken summaries + the audit summary), `profile.py` (encrypted
   ProfileStore + DPAPI), `cvparse.py` (extract text from docx/pdf/txt + parse CV
   sections), `audit.py` (duplicate/extra/mismatch detector).
-- `tests/` — 64 pure-Python checks (matcher, data, cv extract, audit, langs),
-  including sabotage/teeth cases.
+- `tests/` — 74 pure-Python checks (matcher, data, cv extract, audit, langs, and
+  `test_adversarial.py` sabotage/hostile-input cases), all runnable without NVDA.
 - `betatest/` — the real-NVDA-real-Chrome tests: `fill_test.mjs` (clean),
   `fill_messy.mjs` (messy stress), `fill_journey.mjs` (tabbing + multi-section),
-  the forms they use, `send_nvda_key.ps1` (injects NVDA+Shift+A or +F at OS
-  level), `seed_profile.py` (seeds an encrypted profile as the runner user).
+  `fill_abuse.mjs` (abuse/survival), `warmup.mjs` (cold-start warm-up), the forms
+  (`test_form.html`, `messy_form.html`, `multi_form.html`), `send_nvda_key.ps1`
+  (injects NVDA+Shift+<key> at OS level), `seed_profile.py` (seeds an encrypted
+  profile as the runner user).
 - `.github/workflows/` — `tests.yml` (Linux, brain), `nvda-load.yml` (Windows,
   real NVDA load), `beta-fill.yml` (Windows, real Chrome fill), `nvda-live.yml`
   (a guidepup scaffold, secondary).
@@ -233,8 +241,8 @@ needs the Actions permission), which is why the workflows run `on: push`.
 - **In the test harness, every test must fail the run.** Chaining `node a; node
   b` lets a's failure hide behind b's success. Track exit codes explicitly.
 - **Cold-start timing flake:** the very first fill right after NVDA+Chrome start
-  can miss; give it a longer settle. It is a harness timing issue, not the
-  add-on.
+  can miss. Fixed by running `warmup.mjs` before the real tests, so the first
+  real test is never the cold one. It is a harness timing issue, not the add-on.
 - **PowerShell has no bash heredoc.** A `python - <<'PY'` block in a pwsh step
   is a parse error; put the Python in a file.
 
@@ -258,9 +266,13 @@ needs the Actions permission), which is why the workflows run `on: push`.
    the next field that needs you" command, and remembered answers for recurring
    custom questions (notice period, right to work, "why do you want this role"),
    keyed to the question wording.
-5. **Adversarial / interaction testing.** Drive the add-on's menus and dialog by
-   keyboard; fire commands in hostile contexts and press unexpected keys to
-   prove it degrades gracefully rather than crashing.
+5. **Interaction testing of the menus/dialog.** DONE for robustness: an
+   adversarial sabotage suite (`test_adversarial.py`) plus a real-NVDA
+   abuse/survival scenario (`fill_abuse.mjs`: hostile contexts, rapid-fire,
+   random unbound keys) both pass, and no uncaught error is logged. STILL TODO:
+   drive the "My details" wx dialog itself by keyboard in CI (open the Tools
+   menu, tab the fields, type, save), which headless CI cannot yet do reliably;
+   for now that is a manual check on the user's machine.
 6. **Later:** the post-CV-attach audit wired live; a settings panel; the layered
    fallback for inaccessible forms (positional inference, remembered per-site
    labels, OCR, AI vision); publishing to the NVDA add-on store.
