@@ -8,6 +8,7 @@
 # settings panel lifecycle). It needs verification on real Windows + NVDA.
 
 import os
+import time
 import globalPluginHandler
 import wx
 import gui
@@ -287,16 +288,27 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 log.info("JFF form field: %r already filled, skipping" % result.key)
                 continue
 
-            # Focus the field, then paste. THIS is the spot most likely to need
-            # tuning: setFocus is not always synchronous, so we log the focused
-            # object right before pasting to prove focus actually moved.
+            # Focus the field, then paste, but ONLY once we've confirmed focus
+            # actually landed on this field. setFocus is not always synchronous,
+            # so if focus has not moved we skip and leave the field for the user,
+            # rather than pasting the value into whatever still holds focus.
             try:
-                obj.setFocus()
-                api.setFocusObject(obj)
-                focused_now = api.getFocusObject()
-                log.info("JFF form: focus before paste is id=%r name=%r"
-                         % (getattr(focused_now, "IA2Attributes", {}).get("id", ""),
-                            focused_now.name))
+                target_id = fd.id
+                moved = False
+                for _attempt in range(3):
+                    obj.setFocus()
+                    api.setFocusObject(obj)
+                    focused_now = api.getFocusObject()
+                    foc_id = (getattr(focused_now, "IA2Attributes", {}) or {}).get("id", "")
+                    if not target_id or not foc_id or foc_id == target_id:
+                        moved = True
+                        break
+                    time.sleep(0.05)
+                if not moved:
+                    log.info("JFF form: focus did not land on %r (still on %r), "
+                             "skipping to stay safe" % (target_id, foc_id))
+                    leftovers.append(fd.label or announce.human(result.key))
+                    continue
                 _paste_into_focused(obj, value)
                 log.info("JFF form action: filled %r with %r" % (result.key, value))
                 (guessed if result.confidence == "guess" else filled).append(result.key)
