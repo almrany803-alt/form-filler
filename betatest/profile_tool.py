@@ -5,6 +5,11 @@ Config dir from JFF_CFG."""
 import os
 import sys
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+except Exception:
+    pass
+
 sys.path.insert(0, os.path.join("addon", "globalPlugins", "jobFormFiller", "core"))
 import profile  # noqa: E402
 
