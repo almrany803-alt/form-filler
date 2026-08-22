@@ -122,7 +122,11 @@ by keyboard, open it, tab through the fields typing each, press Enter to save,
 then read the encrypted profile back off disk and confirm it holds exactly what
 was typed. The dialog is opened via a test-bound key; navigating the actual NVDA
 Tools menu to open it is the one interaction step not yet automated (fiddly to
-drive blind, but not impossible).
+drive blind, but not impossible). Further dialog "stories" are verified in
+`dialog-scenarios.yml`: Cancel does not save (Rained-Out tour), reopen-and-edit
+persists only the changed field (Prior-version tour), and an Arabic given name
+plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
+(FedEx tour).
 
 ---
 
@@ -186,7 +190,7 @@ drive blind, but not impossible).
   profile as the runner user).
 - `.github/workflows/` — `tests.yml` (Linux, brain), `nvda-load.yml` (Windows,
   real NVDA load), `beta-fill.yml` (Windows, real Chrome fill), `dialog-test.yml`
-  (Windows, the My details dialog driven by keyboard), `nvda-live.yml` (a guidepup
+  and `dialog-scenarios.yml` (Windows, the My details dialog driven by keyboard), `nvda-live.yml` (a guidepup
   scaffold, secondary).
 - `build.py` — one command to package the `.nvda-addon` and print its SHA256.
 - `buildVars.py` — the manifest source (name, version, NVDA version range).

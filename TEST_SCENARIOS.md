@@ -17,12 +17,12 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
 
 - [done] Guidebook: open by keyboard, tab through, type each field, save; the
   encrypted profile on disk holds exactly what was typed.
-- [new] FedEx (round-trip, right-to-left, special chars): enter an Arabic name
+- [done] FedEx (round-trip, right-to-left, special chars): enter an Arabic name
   (محمد), an apostrophe-and-CJK surname (O'Brien-李), save, and confirm the
   profile round-trips them byte-for-byte. Data must survive storage unmangled.
-- [new] Rained-Out (cancel): with details already saved, open the dialog, change
+- [done] Rained-Out (cancel): with details already saved, open the dialog, change
   a field, then cancel (Escape). The saved profile must be untouched.
-- [new] Prior-version (reopen + edit): save, reopen (fields should prepopulate),
+- [done] Prior-version (reopen + edit): save, reopen (fields should prepopulate),
   change one field, save again; only that field changes, the rest persist.
 - [todo] Intellectual (extremes): a 5,000-character address; a name that is only
   spaces; every field at maximum length. Save must not truncate silently or
@@ -71,7 +71,7 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
 ## Feature: profile store / persistence
 
 - [done] FedEx: DPAPI encrypt on save, decrypt on load, as the same user.
-- [new] FedEx: non-ASCII and RTL values survive the encrypt/decrypt round-trip.
+- [done] FedEx: non-ASCII and RTL values survive the encrypt/decrypt round-trip.
 - [todo] Antisocial: a corrupted profile.dat on disk; load fails cleanly, the
   add-on still starts. (Covered in spirit by test_adversarial.py.)
 
