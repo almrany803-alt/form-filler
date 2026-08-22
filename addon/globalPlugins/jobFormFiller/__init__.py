@@ -133,6 +133,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._layerActive = False
         # Encrypted profile store, in NVDA's config dir. On Windows the crypto is
         # DPAPI (tied to the user account); the store logic itself is our tested
         # code. self._profile is the active profile the fill commands read.
@@ -169,6 +170,41 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if saved is not None:
             self._profile = self._store.get_active() or {}
 
+    # --- command layer: press NVDA+J, then a single letter -------------------
+    # One entry key instead of many globals. Global plugins are resolved before
+    # browse mode, so these letters win over single-letter quick-nav on a page.
+    _LAYER = {
+        "f": "script_fillField",
+        "a": "script_fillForm",
+        "d": "script_editDetails",
+    }
+
+    @script(
+        description=_("Job Form Filler commands (then press F, A or D)"),
+        gesture="kb:NVDA+j",
+    )
+    def script_commandLayer(self, gesture):
+        self._layerActive = True
+        ui.message(_("Job Form Filler. F fill field, A fill form, D details."))
+        wx.CallLater(4000, self._cancelLayer)
+
+    def _cancelLayer(self):
+        self._layerActive = False
+
+    def getScript(self, gesture):
+        # While the layer is open the next key is the command, and it is a
+        # one-shot: whatever is pressed, the layer closes. An unmapped key just
+        # falls through to its normal behaviour.
+        if self._layerActive:
+            self._layerActive = False
+            key = getattr(gesture, "mainKeyName", None)
+            mods = getattr(gesture, "modifierNames", None) or []
+            if key and not mods:
+                name = self._LAYER.get(key.lower())
+                if name:
+                    return getattr(self, name)
+        return super().getScript(gesture)
+
     @script(
         description=_("Edit your saved details"),
     )
@@ -185,9 +221,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     @script(
         description=_("Fill the current field from your saved details"),
-        # Default key; free in stock NVDA. Change it in Input Gestures if it ever
-        # clashes with another add-on, under the "Job Form Filler" category.
-        gesture="kb:NVDA+shift+f",
     )
     def script_fillField(self, gesture):
         obj = api.getFocusObject()
@@ -224,8 +257,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     @script(
         description=_("Fill the whole form from your saved details"),
-        # Default key; change it in Input Gestures if it clashes with an add-on.
-        gesture="kb:NVDA+shift+a",
     )
     def script_fillForm(self, gesture):
         focus = api.getFocusObject()
