@@ -22,8 +22,9 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
   layer-timer race, a letter falling through as a keystroke; fixed with a
   generation-guarded timeout.
 - [todo] NVDA+J then D opens the details dialog (reachable; add a story).
-- [todo] Antisocial: NVDA+J then an unmapped key passes through cleanly (the
-  abuse test covers this in spirit).
+- [done] Antisocial: NVDA+J then an unmapped or random key closes the layer and
+  passes through cleanly; a normal fill still works after (`fill_abuse.mjs` now
+  drives every command through the layer).
 
 ## Feature: My details dialog
 
@@ -47,7 +48,7 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
 - [todo] Obsessive-Compulsive: open and cancel the dialog ten times rapidly; no
   leak, no crash, profile unchanged.
 
-## Feature: whole-form fill (NVDA+Shift+A)
+## Feature: whole-form fill (NVDA+J then A)
 
 - [done] Guidebook: labelled form, one press, all identifiable fields fill, a
   spoken summary names what was left.
@@ -59,7 +60,7 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
 - [todo] Intellectual: a form with 60+ fields; performance and completeness.
 - [todo] Antisocial: press fill on a page mid-load, before fields are ready.
 
-## Feature: single-field fill (NVDA+Shift+F) + tabbing
+## Feature: single-field fill (NVDA+J then F) + tabbing
 
 - [done] Landmark: tab from field to field, fill each individually.
 - [done] Guidebook: fill the focused field; decline a bespoke question box.
@@ -94,6 +95,23 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
   is logged (`fill_abuse.mjs`).
 - [done] Crime-spree (unit level): hostile/malformed input to every brain module
   (`test_adversarial.py`), nothing crashes.
+
+## Feature: the test harness itself (audit before you test)
+
+The tests are code too, and they have had their own bugs. Recording them so the
+lessons are not re-learned.
+
+- [done] False green caught: a failing test was masked by a passing one after it
+  in the same step, and the run went green. Each test now fails the run on its
+  own exit code.
+- [done] Cold-start flake: the very first fill right after NVDA and Chrome start
+  intermittently missed. A `warmup.mjs` run now absorbs the cold start so the
+  first real test is never the cold one.
+- [done] Unicode print crash: the Arabic round-trip check first "failed" only
+  because printing Arabic to the Windows console threw, before it ever compared;
+  the check now writes UTF-8. The data had survived; the harness had not.
+- [done] Untruncated logs: the CI console truncated the add-on's log lines, so the
+  full NVDA log is uploaded as an artifact and read from there.
 
 ## Feature: CV import
 
