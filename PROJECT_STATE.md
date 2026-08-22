@@ -25,8 +25,8 @@ user loses time on.
 ### Status at a glance
 
 Working and proven on real hardware (see section 3):
-- Fill the current field: NVDA+Shift+F.
-- Fill the whole form in one press: NVDA+Shift+A, with a spoken summary.
+- Commands live in one place: press NVDA+J, then a letter. F fills the current
+  field, A fills the whole form (with a spoken summary), D opens your details.
 - Encrypted profile stored on the user's own machine (Windows DPAPI).
 - A "My details" form in the NVDA Tools menu to enter and edit your details.
 - Multilingual field identification (9 languages).
@@ -273,6 +273,11 @@ needs the Actions permission), which is why the workflows run `on: push`.
 - **Cold-start timing flake:** the very first fill right after NVDA+Chrome start
   can miss. Fixed by running `warmup.mjs` before the real tests, so the first
   real test is never the cold one. It is a harness timing issue, not the add-on.
+- **Layer timers must be generation-guarded.** The command layer opens on
+  NVDA+J and closes on the next key or a timeout. A plain 4-second timeout let a
+  stale timer from an earlier press close a freshly opened layer, so the command
+  letter fell through as a keystroke ("f" typed into a field). Each opening now
+  carries a generation number; only its own timer may close it.
 - **PowerShell has no bash heredoc.** A `python - <<'PY'` block in a pwsh step
   is a parse error; put the Python in a file.
 

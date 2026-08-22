@@ -13,6 +13,18 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
 
 ---
 
+## Feature: command layer (NVDA+J, then a letter)
+
+- [done] Guidebook: NVDA+J then A fills the whole form; NVDA+J then F fills the
+  focused field. Proven on real NVDA through the layer (the letter wins over
+  browse-mode quick-nav, since global plugins resolve first).
+- [done] Obsessive-Compulsive / wrong-turn: the tabbing story caught a stale
+  layer-timer race, a letter falling through as a keystroke; fixed with a
+  generation-guarded timeout.
+- [todo] NVDA+J then D opens the details dialog (reachable; add a story).
+- [todo] Antisocial: NVDA+J then an unmapped key passes through cleanly (the
+  abuse test covers this in spirit).
+
 ## Feature: My details dialog
 
 - [done] Guidebook: open by keyboard, tab through, type each field, save; the
