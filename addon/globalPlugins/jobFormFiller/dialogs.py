@@ -155,7 +155,7 @@ class DetailsDialog(wx.Dialog):
     def _onImport(self, evt):
         with wx.FileDialog(
                 self, _("Choose your CV"),
-                wildcard=_("CV files (*.docx;*.txt)|*.docx;*.txt"),
+                wildcard=_("CV files (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt"),
                 style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fd:
             if fd.ShowModal() != wx.ID_OK:
                 return

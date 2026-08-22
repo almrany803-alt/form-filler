@@ -167,11 +167,25 @@ def extract_text(path: str) -> str:
     if ext == "docx":
         return _docx_text(path)
     if ext == "pdf":
-        # PDF reading needs a library that fits NVDA's trimmed Python; that is a
-        # separate, focused piece of work. For now Word and text are supported.
-        raise NotImplementedError(
-            "PDF import is not available yet; please use a Word or text CV.")
+        return _pdf_text(path)
     raise NotImplementedError(f"unsupported CV format: .{ext}")
+
+
+def _pdf_text(path: str) -> str:
+    """Read a .pdf with PyMuPDF, a self-contained compiled library that fits
+    NVDA's Python (unlike pure-Python readers that need stdlib NVDA omits). The
+    Windows build is bundled in the add-on's lib folder; a system copy is used
+    in development."""
+    try:
+        import pymupdf
+    except Exception:
+        import sys
+        lib = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lib")
+        if lib not in sys.path:
+            sys.path.insert(0, lib)
+        import pymupdf
+    doc = pymupdf.open(path)
+    return "\n".join(page.get_text() for page in doc)
 
 
 def _docx_text(path: str) -> str:

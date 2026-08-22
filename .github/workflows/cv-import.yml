@@ -65,6 +65,14 @@ jobs:
           $env:JFF_CFG = "$env:RUNNER_TEMP\nvdacfg"
           python betatest\profile_tool.py check cv_docx
 
+      - name: Import a PDF CV and verify
+        shell: pwsh
+        run: |
+          $cv = (Resolve-Path "betatest\cvs\cv_en.pdf").Path
+          pwsh -File betatest\drive_cv.ps1 -CvPath "$cv"
+          $env:JFF_CFG = "$env:RUNNER_TEMP\nvdacfg"
+          python betatest\profile_tool.py check cv_pdf
+
       - name: Upload the full NVDA log
         if: always()
         uses: actions/upload-artifact@v4

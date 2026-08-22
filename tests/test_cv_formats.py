@@ -30,11 +30,16 @@ class TestCvFormats(unittest.TestCase):
         self.assertEqual(f["family_name"], "الأحمد")
         self.assertEqual(f["email"], "sara.alahmad@example.com")
 
-    def test_pdf_not_yet_supported(self):
-        # PDF reading is deferred until a library that fits NVDA's trimmed
-        # Python is chosen; it must fail clearly, not crash mysteriously.
-        with self.assertRaises(Exception):
-            cvparse.extract_text(os.path.join(CVS, "cv_en.pdf"))
+    def test_pdf_english(self):
+        f = self._fields("cv_en.pdf")
+        self.assertEqual(f["given_name"], "Michael")
+        self.assertEqual(f["family_name"], "Brown")
+        self.assertEqual(f["email"], "michael.brown@example.com")
+
+    def test_pdf_spanish(self):
+        f = self._fields("cv_es.pdf")
+        self.assertEqual(f["given_name"], "Maria")
+        self.assertEqual(f["family_name"], "Garcia Lopez")
 
     def test_unsupported_format_raises_cleanly(self):
         with self.assertRaises(Exception):
