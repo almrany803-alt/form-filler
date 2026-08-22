@@ -1,0 +1,24 @@
+name: tests
+
+# Runs the pure-Python "brain" tests (matcher, controls, audit, profile store,
+# CV parser, languages) on every push and pull request. Fast, no NVDA needed.
+# The real-NVDA live test is a separate, manual workflow (nvda-live.yml).
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install libraries used by the CV parser
+        run: pip install python-docx pypdf fpdf2
+      - name: Run the test suite
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Check the add-on builds
+        run: python build.py
