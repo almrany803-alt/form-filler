@@ -17,11 +17,20 @@ from typing import (
     Union,
     cast,
 )
-from xml.dom.expatbuilder import ExpatBuilderNS
-from xml.dom.minidom import Document
-from xml.dom.minidom import Element as XmlElement
-from xml.dom.xmlbuilder import Options
-from xml.parsers.expat import ExpatError, XMLParserType
+try:
+    from xml.dom.expatbuilder import ExpatBuilderNS
+    from xml.dom.minidom import Document
+    from xml.dom.minidom import Element as XmlElement
+    from xml.dom.xmlbuilder import Options
+    from xml.parsers.expat import ExpatError, XMLParserType
+except ImportError:
+    # NVDA's trimmed Python omits xml.dom; XMP metadata is then unavailable,
+    # which is fine here - we only extract page text.
+    ExpatBuilderNS = Document = XmlElement = Options = None  # type: ignore
+    XMLParserType = object  # type: ignore
+
+    class ExpatError(Exception):  # type: ignore
+        pass
 
 from ._protocols import XmpInformationProtocol
 from ._utils import StreamType, deprecate_with_replacement, deprecation_no_replacement
