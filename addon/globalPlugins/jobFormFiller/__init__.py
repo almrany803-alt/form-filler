@@ -75,28 +75,83 @@ def _states_of(obj):
     return tuple(names)
 
 
+# The raw HTML attributes we ask a field for, via ISimpleDOM.
+_SDOM_NAMES = ["name", "type", "autocomplete", "placeholder", "aria-label",
+               "required", "id", "class", "role"]
+
+
+def _simpledom_attrs(obj):
+    """Read the field's real HTML attributes via ISimpleDOM, which Chrome and
+    Firefox support and which carries far more than NVDA's basic IA2 bag (the
+    autocomplete token, the input type, the name, etc.). Best-effort: on any
+    failure returns {} and we fall back to the IA2 attributes."""
+    try:
+        from comInterfaces.ISimpleDOM import ISimpleDOMNode
+    except Exception:
+        try:
+            from comInterfaces import ISimpleDOM as _sd
+            ISimpleDOMNode = _sd.ISimpleDOMNode
+        except Exception:
+            return {}
+    try:
+        from ctypes import c_short
+        from comtypes import BSTR
+        iao = getattr(obj, "IAccessibleObject", None)
+        if iao is None:
+            return {}
+        node = iao.QueryInterface(ISimpleDOMNode)
+        n = len(_SDOM_NAMES)
+        names = (BSTR * n)(*_SDOM_NAMES)
+        nsids = (c_short * n)(*([0] * n))
+        values = node.attributesForNames(n, names, nsids)
+        out = {}
+        for i, key in enumerate(_SDOM_NAMES):
+            v = values[i]
+            if v:
+                out[key] = str(v)
+        return out
+    except Exception:
+        return {}
+
+
+def _pick(*vals):
+    for v in vals:
+        if v:
+            return v
+    return ""
+
+
 def _descriptor_from_object(obj):
-    """Build a matcher.FieldDescriptor from a live NVDA object. The extra HTML
-    detail (id, name, autocomplete, placeholder) comes from IA2 attributes where
-    the browser exposes them."""
+    """Build a matcher.FieldDescriptor from a live NVDA object. Reads the real
+    HTML attributes via ISimpleDOM first (name, type, autocomplete, placeholder),
+    falling back to NVDA's IA2 attribute bag where ISimpleDOM is unavailable."""
     ia2 = getattr(obj, "IA2Attributes", {}) or {}
+    sdom = _simpledom_attrs(obj)
+    log.info("JFF raw: ia2=%r sdom=%r" % (dict(ia2), sdom))
+
     role = ""
     try:
         # Use the role TOKEN (Role.COMBOBOX -> "combobox"), NOT the localized
-        # label ("combo box"), so classify_control matches. This is the bug the
-        # messy-form stress test caught: comboboxes were slipping through as text.
+        # label ("combo box"), so classify_control matches.
         r = obj.role
         role = getattr(r, "name", str(r)).lower()
     except Exception:
         pass
+
+    # autocomplete: prefer the real token; else infer from input type.
+    autocomplete = _pick(sdom.get("autocomplete"), ia2.get("autocomplete", ""))
+    if not autocomplete:
+        t = (sdom.get("type") or "").lower()
+        autocomplete = {"email": "email", "tel": "tel", "url": "url"}.get(t, "")
+
     return matcher.FieldDescriptor(
         role=role,
         label=obj.name or "",
-        aria_label=ia2.get("label", ""),
-        name=ia2.get("name", ""),
-        id=ia2.get("id", ""),
-        placeholder=ia2.get("placeholder", ""),
-        autocomplete=ia2.get("autocomplete", ""),
+        aria_label=_pick(sdom.get("aria-label"), ia2.get("label", "")),
+        name=_pick(sdom.get("name"), ia2.get("name", "")),
+        id=_pick(sdom.get("id"), ia2.get("id", "")),
+        placeholder=_pick(sdom.get("placeholder"), ia2.get("placeholder", "")),
+        autocomplete=autocomplete,
         states=_states_of(obj),
     )
 
