@@ -6,6 +6,7 @@ name: Beta fill test (Chrome + NVDA)
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   betafill:
