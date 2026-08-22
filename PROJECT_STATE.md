@@ -117,8 +117,12 @@ The pure-Python brain has 74 checks that run in the sandbox and on Linux CI
 (`test_adversarial.py`) that throws malformed and hostile input at every module
 and asserts nothing crashes.
 
-What CI cannot yet verify: the interactive "My details" wx dialog (open it, tab
-the fields, type, save). That remains a manual check on the user's machine.
+Also verified in CI (`dialog-test.yml`): the "My details" dialog driven entirely
+by keyboard, open it, tab through the fields typing each, press Enter to save,
+then read the encrypted profile back off disk and confirm it holds exactly what
+was typed. The dialog is opened via a test-bound key; navigating the actual NVDA
+Tools menu to open it is the one interaction step not yet automated (fiddly to
+drive blind, but not impossible).
 
 ---
 
@@ -181,8 +185,9 @@ the fields, type, save). That remains a manual check on the user's machine.
   (injects NVDA+Shift+<key> at OS level), `seed_profile.py` (seeds an encrypted
   profile as the runner user).
 - `.github/workflows/` — `tests.yml` (Linux, brain), `nvda-load.yml` (Windows,
-  real NVDA load), `beta-fill.yml` (Windows, real Chrome fill), `nvda-live.yml`
-  (a guidepup scaffold, secondary).
+  real NVDA load), `beta-fill.yml` (Windows, real Chrome fill), `dialog-test.yml`
+  (Windows, the My details dialog driven by keyboard), `nvda-live.yml` (a guidepup
+  scaffold, secondary).
 - `build.py` — one command to package the `.nvda-addon` and print its SHA256.
 - `buildVars.py` — the manifest source (name, version, NVDA version range).
 - README, LICENSE (GPL v2), REPO_SETUP.md, setup-repo.ps1.
@@ -266,13 +271,13 @@ needs the Actions permission), which is why the workflows run `on: push`.
    the next field that needs you" command, and remembered answers for recurring
    custom questions (notice period, right to work, "why do you want this role"),
    keyed to the question wording.
-5. **Interaction testing of the menus/dialog.** DONE for robustness: an
-   adversarial sabotage suite (`test_adversarial.py`) plus a real-NVDA
-   abuse/survival scenario (`fill_abuse.mjs`: hostile contexts, rapid-fire,
-   random unbound keys) both pass, and no uncaught error is logged. STILL TODO:
-   drive the "My details" wx dialog itself by keyboard in CI (open the Tools
-   menu, tab the fields, type, save), which headless CI cannot yet do reliably;
-   for now that is a manual check on the user's machine.
+5. **Interaction testing of the menus/dialog.** DONE: an adversarial sabotage
+   suite (`test_adversarial.py`), a real-NVDA abuse/survival scenario
+   (`fill_abuse.mjs`), and the "My details" dialog driven entirely by keyboard
+   in CI (`dialog-test.yml`: open, tab, type, save, then verify the encrypted
+   profile on disk) all pass. The only interaction step not yet automated is
+   navigating the actual NVDA Tools menu to open the dialog (it is opened via a
+   test-bound key instead); fiddly to drive blind, but not impossible.
 6. **Later:** the post-CV-attach audit wired live; a settings panel; the layered
    fallback for inaccessible forms (positional inference, remembered per-site
    labels, OCR, AI vision); publishing to the NVDA add-on store.
