@@ -134,6 +134,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._layerActive = False
+        self._layerGen = 0
         # Encrypted profile store, in NVDA's config dir. On Windows the crypto is
         # DPAPI (tied to the user account); the store logic itself is our tested
         # code. self._profile is the active profile the fill commands read.
@@ -185,11 +186,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     )
     def script_commandLayer(self, gesture):
         self._layerActive = True
+        self._layerGen += 1
+        gen = self._layerGen
         ui.message(_("Job Form Filler. F fill field, A fill form, D details."))
-        wx.CallLater(4000, self._cancelLayer)
+        wx.CallLater(4000, self._cancelLayer, gen)
 
-    def _cancelLayer(self):
-        self._layerActive = False
+    def _cancelLayer(self, gen):
+        # Only the latest layer's own timer may close it; older timers are stale.
+        if gen == self._layerGen:
+            self._layerActive = False
 
     def getScript(self, gesture):
         # While the layer is open the next key is the command, and it is a
@@ -197,6 +202,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # falls through to its normal behaviour.
         if self._layerActive:
             self._layerActive = False
+            self._layerGen += 1          # invalidate this layer's pending timer
             key = getattr(gesture, "mainKeyName", None)
             mods = getattr(gesture, "modifierNames", None) or []
             if key and not mods:
