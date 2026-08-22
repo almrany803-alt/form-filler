@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Job Form Filler - test form</title></head>
+<body>
+  <h1>Test form</h1>
+  <p>A tiny, well-labelled form for the first real test. Tab to a field and press your fill key.</p>
+
+  <p>
+    <label for="fn">First name</label><br>
+    <input id="fn" name="given-name" autocomplete="given-name" type="text">
+  </p>
+  <p>
+    <label for="em">Email address</label><br>
+    <input id="em" name="email" autocomplete="email" type="email">
+  </p>
+  <p>
+    <label for="ph">Phone</label><br>
+    <input id="ph" name="tel" autocomplete="tel" type="tel">
+  </p>
+  <p>
+    <label for="ct">City</label><br>
+    <input id="ct" name="city" type="text">
+  </p>
+
+  <hr>
+  <p>These two should NOT auto-fill, on purpose:</p>
+  <p>
+    <label for="msg">Why do you want this role?</label><br>
+    <textarea id="msg" name="cover"></textarea>
+  </p>
+  <p>
+    <!-- deliberately unlabelled, opaque id -->
+    <input id="q7be2" type="text" aria-label="">
+  </p>
+</body>
+</html>

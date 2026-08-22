@@ -1,0 +1,14 @@
+{
+  "name": "jobformfiller-live-tests",
+  "private": true,
+  "type": "module",
+  "description": "Real-NVDA, real-browser tests for the Job Form Filler add-on (guidepup + Playwright).",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@guidepup/guidepup": "^0.28.0",
+    "@guidepup/playwright": "^0.30.0",
+    "@playwright/test": "^1.47.0"
+  }
+}

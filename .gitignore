@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Build output (the packaged add-on is attached to a Release, not committed)
+*.nvda-addon
+/pkg/
+/build/
+dist/
+
+# Live tests (Node)
+live-tests/node_modules/
+live-tests/test-results/
+live-tests/playwright-report/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
