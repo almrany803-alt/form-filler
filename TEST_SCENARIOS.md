@@ -81,6 +81,26 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
 - [done] Landmark: fill step 1, press Next, fill step 2.
 - [todo] Wrong-turn: press Next before filling, fill step 2, go Back, check step 1.
 
+## Feature: profiles as versions (in progress)
+
+Design: several profiles, each a version (English, Arabic, a teaching CV). One
+level. Switching swaps the whole detail set. Language is just a tag we pick a
+version by. Import asks before it changes anything you already saved.
+
+- [done] Store foundation: several named profiles coexist, switching the active
+  one swaps the whole detail set, each keeps its own fields, editing one leaves
+  the other, renaming keeps it active, and it all round-trips through save and
+  load (English and Arabic together).
+- [done] Bug caught: every store shared one profiles dict (a shallow copy of a
+  module default), so two stores bled into each other. Fixed: each store gets
+  its own fresh data.
+- [todo] Dialog: a selector to pick a profile and create a new one; fields load
+  and save per selected version. Test on real NVDA: create a second version,
+  save, confirm both persist.
+- [todo] Import into the chosen version, and where the CV would change a value
+  you already have, ask before applying (per field or all).
+- [todo] Fill picks the version by the form's language, or you choose.
+
 ## Feature: profile store / persistence
 
 - [done] FedEx: DPAPI encrypt on save, decrypt on load, as the same user.

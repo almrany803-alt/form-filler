@@ -66,7 +66,7 @@ class ProfileStore:
     def __init__(self, path: str, crypto: Crypto):
         self.path = path
         self.crypto = crypto
-        self._data = dict(_EMPTY)
+        self._data = {"active": None, "profiles": {}}
 
     # --- persistence ---------------------------------------------------------
     def load(self):
@@ -108,6 +108,16 @@ class ProfileStore:
         if name is None:
             return {}
         return self._data["profiles"][name]
+
+    def get_profile(self, name: str) -> dict:
+        return dict(self._data["profiles"].get(name, {}))
+
+    def rename_profile(self, old: str, new: str):
+        if old not in self._data["profiles"] or new == old:
+            return
+        self._data["profiles"][new] = self._data["profiles"].pop(old)
+        if self._data["active"] == old:
+            self._data["active"] = new
 
     def set_field(self, key: str, value: str, profile: str | None = None):
         name = profile or self._data["active"]

@@ -133,7 +133,7 @@ GitHub API. On a real Windows runner with NVDA 2026.1.1 and real Chrome:
     random unbound combos, then prove a normal fill still works and that no
     uncaught error was logged.
 
-The pure-Python brain has 80 checks that run in the sandbox and on Linux CI
+The pure-Python brain has 84 checks that run in the sandbox and on Linux CI
 (`tests.yml`) on every push, including an adversarial "sabotage" suite
 (`test_adversarial.py`) that throws malformed and hostile input at every module
 and asserts nothing crashes.
@@ -201,7 +201,7 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
   `announce.py` (spoken summaries + the audit summary), `profile.py` (encrypted
   ProfileStore + DPAPI), `cvparse.py` (extract text from docx/pdf/txt + parse CV
   sections), `audit.py` (duplicate/extra/mismatch detector).
-- `tests/` — 80 pure-Python checks (matcher, data, cv extract, audit, langs, and
+- `tests/` — 84 pure-Python checks (matcher, data, cv extract, audit, langs, and
   `test_adversarial.py` sabotage/hostile-input cases), all runnable without NVDA.
 - `betatest/` — the real-NVDA-real-Chrome tests: `fill_test.mjs` (clean),
   `fill_messy.mjs` (messy stress), `fill_journey.mjs` (tabbing + multi-section),
@@ -273,6 +273,9 @@ needs the Actions permission), which is why the workflows run `on: push`.
 - **Cold-start timing flake:** the very first fill right after NVDA+Chrome start
   can miss. Fixed by running `warmup.mjs` before the real tests, so the first
   real test is never the cold one. It is a harness timing issue, not the add-on.
+- **No shared mutable defaults.** The store built each instance's data with a
+  shallow copy of a module-level default, so every store shared one profiles
+  dict. Build fresh nested data per instance instead.
 - **Layer timers must be generation-guarded.** The command layer opens on
   NVDA+J and closes on the next key or a timeout. A plain 4-second timeout let a
   stale timer from an earlier press close a freshly opened layer, so the command
@@ -293,6 +296,10 @@ needs the Actions permission), which is why the workflows run `on: push`.
    Word/PDF/text CVs in English, Spanish, Polish, Arabic through import ->
    review -> fill, as beta scenarios, using CVs modelled on real-world
    structures (not real people's documents).
+2b. **Profiles as versions (started).** The store holds several named profiles,
+   each a version, switchable, tested. Next: a profile selector in the dialog,
+   import into the chosen version with a confirm-before-change step, and fill
+   picking the version by the form's language.
 3. **Dropdown / choice-control filling.** The classify/choose/verify logic
    exists and is tested; wire it into the live fill (currently dropdowns are
    correctly left).
