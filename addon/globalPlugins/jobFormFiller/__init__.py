@@ -7,8 +7,11 @@
 # clipContentsDesigner (focus/browse-mode handling, keyboard-layout awareness,
 # settings panel lifecycle). It needs verification on real Windows + NVDA.
 
+import os
 import globalPluginHandler
 import wx
+import gui
+import globalVars
 import api
 import ui
 import controlTypes
@@ -18,7 +21,8 @@ from scriptHandler import script
 from keyboardHandler import KeyboardInputGesture
 import addonHandler
 
-from .core import matcher, controls, announce
+from .core import matcher, controls, announce, profile
+from . import dialogs
 
 try:
     from logHandler import log          # NVDA's logger; shows in Tools > View log
@@ -107,16 +111,55 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Real build: load the encrypted profile store, register the settings
-        # panel and the Tools-menu hub here, and clean them up in terminate().
-        # TEMP seed for the first-field smoke test only. The real encrypted
-        # profile store and CV import replace this in the next slice.
-        self._profile = {
-            "given_name": "Mohammed",
-            "email": "test@example.com",
-            "phone": "+44 7700 900000",
-            "city": "Bristol",
-        }
+        # Encrypted profile store, in NVDA's config dir. On Windows the crypto is
+        # DPAPI (tied to the user account); the store logic itself is our tested
+        # code. self._profile is the active profile the fill commands read.
+        self._store = None
+        self._profile = {}
+        try:
+            data_dir = os.path.join(globalVars.appArgs.configPath, "jobFormFiller")
+            os.makedirs(data_dir, exist_ok=True)
+            self._store = profile.ProfileStore(
+                os.path.join(data_dir, "profile.dat"), profile.default_crypto())
+            self._store.load()
+            self._profile = self._store.get_active() or {}
+            log.info("JFF: profile store loaded, %d field(s) present"
+                     % len(self._profile))
+        except Exception:
+            log.error("JFF: could not load profile store", exc_info=True)
+
+        # A Tools-menu item to edit your details.
+        self._detailsItem = None
+        try:
+            toolsMenu = gui.mainFrame.sysTrayIcon.toolsMenu
+            self._detailsItem = toolsMenu.Append(
+                wx.ID_ANY, _("Job Form Filler: My details..."))
+            gui.mainFrame.sysTrayIcon.Bind(
+                wx.EVT_MENU, self._onDetails, self._detailsItem)
+        except Exception:
+            log.error("JFF: could not add menu item", exc_info=True)
+
+    def _onDetails(self, evt):
+        if self._store is None:
+            ui.message(_("Your details cannot be stored on this system."))
+            return
+        saved = dialogs.edit_details(self._store)
+        if saved is not None:
+            self._profile = self._store.get_active() or {}
+
+    @script(
+        description=_("Edit your saved details"),
+    )
+    def script_editDetails(self, gesture):
+        self._onDetails(None)
+
+    def terminate(self):
+        try:
+            if self._detailsItem is not None:
+                gui.mainFrame.sysTrayIcon.toolsMenu.Remove(self._detailsItem)
+        except Exception:
+            pass
+        super().terminate()
 
     @script(
         description=_("Fill the current field from your saved details"),
