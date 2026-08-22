@@ -75,82 +75,44 @@ def _states_of(obj):
     return tuple(names)
 
 
-# The raw HTML attributes we ask a field for, via ISimpleDOM.
-_SDOM_NAMES = ["name", "type", "autocomplete", "placeholder", "aria-label",
-               "required", "id", "class", "role"]
-
-
-def _simpledom_attrs(obj):
-    """Read the field's real HTML attributes via ISimpleDOM, which Chrome and
-    Firefox support and which carries far more than NVDA's basic IA2 bag (the
-    autocomplete token, the input type, the name, etc.). Best-effort: on any
-    failure returns {} and we fall back to the IA2 attributes."""
-    try:
-        from comInterfaces.ISimpleDOM import ISimpleDOMNode
-    except Exception:
-        try:
-            from comInterfaces import ISimpleDOM as _sd
-            ISimpleDOMNode = _sd.ISimpleDOMNode
-        except Exception:
-            return {}
-    try:
-        from ctypes import c_short
-        from comtypes import BSTR
-        iao = getattr(obj, "IAccessibleObject", None)
-        if iao is None:
-            return {}
-        node = iao.QueryInterface(ISimpleDOMNode)
-        n = len(_SDOM_NAMES)
-        names = (BSTR * n)(*_SDOM_NAMES)
-        nsids = (c_short * n)(*([0] * n))
-        values = node.attributesForNames(n, names, nsids)
-        out = {}
-        for i, key in enumerate(_SDOM_NAMES):
-            v = values[i]
-            if v:
-                out[key] = str(v)
-        return out
-    except Exception:
-        return {}
-
-
-def _pick(*vals):
-    for v in vals:
-        if v:
-            return v
-    return ""
-
-
 def _descriptor_from_object(obj):
-    """Build a matcher.FieldDescriptor from a live NVDA object. Reads the real
-    HTML attributes via ISimpleDOM first (name, type, autocomplete, placeholder),
-    falling back to NVDA's IA2 attribute bag where ISimpleDOM is unavailable."""
+    """Build a matcher.FieldDescriptor from a live NVDA object, using the keys
+    Chrome actually exposes in its IA2 attributes (confirmed on real Chrome):
+      html-input-name -> the HTML name ("given-name", "email", "tel")
+      text-input-type -> the input type ("email", "tel")
+      name-from       -> how the label was derived (a real label vs a placeholder)
+      xml-roles       -> the ARIA role ("combobox")
+    """
     ia2 = getattr(obj, "IA2Attributes", {}) or {}
-    sdom = _simpledom_attrs(obj)
-    log.info("JFF raw: ia2=%r sdom=%r" % (dict(ia2), sdom))
+    log.info("JFF raw: ia2=%r" % dict(ia2))
 
-    role = ""
-    try:
-        # Use the role TOKEN (Role.COMBOBOX -> "combobox"), NOT the localized
-        # label ("combo box"), so classify_control matches.
-        r = obj.role
-        role = getattr(r, "name", str(r)).lower()
-    except Exception:
-        pass
+    # role: prefer the ARIA role Chrome gives, else NVDA's role token.
+    role = ia2.get("xml-roles", "")
+    if not role:
+        try:
+            r = obj.role
+            role = getattr(r, "name", str(r)).lower()
+        except Exception:
+            role = ""
 
-    # autocomplete: prefer the real token; else infer from input type.
-    autocomplete = _pick(sdom.get("autocomplete"), ia2.get("autocomplete", ""))
-    if not autocomplete:
-        t = (sdom.get("type") or "").lower()
-        autocomplete = {"email": "email", "tel": "tel", "url": "url"}.get(t, "")
+    html_name = ia2.get("html-input-name", "") or ia2.get("name", "")
+    input_type = (ia2.get("text-input-type", "") or "").lower()
+    autocomplete = {"email": "email", "tel": "tel", "url": "url"}.get(input_type, "")
+
+    # If the only "label" came from the placeholder or a tooltip, treat it as a
+    # placeholder (a guess), not a real label (strong).
+    label = obj.name or ""
+    placeholder = ""
+    if ia2.get("name-from", "") in ("placeholder", "tooltip"):
+        placeholder, label = label, ""
 
     return matcher.FieldDescriptor(
         role=role,
-        label=obj.name or "",
-        aria_label=_pick(sdom.get("aria-label"), ia2.get("label", "")),
-        name=_pick(sdom.get("name"), ia2.get("name", "")),
-        id=_pick(sdom.get("id"), ia2.get("id", "")),
-        placeholder=_pick(sdom.get("placeholder"), ia2.get("placeholder", "")),
+        label=label,
+        aria_label="",
+        name=html_name,
+        id=ia2.get("id", ""),
+        placeholder=placeholder,
         autocomplete=autocomplete,
         states=_states_of(obj),
     )

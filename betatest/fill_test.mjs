@@ -34,7 +34,7 @@ await page.bringToFront();
 
 // put focus in the page so NVDA is reading this document in browse mode
 await page.locator("#fn").focus();
-await sleep(3000);          // let NVDA settle
+await sleep(5000);          // let NVDA settle (cold start)
 
 pressFillKey();
 await sleep(4000);          // let the add-on walk and fill the form
