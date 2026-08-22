@@ -94,9 +94,11 @@ version by. Import asks before it changes anything you already saved.
 - [done] Bug caught: every store shared one profiles dict (a shallow copy of a
   module default), so two stores bled into each other. Fixed: each store gets
   its own fresh data.
-- [todo] Dialog: a selector to pick a profile and create a new one; fields load
-  and save per selected version. Test on real NVDA: create a second version,
-  save, confirm both persist.
+- [done] Store: create, switch, edit, rename, delete (re-points active), all
+  round-tripped and tested. Dialog import+save through the selected version is
+  proven on real NVDA.
+- [todo] Drive the selector, New profile, and Delete by keyboard in CI: create a
+  second version, switch, delete one, confirm both the create and delete stick.
 - [todo] Import into the chosen version, and where the CV would change a value
   you already have, ask before applying (per field or all).
 - [todo] Fill picks the version by the form's language, or you choose.
@@ -135,16 +137,17 @@ lessons are not re-learned.
 
 ## Feature: CV import
 
-- [done] Guidebook (plain text): open the dialog, press Import, pick a .txt CV,
-  the fields populate for review, save; the parsed details are in the profile.
-- [done] FedEx (multilingual): an English CV and an Arabic CV imported end to end
-  on real NVDA; name, email, phone parsed and saved, Arabic intact. Spanish and
-  Polish mapping (incl. two-part surnames and diacritics) is unit-tested.
+- [done] Guidebook (text and Word): open the dialog, press Import, pick a .txt
+  or .docx CV, the fields populate for review, save; parsed details in the
+  profile. Word is read with the standard library (zip+xml, no lxml).
+- [done] FedEx (multilingual): English and Arabic CVs imported end to end on real
+  NVDA (text and Word); name, email, phone parsed and saved, Arabic intact.
+  Spanish and Polish mapping (two-part surnames, diacritics) is unit-tested.
 - [done] Couch-Potato / layering, observed: importing a second CV overwrites only
   the fields the new CV provides and leaves the rest as they were. Deliberate for
   one person updating their own details; revisit if it surprises users.
-- [todo] Guidebook (Word, PDF): needs the docx/pdf readers bundled (docx via
-  stdlib zip+xml to avoid lxml; pypdf is pure Python).
+- [deferred] PDF import: pypdf needs stdlib modules NVDA omits; wants a reader
+  that fits NVDA's runtime. Its own pass, not a hack pile.
 - [todo] chain import → fill: import a CV, then fill a real application with it.
 - [todo] Antisocial: a password-protected PDF; an image-only (scanned) PDF; a CV
   with no recognisable sections; a 40-page CV. Each must fail or degrade cleanly.
