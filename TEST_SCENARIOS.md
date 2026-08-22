@@ -146,8 +146,10 @@ lessons are not re-learned.
 - [done] Couch-Potato / layering, observed: importing a second CV overwrites only
   the fields the new CV provides and leaves the rest as they were. Deliberate for
   one person updating their own details; revisit if it surprises users.
-- [deferred] PDF import: pypdf needs stdlib modules NVDA omits; wants a reader
-  that fits NVDA's runtime. Its own pass, not a hack pile.
+- [done] PDF import via bundled PyMuPDF: an English and a Spanish PDF parsed and
+  saved end to end on real NVDA. PyMuPDF is a self-contained compiled library
+  (the approach the working NVDA PDF add-on uses), so it fits NVDA's Python where
+  pure-Python pypdf could not.
 - [todo] chain import → fill: import a CV, then fill a real application with it.
 - [todo] Antisocial: a password-protected PDF; an image-only (scanned) PDF; a CV
   with no recognisable sections; a 40-page CV. Each must fail or degrade cleanly.

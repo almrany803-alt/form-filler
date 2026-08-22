@@ -38,16 +38,13 @@ Working, and proven end to end on real NVDA:
   Arabic, teaching). The dialog has a selector to pick one, create new, and
   delete. Switching swaps the whole detail set. Store logic tested; import and
   save through the dialog proven in `cv-import.yml`.
-- CV import (Word and text): pick a CV, the fields populate for review, save;
-  tested in English and Arabic, Word (.docx) and .txt (`cv-import.yml`). Word is
-  read with the standard library (a docx is a zip of XML), so nothing to bundle.
+- CV import (text, Word, PDF): pick a CV, the fields populate for review, save;
+  tested in English and Arabic, all three formats, on real NVDA (`cv-import.yml`).
+  Text and Word use the standard library; PDF uses bundled PyMuPDF.
 
 Built/tested but not yet wired or verified live:
 - Profile selector, create and delete are built and the store logic is tested,
   but the create/delete keyboard flow is not yet driven in CI (next check).
-- PDF import: deferred. pypdf drags in stdlib modules NVDA's frozen Python omits
-  (secrets, stringprep, xml.dom, ...), so it needs a PDF reader that fits NVDA's
-  runtime; its own focused pass, not a pile of stdlib copies.
 - Dropdown / choice-control filling; the post-CV-attach audit.
 
 ---
@@ -141,7 +138,7 @@ GitHub API. On a real Windows runner with NVDA 2026.1.1 and real Chrome:
     random unbound combos, then prove a normal fill still works and that no
     uncaught error was logged.
 
-The pure-Python brain has 89 checks that run in the sandbox and on Linux CI
+The pure-Python brain has 90 checks that run in the sandbox and on Linux CI
 (`tests.yml`) on every push, including an adversarial "sabotage" suite
 (`test_adversarial.py`) that throws malformed and hostile input at every module
 and asserts nothing crashes.
@@ -212,7 +209,7 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
   `announce.py` (spoken summaries + the audit summary), `profile.py` (encrypted
   ProfileStore + DPAPI), `cvparse.py` (extract text from docx/pdf/txt + parse CV
   sections), `audit.py` (duplicate/extra/mismatch detector).
-- `tests/` — 89 pure-Python checks (matcher, data, cv extract, audit, langs, and
+- `tests/` — 90 pure-Python checks (matcher, data, cv extract, audit, langs, and
   `test_adversarial.py` sabotage/hostile-input cases), all runnable without NVDA.
 - `betatest/` — the real-NVDA-real-Chrome tests: `fill_test.mjs` (clean),
   `fill_messy.mjs` (messy stress), `fill_journey.mjs` (tabbing + multi-section),
@@ -284,10 +281,13 @@ needs the Actions permission), which is why the workflows run `on: push`.
 - **Cold-start timing flake:** the very first fill right after NVDA+Chrome start
   can miss. Fixed by running `warmup.mjs` before the real tests, so the first
   real test is never the cold one. It is a harness timing issue, not the add-on.
-- **NVDA ships a trimmed Python.** Its frozen runtime omits stdlib modules it
-  does not itself use (secrets, stringprep, xml.dom, and more). Heavy third-party
-  libraries like pypdf assume the full stdlib and fail to import. Prefer
-  stdlib-only readers (the .docx reader is zip+xml) or a library that fits.
+- **NVDA ships a trimmed Python** (3.13, 64-bit as of 2026.1). Its frozen
+  runtime omits stdlib modules it does not itself use (secrets, stringprep,
+  xml.dom, ...), so pure-Python libraries that assume the full stdlib (pypdf)
+  fail to import. The fix that works, and that other add-ons use: a self-contained
+  COMPILED library. PDF uses bundled PyMuPDF (an abi3 win_amd64 wheel, forward
+  compatible across 3.10+), which is C code and needs no stdlib extras. For .docx,
+  a stdlib zip+xml reader is enough.
 - **No shared mutable defaults.** The store built each instance's data with a
   shallow copy of a module-level default, so every store shared one profiles
   dict. Build fresh nested data per instance instead.
