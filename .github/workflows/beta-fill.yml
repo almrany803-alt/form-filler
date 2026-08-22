@@ -30,22 +30,8 @@ jobs:
         run: |
           $cfg = "$env:RUNNER_TEMP\nvdacfg"
           New-Item -ItemType Directory -Force -Path "$cfg\jobFormFiller" | Out-Null
-          $env:JFF_CFG = "$cfg"
-          python - <<'PY'
-          import os, sys
-          sys.path.insert(0, os.path.join("addon","globalPlugins","jobFormFiller","core"))
-          import profile
-          cfg = os.environ["JFF_CFG"]
-          store = profile.ProfileStore(os.path.join(cfg, "jobFormFiller", "profile.dat"),
-                                       profile.DpapiCrypto())
-          store.add_profile("default", {
-              "given_name": "Mohammed", "family_name": "Al Omrani",
-              "email": "test@example.com", "phone": "+44 7700 900000",
-              "city": "Bristol", "country": "United Kingdom",
-          })
-          store.save()
-          print("seeded profile via DPAPI")
-          PY
+          $env:JFF_CFG = $cfg
+          python live-tests/seed_profile.py
 
       - name: Load the add-on via the scratchpad
         shell: pwsh
