@@ -61,7 +61,7 @@ def _is_placeholder_value(v):
     for p in ("choose", "select", "please", "pick one", "not selected",
               "choisir", "selectionner", "seleccione", "auswahlen", "auswahl",
               "bitte", "seleziona", "wybierz", "selecteer", "kies", "اختر",
-              "select one", "any"):
+              "select one"):
         if t.startswith(p):
             return True
     return False
