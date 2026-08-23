@@ -567,6 +567,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             editable = (controlTypes.State.EDITABLE in obj.states
                         or obj.role in (controlTypes.Role.EDITABLETEXT,
                                         controlTypes.Role.COMBOBOX,
+                                        controlTypes.Role.LIST,
                                         controlTypes.Role.CHECKBOX,
                                         controlTypes.Role.RADIOBUTTON))
         except Exception:
