@@ -29,6 +29,23 @@ its current value or "empty, needs you". Arrow the list, Tab to the actions.
 - [todo] A setting to show only the gaps rather than every field (needs the
   settings panel).
 
+## Feature: first run (no profile) - the clean-state journey
+
+The journey I was NOT testing: a brand-new user with nothing saved. Both bugs the
+user hit on first use live here.
+
+- [done] Empty-state message is heard: with no profile, a fill puts up a critical
+  DIALOG ("No details saved yet. Import a CV or enter your details first"), not a
+  fleeting spoken line that the page's focus announcement cancels. The test
+  asserts the message appears in the NVDA log's SPOKEN output, not just that a
+  field stayed empty (`first-run.yml`).
+- [done] Import from CV persists: the menu's Import creates and SAVES a named
+  profile (like New profile) BEFORE the review dialog, so it sticks even if review
+  is cancelled. Verified by reading the store back off disk (Jane Doe saved).
+- Lesson: seeding a profile in every other test hid this whole path; and checking
+  DOM values never checks what the user HEARS. Test from empty, and assert on
+  speech.
+
 ## Feature: the add-on menu (NVDA+J)
 
 - [done] Guidebook: NVDA+J then A fills the whole form; NVDA+J then F fills the

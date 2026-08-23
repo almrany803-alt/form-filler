@@ -302,6 +302,19 @@ needs the Actions permission), which is why the workflows run `on: push`.
   the fill, which runs after the menu closes. Also: a native menu stays open on a
   non-command key (unlike the old one-shot layer), so tests that fire junk keys
   must send Escape to close it.
+- **Critical messages must be dialogs, not speech.** A spoken ui.message right
+  after the menu closes is cancelled by the page's focus announcement (the "did
+  not sound in time" bug). The whole-form summary dodges this with a 400ms delay;
+  anything the user MUST act on (no details saved, a save/import failure) now uses
+  a modal box (gui.messageBox) that cannot be cut off.
+- **Test from the empty state, and assert on speech.** Every fill test seeded a
+  profile, so the no-profile paths (empty-state message, import-from-scratch)
+  never ran, and tests only checked DOM values, never what NVDA SPOKE. Two real
+  bugs slipped through green CI. `first-run.yml` now starts with no profile and
+  asserts the empty-state message against the NVDA log's spoken output.
+- **Import from CV must persist like New profile.** The menu import used to open
+  a prefilled dialog and rely on save-on-close; it now names, creates and saves
+  the profile up front, then opens it for review.
 - **ATS field names need splitting.** Real ATS name fields as camelCase
   ("firstName") or bracketed ("job_application[first_name]"). Without splitting
   camelCase, "name" substring-matches "firstname" and the field is mislabelled a
@@ -332,9 +345,9 @@ fix, accessible and inaccessible forms, and the do-not-clobber behaviour for a
 mangled ATS auto-parse.
 
 Still to do:
-1. Automate the last menu paths by keyboard in CI: the Profile submenu
-   (switch/new/delete), Import from CV, Enter your details. The operations are
-   tested; driving them from the menu itself is not yet scripted.
+1. Automate the remaining menu paths by keyboard in CI: the Profile submenu
+   (switch/new/delete) and Enter your details. Import from CV IS now driven from
+   the menu (first-run.yml); the other two are not yet.
 2. Review list: CI-drive Go to, Edit and Clear (only Fill from profile is
    automated end to end so far).
 3. A settings panel, home for the review-list "show every field vs only the
