@@ -49,6 +49,35 @@ def _obj_from_item(item):
     return getattr(item, "obj", None)
 
 
+def _digits(s):
+    return "".join(c for c in (s or "") if c.isdigit())
+
+
+def _date_order_from_hint(text):
+    """Read a day/month/year order from a format hint like 'DD/MM/YYYY' or
+    'mm-dd-yyyy'. Returns 'DMY', 'MDY', 'YMD', or '' if none is discernible."""
+    order = ""
+    for ch in (text or "").lower():
+        u = ch.upper()
+        if u in ("D", "M", "Y") and u not in order:
+            order += u
+        if len(order) == 3:
+            break
+    return order if set(order) == {"D", "M", "Y"} else ""
+
+
+def _date_separator_from_hint(text, default="/"):
+    for ch in (text or ""):
+        if ch in "/-.":
+            return ch
+    return default
+
+
+def _format_date(y, m, d, order, sep):
+    part = {"Y": y, "M": m, "D": d}
+    return sep.join(part[o] for o in order)
+
+
 def _is_placeholder_value(v):
     """True when a choice control's current value is a 'nothing chosen yet'
     placeholder rather than a real selection, so a whole-form fill may set it.
@@ -136,6 +165,10 @@ def _descriptor_from_object(obj):
     placeholder = ""
     if ia2.get("name-from", "") in ("placeholder", "tooltip"):
         placeholder, label = label, ""
+    # Keep the raw HTML placeholder too (e.g. a date format like DD/MM/YYYY),
+    # even when the field has a real label; used as a date format hint.
+    if not placeholder:
+        placeholder = ia2.get("placeholder", "") or ""
 
     return matcher.FieldDescriptor(
         role=role,
@@ -145,6 +178,7 @@ def _descriptor_from_object(obj):
         id=ia2.get("id", ""),
         placeholder=placeholder,
         autocomplete=autocomplete,
+        input_type=input_type,
         states=_states_of(obj),
     )
 
@@ -625,6 +659,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             ui.message(announce.choice_set(
                 fd.label or announce.human(result.key), value, verdict))
             return
+        if fd.input_type == "date" or kind == controls.DATEPICKER:
+            verdict = self._fill_date(obj, fd, value)
+            label = fd.label or announce.human(result.key)
+            if verdict == "confirmed":
+                ui.message(_("{f} set to {v}.").format(f=label, v=value))
+            else:
+                ui.message(announce.hand_back(label, controls.DATEPICKER, value))
+            return
         if kind == controls.TEXT:
             self._fill_text(obj, fd, result, value)
         else:
@@ -880,8 +922,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return
 
         # Controls we deliberately do not automate yet: hand back clearly.
-        if kind in (controls.DATEPICKER, controls.ASYNC_COMBOBOX):
+        if kind == controls.ASYNC_COMBOBOX:
             ui.message(announce.hand_back(label, kind, value))
+            return
+        if kind == controls.DATEPICKER:
+            verdict = self._fill_date(obj, fd, value)
+            if verdict == "confirmed":
+                ui.message(_("{f} set to {v}.").format(f=label, v=value))
+            else:
+                ui.message(announce.hand_back(label, kind, value))
             return
 
         concept = result.key if result.key == "country" else ""
@@ -1261,3 +1310,54 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.info("JFF multi: value=%r -> idx=%r label=%r selected=%s"
                      % (value, pick.index, pick.label, ok))
         return ("confirmed" if selected else "none"), selected
+
+    def _default_date_order(self):
+        # No field hint: use the convention implied by the saved country.
+        # United States is MM/DD/YYYY; the UK, Saudi, and most others DD/MM/YYYY.
+        c = (self._profile.get("country", "") or "").lower()
+        if "united states" in c or c in ("us", "usa", "america"):
+            return "MDY"
+        return "DMY"
+
+    def _fill_date(self, obj, fd, value):
+        """Fill a date field, accounting for format (UK DD/MM/YYYY vs US
+        MM/DD/YYYY). value is stored ISO (YYYY-MM-DD). A native input type=date
+        holds ISO in the DOM and shows it in the user's locale, so paste ISO. A
+        text date field takes a formatted string: use the field's own hint
+        (placeholder like DD/MM/YYYY), else the order implied by the saved
+        country. Verify by digit set, so a reordered date still confirms."""
+        try:
+            role = getattr(obj.role, "name", "?")
+        except Exception:
+            role = "?"
+        parts = value.split("-")
+        if fd.input_type == "date":
+            formatted = value                       # native date input: ISO
+        elif len(parts) == 3:
+            y, m, d = parts
+            hint = fd.placeholder or ""
+            if not any(c in hint for c in "/-."):
+                hint = ""       # not a format pattern, e.g. a stray label
+            order = _date_order_from_hint(hint) or self._default_date_order()
+            sep = _date_separator_from_hint(hint, "/")
+            formatted = _format_date(y, m, d, order, sep)
+        else:
+            formatted = value                       # not ISO; paste as given
+        before = self._read_current_value(obj)
+        log.info("JFF date: role=%s input_type=%r hint=%r before=%r target=%r "
+                 "formatted=%r" % (role, fd.input_type, fd.placeholder, before,
+                                   value, formatted))
+        try:
+            _paste_into_focused(obj, formatted)
+        except Exception:
+            log.error("JFF date: paste failed", exc_info=True)
+        want = sorted(_digits(value))
+        after = ""
+        for _ in range(8):
+            after = self._read_current_value(obj)
+            if after and sorted(_digits(after)) == want:
+                log.info("JFF date: after=%r verdict=confirmed" % after)
+                return "confirmed"
+            time.sleep(0.06)
+        log.info("JFF date: after=%r verdict=unconfirmed" % after)
+        return "unconfirmed"

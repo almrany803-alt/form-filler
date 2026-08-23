@@ -14,7 +14,7 @@ import unicodedata
 PROFILE_KEYS = (
     "given_name", "family_name", "full_name", "email", "phone",
     "address_line1", "city", "postcode", "country", "nationality",
-    "linkedin", "work_authorisation",
+    "date_of_birth", "linkedin", "work_authorisation",
 )
 
 _AUTOCOMPLETE = {
@@ -91,6 +91,13 @@ LEXICON = {
         "pl": ["narodowosc", "obywatelstwo"], "nl": ["nationaliteit"],
         "ar": ["الجنسية"],
     },
+    "date_of_birth": {
+        "en": ["date of birth", "birth date", "birthday", "born", "dob"],
+        "es": ["fecha de nacimiento"], "fr": ["date de naissance"],
+        "de": ["geburtsdatum"], "it": ["data di nascita"],
+        "pt": ["data de nascimento"], "pl": ["data urodzenia"],
+        "nl": ["geboortedatum"], "ar": ["تاريخ الميلاد", "تاريخ الميلاد"],
+    },
     "work_authorisation": {
         "en": ["work authorisation", "work authorization", "right to work",
                "eligible to work", "authorised to work", "authorized to work",
@@ -139,6 +146,7 @@ class FieldDescriptor:
     id: str = ""
     placeholder: str = ""
     autocomplete: str = ""
+    input_type: str = ""
     required: bool = False
     states: tuple = ()
 

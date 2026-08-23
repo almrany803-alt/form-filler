@@ -6,6 +6,7 @@ _HUMAN = {
     "full_name": "full name", "email": "email", "phone": "phone",
     "address_line1": "address", "city": "city", "postcode": "postcode",
     "country": "country", "nationality": "nationality",
+    "date_of_birth": "date of birth",
     "linkedin": "LinkedIn",
     "work_authorisation": "work authorisation",
 }

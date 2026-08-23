@@ -34,6 +34,7 @@ FIELDS = [
     ("postcode", _("Postcode")),
     ("country", _("Country")),
     ("nationality", _("Nationality (optional)")),
+    ("date_of_birth", _("Date of birth (optional, YYYY-MM-DD)")),
     ("linkedin", _("LinkedIn")),
     ("work_authorisation", _("Work authorisation")),
 ]
