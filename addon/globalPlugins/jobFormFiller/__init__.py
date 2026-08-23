@@ -602,6 +602,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                         or obj.role in (controlTypes.Role.EDITABLETEXT,
                                         controlTypes.Role.COMBOBOX,
                                         controlTypes.Role.LIST,
+                                        controlTypes.Role.SPINBUTTON,
                                         controlTypes.Role.CHECKBOX,
                                         controlTypes.Role.RADIOBUTTON))
         except Exception:
@@ -634,6 +635,24 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 ui.message(_("Could not set this one. Over to you."))
             return
 
+        # Native date input: focus may land on a day/month/year spin button whose
+        # own label is "day", not the question. Detect it and fill by segment.
+        if (fd.input_type == "date"
+                or (fd.role or "").lower() in ("spinbutton", "spin button")):
+            key, verdict = self._fill_native_date(obj)
+            if verdict == "confirmed":
+                ui.message(_("Date of birth set."))
+                return
+            if verdict in ("none", "novalue"):
+                # fall through to normal handling / decline below
+                if verdict == "novalue":
+                    ui.message(_("Nothing saved for date of birth."))
+                    return
+            else:
+                ui.message(announce.hand_back(
+                    _("the date"), controls.DATEPICKER, ""))
+                return
+
         result = matcher.match_field(fd)
         log.info("JFF match: key=%r conf=%r src=%r lang=%r"
                  % (result.key, result.confidence, result.source, result.lang))
@@ -659,7 +678,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             ui.message(announce.choice_set(
                 fd.label or announce.human(result.key), value, verdict))
             return
-        if fd.input_type == "date" or kind == controls.DATEPICKER:
+        if (result.key == "date_of_birth" or fd.input_type == "date"
+                or kind == controls.DATEPICKER):
             verdict = self._fill_date(obj, fd, value)
             label = fd.label or announce.human(result.key)
             if verdict == "confirmed":
@@ -1310,6 +1330,65 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.info("JFF multi: value=%r -> idx=%r label=%r selected=%s"
                      % (value, pick.index, pick.label, ok))
         return ("confirmed" if selected else "none"), selected
+
+    def _fill_native_date(self, obj):
+        """Fill a native <input type=date> by segment. Focus may be on a day,
+        month, or year spin button whose own label is not the question, so walk
+        up to the date container for the label, then type the digits in the
+        country-implied order (UK day-month-year, US month-day-year) so the
+        segments auto-advance. Never opens or navigates a calendar grid. Returns
+        (key, verdict) with verdict confirmed/mismatch/none/novalue."""
+        # Resolve the container that carries the question label.
+        container = obj
+        label = ""
+        for _ in range(4):
+            try:
+                cfd = _descriptor_from_object(container)
+            except Exception:
+                break
+            if cfd.label and cfd.label.strip().lower() not in (
+                    "day", "month", "year", "hour", "minute"):
+                label = cfd.label
+                break
+            try:
+                container = container.parent
+            except Exception:
+                break
+        result = matcher.match_field(matcher.FieldDescriptor(label=label))
+        log.info("JFF ndate: label=%r key=%r" % (label, result.key))
+        if result.key != "date_of_birth":
+            return result.key, "none"
+        value = self._profile.get("date_of_birth")
+        if not value:
+            return "date_of_birth", "novalue"
+        parts = value.split("-")
+        if len(parts) != 3:
+            return "date_of_birth", "none"
+        y, m, d = parts
+        order = self._default_date_order()
+        seq = {"D": d, "M": m, "Y": y}
+        digits = "".join(seq[o] for o in order)
+        log.info("JFF ndate: order=%s typing digits=%r into role=%s"
+                 % (order, digits, getattr(getattr(obj, "role", None), "name", "?")))
+        try:
+            obj.setFocus()
+            api.setFocusObject(obj)
+            time.sleep(0.06)
+            for ch in digits:
+                KeyboardInputGesture.fromName(ch).send()
+                time.sleep(0.03)
+        except Exception:
+            log.error("JFF ndate: typing failed", exc_info=True)
+        want = sorted(_digits(value))
+        after = ""
+        for _ in range(8):
+            after = self._read_current_value(container)
+            if after and sorted(_digits(after)) == want:
+                log.info("JFF ndate: after=%r verdict=confirmed" % after)
+                return "date_of_birth", "confirmed"
+            time.sleep(0.06)
+        log.info("JFF ndate: after=%r verdict=mismatch" % after)
+        return "date_of_birth", "mismatch"
 
     def _default_date_order(self):
         # No field hint: use the convention implied by the saved country.
