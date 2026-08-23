@@ -1331,31 +1331,82 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                      % (value, pick.index, pick.label, ok))
         return ("confirmed" if selected else "none"), selected
 
+    def _date_segment_type(self, seg):
+        try:
+            fd = _descriptor_from_object(seg)
+            hint = ((seg.name or "") + " " + (fd.placeholder or "")).lower()
+        except Exception:
+            hint = ""
+        if "year" in hint or "yy" in hint:
+            return "Y"
+        if "month" in hint or "mm" in hint:
+            return "M"
+        if "day" in hint or "dd" in hint:
+            return "D"
+        return ""
+
+    def _collect_spinbuttons(self, root, depth=0):
+        out = []
+        if depth > 3:
+            return out
+        try:
+            kids = list(root.children or [])
+        except Exception:
+            kids = []
+        for c in kids:
+            try:
+                r = c.role
+            except Exception:
+                r = None
+            if r == controlTypes.Role.SPINBUTTON:
+                out.append(c)
+            else:
+                out.extend(self._collect_spinbuttons(c, depth + 1))
+        return out
+
     def _fill_native_date(self, obj):
-        """Fill a native <input type=date> by segment. Focus may be on a day,
-        month, or year spin button whose own label is not the question, so walk
-        up to the date container for the label, then type the digits in the
-        country-implied order (UK day-month-year, US month-day-year) so the
-        segments auto-advance. Never opens or navigates a calendar grid. Returns
-        (key, verdict) with verdict confirmed/mismatch/none/novalue."""
-        # Resolve the container that carries the question label.
+        """Fill a native <input type=date> segment by segment. Focus may be on a
+        day, month, or year spin button whose own label is not the question, so
+        walk up to the date container for the label, then type each segment's
+        value in the order the segments appear (which is the browser's display
+        order), so it is locale-independent (UK day-first, US month-first).
+        Never opens or navigates a calendar grid. Returns (key, verdict)."""
+        # Label: the focused segment's own name is like "Month Date of birth";
+        # strip the segment words to get the question.
+        def _strip_segments(text):
+            out = text or ""
+            for w in ("day", "month", "year", "hour", "minute",
+                      "Day", "Month", "Year", "Hour", "Minute"):
+                out = out.replace(w, "")
+            return out.strip()
+        try:
+            label = _strip_segments(_descriptor_from_object(obj).label)
+        except Exception:
+            label = ""
+        # Container: the nearest ancestor that holds the segment spin buttons.
         container = obj
-        label = ""
+        segs = [obj]
+        node = obj
         for _ in range(4):
             try:
-                cfd = _descriptor_from_object(container)
+                parent = node.parent
             except Exception:
+                parent = None
+            if parent is None:
                 break
-            if cfd.label and cfd.label.strip().lower() not in (
-                    "day", "month", "year", "hour", "minute"):
-                label = cfd.label
+            found = self._collect_spinbuttons(parent)
+            if len(found) >= 2:
+                container, segs = parent, found
                 break
+            node = parent
+        if not label:
             try:
-                container = container.parent
+                label = _strip_segments(_descriptor_from_object(container).label)
             except Exception:
-                break
+                label = ""
         result = matcher.match_field(matcher.FieldDescriptor(label=label))
-        log.info("JFF ndate: label=%r key=%r" % (label, result.key))
+        log.info("JFF ndate: label=%r key=%r segs=%d"
+                 % (label, result.key, len(segs)))
         if result.key != "date_of_birth":
             return result.key, "none"
         value = self._profile.get("date_of_birth")
@@ -1365,16 +1416,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if len(parts) != 3:
             return "date_of_birth", "none"
         y, m, d = parts
-        order = self._default_date_order()
-        seq = {"D": d, "M": m, "Y": y}
-        digits = "".join(seq[o] for o in order)
-        log.info("JFF ndate: order=%s typing digits=%r into role=%s"
-                 % (order, digits, getattr(getattr(obj, "role", None), "name", "?")))
+        seq = ""
+        for seg in segs:
+            t = self._date_segment_type(seg)
+            seq += {"D": d, "M": m, "Y": y}.get(t, "")
+        log.info("JFF ndate: typing %r in display order" % seq)
+        if not seq:
+            return "date_of_birth", "mismatch"
         try:
-            obj.setFocus()
-            api.setFocusObject(obj)
+            first = segs[0]
+            first.setFocus()
+            api.setFocusObject(first)
             time.sleep(0.06)
-            for ch in digits:
+            for ch in seq:
                 KeyboardInputGesture.fromName(ch).send()
                 time.sleep(0.03)
         except Exception:
