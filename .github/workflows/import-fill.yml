@@ -45,7 +45,7 @@ jobs:
         shell: pwsh
         run: |
           $cv = (Resolve-Path "betatest\cvs\cv_en.docx").Path
-          pwsh -File betatest\drive_cv.ps1 -CvPath "$cv"
+          pwsh -File betatest\drive_import_menu.ps1 -CvPath "$cv"
 
       - name: Fill a real form from the imported CV
         working-directory: betatest
