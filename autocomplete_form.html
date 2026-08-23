@@ -1,15 +1,13 @@
 <!doctype html><html><head><meta charset="utf-8"><title>Autocomplete-only form</title></head>
 <body>
 <h1>Application</h1>
-<!-- No labels, generic names: the ONLY identifying signal is the HTML
-     autocomplete attribute (the strongest, language-independent signal). This
-     is common on real ATS forms. -->
+<form>
 <p><input id="q1" name="field_1" autocomplete="given-name" type="text"></p>
 <p><input id="q2" name="field_2" autocomplete="family-name" type="text"></p>
 <p><input id="q3" name="field_3" autocomplete="email" type="text"></p>
 <p><input id="q4" name="field_4" autocomplete="tel" type="text"></p>
 <p><input id="q5" name="field_5" autocomplete="address-level2" type="text"></p>
 <p><input id="q6" name="field_6" autocomplete="country-name" type="text"></p>
-<!-- address-line1 is not in the saved profile, so this one must be declined -->
 <p><input id="q7" name="field_7" autocomplete="address-line1" type="text"></p>
+</form>
 </body></html>
