@@ -734,11 +734,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         for obj in objs:
             fd = _descriptor_from_object(obj)
 
-            # Native date: browse mode enumerates the day/month/year spin buttons,
-            # not the date input, so handle the date once from any segment.
+            # Native date: browse mode may enumerate it as the day/month/year
+            # spin buttons OR as a single "show date picker" button. In both
+            # cases the date input container holds the segments; find it and fill
+            # once from a segment.
+            date_container = None
             if (obj.role == controlTypes.Role.SPINBUTTON
                     or fd.input_type == "date"):
-                container = obj
+                date_container = obj
                 if len(self._collect_spinbuttons(obj)) < 2:
                     node = obj
                     for _ in range(4):
@@ -749,25 +752,29 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                         if p is None:
                             break
                         if len(self._collect_spinbuttons(p)) >= 2:
-                            container = p
+                            date_container = p
                             break
                         node = p
-                did = str(id(container))
+            elif obj.role == controlTypes.Role.BUTTON:
+                try:
+                    if len(self._collect_spinbuttons(obj.parent)) >= 2:
+                        date_container = obj.parent
+                except Exception:
+                    date_container = None
+            if date_container is not None:
+                did = str(id(date_container))
                 if did in processed_date:
                     continue
-                processed_date.add(did)
-                key, verdict = self._fill_native_date(obj)
-                if verdict == "confirmed":
-                    filled.append("date_of_birth")
-                    log.info("JFF form field: native date set")
-                elif verdict == "novalue":
-                    leftovers.append(announce.human("date_of_birth"))
-                elif key != "date_of_birth":
-                    # not a date field we recognise; leave for normal handling
-                    processed_date.discard(did)
-                else:
-                    leftovers.append(announce.human("date_of_birth"))
+                segs = self._collect_spinbuttons(date_container)
+                seg0 = segs[0] if segs else obj
+                key, verdict = self._fill_native_date(seg0)
                 if verdict != "none":
+                    processed_date.add(did)
+                    if verdict == "confirmed":
+                        filled.append("date_of_birth")
+                        log.info("JFF form field: native date set")
+                    else:
+                        leftovers.append(announce.human("date_of_birth"))
                     continue
 
             # Multi-select: browse mode enumerates the option listitems, not the
