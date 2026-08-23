@@ -1436,12 +1436,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         want = sorted(_digits(value))
         after = ""
         for _ in range(8):
-            after = self._read_current_value(container)
-            if after and sorted(_digits(after)) == want:
-                log.info("JFF ndate: after=%r verdict=confirmed" % after)
+            seg_digits = "".join(
+                _digits(self._read_current_value(s)) for s in segs)
+            cont = _digits(self._read_current_value(container))
+            got = seg_digits or cont
+            if got and sorted(got) == want:
+                log.info("JFF ndate: segments=%r verdict=confirmed" % seg_digits)
                 return "date_of_birth", "confirmed"
+            after = got
             time.sleep(0.06)
-        log.info("JFF ndate: after=%r verdict=mismatch" % after)
+        log.info("JFF ndate: got=%r verdict=mismatch" % after)
         return "date_of_birth", "mismatch"
 
     def _default_date_order(self):
