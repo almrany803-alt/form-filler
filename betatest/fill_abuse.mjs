@@ -10,6 +10,9 @@ import path from "node:path";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const formUrl = "file:///" + path.resolve(here, "..", "test_form.html").replace(/\\/g, "/");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const escape = () => {
+  execFileSync("powershell", ["-File", path.join(here, "send_escape.ps1")], { stdio: "inherit" });
+};
 const key = (k) => {
   try {
     execFileSync("powershell", ["-File", path.join(here, "send_nvda_key.ps1"), "-Key", k],
@@ -41,7 +44,7 @@ for (let i = 0; i < 5; i++) { key("A"); await sleep(500); }
 await sleep(1500);
 
 console.log("=== abuse 3: random unbound NVDA+Shift combos ===");
-for (const k of ["Z", "Q", "X", "J", "K"]) { key(k); await sleep(350); }
+for (const k of ["Z", "Q", "X", "J", "K"]) { key(k); await sleep(350); escape(); await sleep(250); }
 await sleep(1000);
 
 console.log("=== survival: after all that, a normal fill must still work ===");
