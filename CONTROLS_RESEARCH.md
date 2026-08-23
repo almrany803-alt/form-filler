@@ -121,3 +121,22 @@ How the addon handles dates (stored as ISO YYYY-MM-DD):
   widget is calendar-only with no text input, hand back honestly ("this is a
   calendar date picker, over to you") and let the review editor offer a plain
   box. Do not pretend.
+
+## Async search-box combobox (location): what works, and the honest limit
+
+Proven on real NVDA + Chrome with an async fixture (type a city, options fetch
+after a delay, like Greenhouse/Lever location):
+- The addon types the value into the search box and the async search FIRES: the
+  options load in the page (confirmed in the DOM: "Bristol, United Kingdom",
+  "Bristol, TN, USA").
+- BUT NVDA's cached object tree reports the results listbox as having zero
+  children even when the DOM has options, so the addon cannot reliably READ or
+  select the async-loaded options programmatically from its snapshot.
+
+Honest scope (matches the user's real experience): the addon types the value and
+fires the search, then tells the user exactly what to do: "I typed <city>. Use
+the up and down arrows to pick from the list, then Enter." The user's own
+navigation reads the options live (NVDA refreshes as you arrow), so the pick is
+one or two keystrokes. Full auto-selection would need live COM tree reads
+(bypassing NVDA's cache); that is a possible future enhancement, deliberately
+not claimed now.

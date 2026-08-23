@@ -455,9 +455,11 @@ Company-run career sites dominate, not only the government portal.
 - Custom single-select combobox: button/input role=combobox, aria-haspopup=listbox,
   aria-controls to a ul role=listbox with li role=option. The dominant modern
   pattern (Workday, Greenhouse, SuccessFactors). Open it, act on the option.
-- Async search-box combobox: input role=combobox, aria-autocomplete=list; options
-  load over the network after you type (Greenhouse and Lever location). Type, wait,
-  pick. Review fallback: type a value, we enter it, the user confirms.
+- Async search-box combobox (location): ASSISTED. The addon types the value and
+  fires the async search (proven: options load in the DOM), then guides the user
+  to arrow down and Enter. It cannot auto-select because NVDA's cached tree does
+  not see the async-loaded options. Honest by design; full auto needs live COM
+  reads (future).
 - Radio group: fieldset or role=radiogroup with radio children. DONE.
 - Checkbox: input type=checkbox or role=checkbox. DONE. Many (consent) have no
   saved value and are review-only.
