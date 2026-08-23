@@ -727,22 +727,29 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # Could not read/choose (nothing matched, or options unreadable).
         ui.message(announce.hand_back(label, kind, value))
 
-    def _read_option_children(self, root, tag):
-        """Collect (label, obj) for option-like children of root, logging each so
-        the real tree is visible. Chrome exposes native-select options as a menu,
-        so accept menu items as well as list items."""
+    def _read_option_children(self, root, tag, depth=0):
+        """Collect (label, obj) for option-like descendants of root, logging each
+        so the real tree is visible. Chrome nests native-select options inside a
+        LIST (or menu) child of the combobox, so recurse into containers."""
         LI = controlTypes.Role.LISTITEM
         MI = controlTypes.Role.MENUITEM
+        CONTAINERS = {controlTypes.Role.LIST, controlTypes.Role.MENU,
+                      controlTypes.Role.POPUPMENU, controlTypes.Role.GROUPING,
+                      controlTypes.Role.COMBOBOX}
         labels, opts = [], []
+        if depth > 3:
+            return labels, opts
         try:
             kids = list(root.children or [])
         except Exception:
             kids = []
-        try:
-            rrole = getattr(root.role, "name", "?")
-        except Exception:
-            rrole = "?"
-        log.info("JFF nsel[%s]: root role=%s children=%d" % (tag, rrole, len(kids)))
+        if depth == 0:
+            try:
+                rrole = getattr(root.role, "name", "?")
+            except Exception:
+                rrole = "?"
+            log.info("JFF nsel[%s]: root role=%s children=%d"
+                     % (tag, rrole, len(kids)))
         for c in kids:
             try:
                 role = c.role
@@ -752,11 +759,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 nm = c.name or ""
             except Exception:
                 nm = ""
-            log.info("JFF nsel[%s]: child role=%s name=%r"
-                     % (tag, getattr(role, "name", "?"), nm))
+            log.info("JFF nsel[%s]: d%d role=%s name=%r"
+                     % (tag, depth, getattr(role, "name", "?"), nm))
             if role in (LI, MI) and nm:
                 labels.append(nm)
                 opts.append(c)
+            elif role in CONTAINERS:
+                sub_l, sub_o = self._read_option_children(c, tag, depth + 1)
+                labels.extend(sub_l)
+                opts.extend(sub_o)
         return labels, opts
 
     def _fill_native_select(self, obj, value, concept):
