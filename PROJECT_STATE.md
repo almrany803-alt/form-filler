@@ -27,9 +27,13 @@ user loses time on.
 Working and proven on real hardware (see section 3):
 - One key, NVDA+J, opens a native menu you can arrow through (NVDA announces
   each item) or drive by access key: Fill this field, Fill all fields, Profile
-  (a submenu to switch, create, delete versions), Import from CV, Enter your
-  details. Fills act on the page: focus and foreground are captured before the
-  menu opens and restored before filling.
+  (a submenu to switch, create, delete versions), Review fields, Import from CV,
+  Enter your details. Fills and the review list act on the page: focus and
+  foreground are captured before the menu opens and restored before acting.
+- Review fields (NVDA+J, R): an accessible list over the current form, every
+  field with its value or "empty, needs you". Actions per field: Go to, Edit,
+  Fill from profile (recognised detail preselected), Clear; changes apply on
+  close. Proven on real NVDA (lists the form, fills a field from the profile).
 - Encrypted profile stored on the user's own machine (Windows DPAPI).
 - A "My details" form in the NVDA Tools menu to enter and edit your details.
 - Multilingual field identification (9 languages).

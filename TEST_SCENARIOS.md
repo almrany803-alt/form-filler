@@ -13,6 +13,22 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
 
 ---
 
+## Feature: review list (NVDA+J, R)
+
+An accessible list over the form you are filling: every field, one per line, with
+its current value or "empty, needs you". Arrow the list, Tab to the actions.
+
+- [done] Guidebook: NVDA+J then R opens the list; it reads the live form and
+  shows every field with its value. Proven on real NVDA (collected 6 fields on
+  the clean form).
+- [done] Fill from profile: on a field, pick a saved detail (the recognised one
+  preselected); on close the value is written into the form field. Proven end to
+  end (filled First name from the profile, landed in the page).
+- [todo] Go to (jump to the field in the page), Edit (type a literal value),
+  Clear (empty it): wired and compile, not yet driven from the list in CI.
+- [todo] A setting to show only the gaps rather than every field (needs the
+  settings panel).
+
 ## Feature: the add-on menu (NVDA+J)
 
 - [done] Guidebook: NVDA+J then A fills the whole form; NVDA+J then F fills the
