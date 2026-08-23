@@ -8,6 +8,7 @@
 #   4. placeholder         - a bad but common pattern; only a guess.
 
 from dataclasses import dataclass
+import re
 import unicodedata
 
 PROFILE_KEYS = (
@@ -149,7 +150,15 @@ def _fold(s: str) -> str:
 
 
 def _norm(s: str) -> str:
-    return " ".join(_fold(s).lower().replace("_", " ").replace("-", " ").split())
+    s = _fold(s)
+    # Split camelCase / PascalCase so "firstName" reads as "first name"; many
+    # ATS (Taleo, iCIMS) name fields that way, and without this "name" would
+    # substring-match "firstname" and mislabel it as a full-name field.
+    s = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", s)
+    s = s.lower()
+    for ch in "_-[](){}./\\:":
+        s = s.replace(ch, " ")
+    return " ".join(s.split())
 
 
 def _lexicon_hit(text: str):

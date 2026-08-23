@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Apply - Greenhouse style</title></head>
+<body>
+<h1>Submit your application</h1>
+<!-- Greenhouse: real bracketed names + autocomplete + proper labels (accessible) -->
+<p><label for="first_name">First Name *</label>
+   <input id="first_name" name="job_application[first_name]" autocomplete="given-name" type="text"></p>
+<p><label for="last_name">Last Name *</label>
+   <input id="last_name" name="job_application[last_name]" autocomplete="family-name" type="text"></p>
+<p><label for="email">Email *</label>
+   <input id="email" name="job_application[email]" autocomplete="email" type="email"></p>
+<p><label for="phone">Phone</label>
+   <input id="phone" name="job_application[phone]" autocomplete="tel" type="tel"></p>
+<!-- Custom questions rendered as generic text inputs (LinkedIn / Website) -->
+<p><label for="q_li">LinkedIn Profile</label>
+   <input id="q_li" name="job_application[answers][0][text_value]" type="text"></p>
+<!-- The Location autocomplete trap: a combobox with hidden lat/lng. Not a plain
+     text field, so it must be DECLINED (left for the user), not blindly filled. -->
+<p><label for="loc">Location (City) *</label>
+   <input id="loc" role="combobox" aria-autocomplete="list" type="text"></p>
+<input id="loc_lat" type="hidden" name="job_application[latitude]">
+<input id="loc_lng" type="hidden" name="job_application[longitude]">
+</body></html>

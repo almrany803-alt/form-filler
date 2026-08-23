@@ -1,0 +1,59 @@
+"""Field identification against the real field patterns the major ATS use:
+Greenhouse (bracketed names + autocomplete), Workday (generic ids, identity in
+aria-label), Taleo/iCIMS (camelCase names, often no label). CamelCase names were
+mislabelled as full_name until the normaliser learned to split them."""
+import os
+import sys
+import unittest
+
+CORE = os.path.join(os.path.dirname(__file__), "..", "addon",
+                    "globalPlugins", "jobFormFiller", "core")
+sys.path.insert(0, os.path.abspath(CORE))
+
+import matcher  # noqa: E402
+FD = matcher.FieldDescriptor
+
+
+class TestAtsPatterns(unittest.TestCase):
+    def k(self, **kw):
+        return matcher.match_field(FD(**kw)).key
+
+    def test_greenhouse_label_plus_autocomplete(self):
+        self.assertEqual(self.k(label="First Name",
+                                name="job_application[first_name]",
+                                autocomplete="given-name"), "given_name")
+        self.assertEqual(self.k(label="Email",
+                                name="job_application[email]"), "email")
+        self.assertEqual(self.k(label="Phone",
+                                name="job_application[phone]"), "phone")
+
+    def test_workday_identity_in_aria_label_only(self):
+        self.assertEqual(self.k(aria_label="First Name", name="input-15"),
+                         "given_name")
+        self.assertEqual(self.k(aria_label="City", name="input-42"), "city")
+        self.assertEqual(self.k(aria_label="Country", name="input-7",
+                                role="combobox"), "country")
+
+    def test_taleo_icims_camelcase_names(self):
+        self.assertEqual(self.k(name="firstName"), "given_name")
+        self.assertEqual(self.k(name="lastName"), "family_name")
+        self.assertEqual(self.k(name="givenName"), "given_name")
+        self.assertEqual(self.k(name="familyName"), "family_name")
+        self.assertEqual(self.k(name="phoneNumber"), "phone")
+        self.assertEqual(self.k(name="emailAddress"), "email")
+
+    def test_snake_and_bracket_names(self):
+        self.assertEqual(self.k(name="first_name"), "given_name")
+        self.assertEqual(self.k(name="job_application[last_name]"),
+                         "family_name")
+
+    def test_localised_labels_on_ats_fields(self):
+        self.assertEqual(self.k(label="Nombre",
+                                name="job_application[first_name]"),
+                         "given_name")
+        self.assertEqual(self.k(label="Vorname", name="input-3"), "given_name")
+        self.assertEqual(self.k(label="البريد الإلكتروني"), "email")
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
