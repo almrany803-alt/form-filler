@@ -442,9 +442,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             path = fd.GetPath()
         # 2. Parse it.
         try:
-            from .core import cvparse
-            fields = cvparse.cv_to_fields(
-                cvparse.parse_cv_text(cvparse.extract_text(path)))
+            from .core import cvparse, countries
+            text = cvparse.extract_text(path)
+            fields = cvparse.cv_to_fields(cvparse.parse_cv_text(text))
+            # If the CV states a country, detect it (in any supported language,
+            # or from the phone's calling code) and pre-fill it, so the country
+            # dropdown starts on the right answer for you to confirm.
+            if not fields.get("country"):
+                detected = countries.detect_country(text, fields.get("phone", ""))
+                if detected:
+                    fields["country"] = detected
+                    log.info("JFF import: detected country %r" % detected)
             log.info("JFF import: parsed %d field(s) from %s: %s"
                      % (len(fields), os.path.basename(path),
                         ", ".join(sorted(fields))))
@@ -1099,7 +1107,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                              "as-is" % (result.key, existing))
                     prefilled.append(fd.label or announce.human(result.key))
                     continue
-                concept = result.key if result.key == "country" else ""
+                concept = result.key if result.key in ("country", "nationality") else ""
                 pick, verdict = self._fill_native_select(obj, value, concept)
                 if verdict == "confirmed":
                     bucket = (guessed if (pick and pick.confidence == "guess")
@@ -1224,7 +1232,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 ui.message(announce.hand_back(label, kind, value))
             return
 
-        concept = result.key if result.key == "country" else ""
+        concept = result.key if result.key in ("country", "nationality") else ""
         pick, verdict = self._fill_native_select(obj, value, concept)
         if verdict in ("confirmed", "mismatch"):
             ui.message(announce.choice_set(label, pick.label, verdict))
@@ -1264,8 +1272,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 nm = c.name or ""
             except Exception:
                 nm = ""
-            log.info("JFF nsel[%s]: d%d role=%s name=%r"
-                     % (tag, depth, getattr(role, "name", "?"), nm))
             if role in (LI, MI) and nm:
                 labels.append(nm)
                 opts.append(c)
@@ -1297,6 +1303,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         except Exception:
             frole, fname = "?", ""
         log.info("JFF nsel: after open, focus role=%s name=%r" % (frole, fname))
+
+        # A long list takes a moment to read from the tree. Say so, rather than
+        # leaving the user in silence, on lists long enough to notice.
+        try:
+            setsize = int((getattr(foc, "IA2Attributes", {}) or {}).get("setsize")
+                          or (getattr(obj, "IA2Attributes", {}) or {}).get("setsize")
+                          or 0)
+        except Exception:
+            setsize = 0
+        if setsize > 40:
+            ui.message(_("Reading the list, one moment."))
 
         labels, opts = [], []
         roots = []
@@ -1502,7 +1519,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return result.key, None, "novalue"
         pick = controls.choose_option(
             value, labels,
-            concept=result.key if result.key == "country" else "")
+            concept=result.key if result.key in ("country", "nationality") else "")
         log.info("JFF radio: value=%r -> idx=%r label=%r"
                  % (value, pick.index, pick.label))
         if pick.index is None:

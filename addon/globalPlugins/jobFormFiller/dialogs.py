@@ -12,7 +12,7 @@ import gui
 from gui import guiHelper
 import ui
 
-from .core import announce
+from .core import announce, countries
 
 try:
     from logHandler import log
@@ -36,10 +36,15 @@ FIELDS = [
     ("postcode", _("Postcode")),
     ("country", _("Country")),
     ("nationality", _("Nationality (optional)")),
-    ("date_of_birth", _("Date of birth (optional, YYYY-MM-DD)")),
+    ("date_of_birth", _("Date of birth (optional)")),
     ("linkedin", _("LinkedIn")),
     ("work_authorisation", _("Work authorisation")),
 ]
+
+# Country and nationality are chosen from the bundled country list, not typed,
+# so you pick once cleanly and the value is a canonical name the fill path can
+# match in any language.
+COUNTRY_FIELDS = {"country", "nationality"}
 
 
 class DetailsDialog(wx.Dialog):
@@ -68,7 +73,28 @@ class DetailsDialog(wx.Dialog):
         main.Add(row, flag=wx.ALL, border=8)
 
         for key, label in FIELDS:
-            self._ctrls[key] = helper.addLabeledControl(label + ":", wx.TextCtrl)
+            if key == "date_of_birth":
+                days, months, self._dob_years = _dob_lists()
+                self._dob_day = helper.addLabeledControl(
+                    _("Date of birth, day:"), wx.Choice, choices=days)
+                self._dob_month = helper.addLabeledControl(
+                    _("Month:"), wx.Choice, choices=months)
+                self._dob_year = helper.addLabeledControl(
+                    _("Year:"), wx.Choice, choices=self._dob_years)
+                for ch in (self._dob_day, self._dob_month, self._dob_year):
+                    ch.SetSelection(0)
+            elif key in COUNTRY_FIELDS:
+                names = countries.country_names()
+                ctrl = helper.addLabeledControl(
+                    label + ":", wx.ComboBox, choices=[""] + names)
+                try:
+                    ctrl.AutoComplete(names)   # type "sau" -> Saudi Arabia
+                except Exception:
+                    pass
+                self._ctrls[key] = ctrl
+            else:
+                self._ctrls[key] = helper.addLabeledControl(
+                    label + ":", wx.TextCtrl)
         self._loadFields(self._current)
 
         buttons = self.CreateButtonSizer(wx.OK | wx.CANCEL)
@@ -94,13 +120,37 @@ class DetailsDialog(wx.Dialog):
         self._choice.Set(self._items())
         self._selectCurrent()
 
+    def _dob_get(self):
+        if not hasattr(self, "_dob_day"):
+            return ""
+        return _dob_iso(self._dob_day.GetSelection(),
+                        self._dob_month.GetSelection(),
+                        self._dob_year.GetSelection(), self._dob_years)
+
+    def _dob_set(self, iso):
+        if not hasattr(self, "_dob_day"):
+            return
+        y, m, d = _dob_split(iso)
+        self._dob_day.SetSelection(d if 1 <= d <= 31 else 0)
+        self._dob_month.SetSelection(m if 1 <= m <= 12 else 0)
+        self._dob_year.SetSelection(
+            self._dob_years.index(str(y)) if str(y) in self._dob_years else 0)
+
     def _fieldValues(self):
-        return {k: c.GetValue().strip() for k, c in self._ctrls.items()}
+        out = {}
+        for k, c in self._ctrls.items():
+            v = c.GetValue().strip()
+            if k in COUNTRY_FIELDS and v:
+                v = countries.canonical(v) or v   # "saudi"/"KSA" -> Saudi Arabia
+            out[k] = v
+        out["date_of_birth"] = self._dob_get()
+        return out
 
     def _loadFields(self, name):
         vals = self._store.get_profile(name) if name else {}
         for k, c in self._ctrls.items():
             c.SetValue(vals.get(k, "") or "")
+        self._dob_set(vals.get("date_of_birth", ""))
 
     def _stash(self):
         if self._current:
@@ -201,6 +251,35 @@ _MONTHS = [_("January"), _("February"), _("March"), _("April"), _("May"),
            _("November"), _("December")]
 
 
+def _dob_lists():
+    """The day, month and year choice lists, each with a placeholder at index 0.
+    Shared by the review date dialog and the profile date row so they can never
+    drift apart."""
+    this_year = datetime.date.today().year
+    days = [_("Day")] + ["%d" % d for d in range(1, 32)]
+    months = [_("Month")] + _MONTHS
+    years = [_("Year")] + [str(y) for y in range(this_year, this_year - 101, -1)]
+    return days, months, years
+
+
+def _dob_split(iso):
+    """(year, month, day) as ints from an ISO date, or (0, 0, 0)."""
+    try:
+        parts = str(iso or "").split("-")
+        if len(parts) == 3:
+            return int(parts[0]), int(parts[1]), int(parts[2])
+    except Exception:
+        pass
+    return 0, 0, 0
+
+
+def _dob_iso(day_sel, month_sel, year_idx, years):
+    """ISO date from three choice selections (0 == unset), or '' if incomplete."""
+    if day_sel <= 0 or month_sel <= 0 or year_idx <= 0:
+        return ""
+    return "%s-%02d-%02d" % (years[year_idx], month_sel, day_sel)
+
+
 class _ComboEntryDialog(wx.Dialog):
     """An accessible editable combo box: type a value, or arrow the options and
     pick one. This is how the review editor makes an inaccessible editable
@@ -229,20 +308,16 @@ class _DateDialog(wx.Dialog):
 
     def __init__(self, parent, name, iso):
         super().__init__(parent, title=_("Set date"))
-        this_year = datetime.date.today().year
         main = wx.BoxSizer(wx.VERTICAL)
         main.Add(wx.StaticText(
             self, label=_("Date for {name}:").format(name=name)), 0, wx.ALL, 8)
 
-        days = [_("Day")] + ["%d" % d for d in range(1, 32)]
-        months = [_("Month")] + _MONTHS
-        self._years = [_("Year")] + [str(y) for y in
-                                     range(this_year, this_year - 101, -1)]
+        days, months, self._years = _dob_lists()
         self._day = self._labelled(main, _("Day"), days)
         self._month = self._labelled(main, _("Month"), months)
         self._year = self._labelled(main, _("Year"), self._years)
 
-        y, m, d = self._split(iso)
+        y, m, d = _dob_split(iso)
         if 1 <= d <= 31:
             self._day.SetSelection(d)
         if 1 <= m <= 12:
@@ -271,21 +346,11 @@ class _DateDialog(wx.Dialog):
 
     @staticmethod
     def _split(iso):
-        try:
-            parts = str(iso or "").split("-")
-            if len(parts) == 3:
-                return int(parts[0]), int(parts[1]), int(parts[2])
-        except Exception:
-            pass
-        return 0, 0, 0
+        return _dob_split(iso)
 
     def GetISO(self):
-        d = self._day.GetSelection()      # 0 is the "Day" placeholder
-        m = self._month.GetSelection()    # 0 is the "Month" placeholder
-        yi = self._year.GetSelection()    # 0 is the "Year" placeholder
-        if d <= 0 or m <= 0 or yi <= 0:
-            return ""
-        return "%s-%02d-%02d" % (self._years[yi], m, d)
+        return _dob_iso(self._day.GetSelection(), self._month.GetSelection(),
+                        self._year.GetSelection(), self._years)
 
 
 class ReviewDialog(wx.Dialog):
@@ -451,7 +516,9 @@ class ReviewDialog(wx.Dialog):
         with _DateDialog(self, rec["name"], cur or "") as dlg:
             if dlg.ShowModal() != wx.ID_OK:
                 return
-            self._pending[i] = dlg.GetISO()
+            iso = dlg.GetISO()
+            if iso:                      # ignore an incomplete date, don't clear
+                self._pending[i] = iso
         self._refresh(i)
 
     def _onFill(self, evt):

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!-- review_journey.html - the methodical navigator's form. Every control kind
+     the review editor handles, in a KNOWN order so the driver's Down-arrow
+     navigation is deterministic:
+       1 name   text, empty        -> Edit, type a value
+       2 country native select     -> Edit, accessible chooser, pick one
+       3 auth    checkbox, unticked -> Edit, Yes/No, set Yes
+       4 dob     date text, empty   -> (driven in a later pass: 3 dropdowns)
+       5 skills  multi-select       -> (driven in a later pass: multi-check)
+     Each control has a real <label for=...> so NVDA announces it. Nothing
+     auto-submits; there is no submit handler. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Review journey</title></head>
+<body>
+  <h1>Application</h1>
+  <form>
+    <p>
+      <label for="name">Full name</label>
+      <input type="text" id="name" name="name" value="">
+    </p>
+
+    <p>
+      <label for="country">Country</label>
+      <select id="country" name="country">
+        <option value="FR">France</option>
+        <option value="GB">United Kingdom</option>
+        <option value="DE">Germany</option>
+      </select>
+    </p>
+
+    <p>
+      <input type="checkbox" id="auth" name="auth">
+      <label for="auth">I have the right to work</label>
+    </p>
+
+    <p>
+      <label for="dob">Date of birth</label>
+      <input type="text" id="dob" name="dob" value="">
+    </p>
+
+    <p>
+      <label for="skills">Skills</label>
+      <select id="skills" name="skills" multiple size="4">
+        <option value="py">Python</option>
+        <option value="js">JavaScript</option>
+        <option value="sql">SQL</option>
+        <option value="css">CSS</option>
+      </select>
+    </p>
+  </form>
+</body>
+</html>

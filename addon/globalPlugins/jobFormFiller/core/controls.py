@@ -9,6 +9,18 @@
 
 from dataclasses import dataclass, field
 
+# The country dataset lives beside this module. Import it robustly: the add-on
+# loads these as a package (from .core import controls), while the test harness
+# loads them flat (import controls with core/ on the path). Support both, so a
+# broken country match can never hide behind a silently-swallowed ImportError.
+try:
+    from . import countries as _countries
+except ImportError:  # pragma: no cover - flat import path (tests)
+    try:
+        import countries as _countries
+    except ImportError:
+        _countries = None
+
 
 @dataclass
 class ControlDescriptor:
@@ -150,14 +162,18 @@ def choose_option(value: str, options: list[str], concept: str = "") -> OptionMa
         if o == v:
             return OptionMatch(i, options[i], "strong")
 
-    # 2. locale aliases (value in one language, option in another).
-    if concept == "country":
-        aliases = COUNTRY_ALIASES.get(v)
-        if aliases:
-            alias_set = {_norm(a) for lst in aliases.values() for a in lst}
-            for i, o in enumerate(norm_opts):
-                if o in alias_set:
-                    return OptionMatch(i, options[i], "strong")
+    # 2. country and nationality: match through the full country dataset, which
+    # knows every country's name in two dozen languages plus its demonyms, so
+    # "Saudi" or "Saudi Arabia" matches السعودية on an Arabic form, and a
+    # nationality field that lists countries resolves the same way.
+    if concept in ("country", "nationality") and _countries is not None:
+        try:
+            idx, label, conf = _countries.match_country(value, options)
+            if idx is not None:
+                return OptionMatch(idx, label,
+                                   "strong" if conf == "strong" else "guess")
+        except Exception:
+            pass
 
     # 3. containment either way - a softer, flagged guess.
     for i, o in enumerate(norm_opts):
