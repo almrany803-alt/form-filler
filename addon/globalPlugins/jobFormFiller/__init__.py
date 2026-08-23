@@ -744,7 +744,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 date_container = obj
                 if len(self._collect_spinbuttons(obj)) < 2:
                     node = obj
-                    for _ in range(4):
+                    for _step in range(4):
                         try:
                             p = node.parent
                         except Exception:
@@ -1143,7 +1143,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 time.sleep(0.05)
                 KeyboardInputGesture.fromName("home").send()
                 time.sleep(0.05)
-                for _ in range(pick.index):
+                for _k in range(pick.index):
                     KeyboardInputGesture.fromName("downArrow").send()
                     time.sleep(0.03)
             except Exception:
@@ -1154,7 +1154,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # whole-form path, where it wrongly marked a filled dropdown "needs you").
         after = ""
         verdict = "unknown"
-        for _ in range(8):
+        for _k in range(8):
             after = self._read_current_value(obj)
             verdict = controls.verify_selection(pick.label, after)
             if verdict == "confirmed":
@@ -1207,7 +1207,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         chain = []
         node = obj
         group = None
-        for _ in range(4):
+        for _k in range(4):
             try:
                 parent = node.parent
             except Exception:
@@ -1302,7 +1302,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             except Exception:
                 log.error("JFF radio: select failed", exc_info=True)
         verdict = "unknown"
-        for _ in range(8):
+        for _k in range(8):
             if self._live_checked(target):
                 verdict = "confirmed"
                 break
@@ -1330,7 +1330,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 except Exception:
                     log.error("JFF checkbox: toggle failed", exc_info=True)
         now = False
-        for _ in range(8):
+        for _k in range(8):
             now = self._live_checked(obj)
             if now == want:
                 break
@@ -1375,7 +1375,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     except Exception:
                         log.error("JFF multi: select failed", exc_info=True)
             ok = False
-            for _ in range(8):
+            for _k in range(8):
                 if self._live_checked(target):
                     ok = True
                     break
@@ -1442,7 +1442,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         container = obj
         segs = [obj]
         node = obj
-        for _ in range(4):
+        for _k in range(4):
             try:
                 parent = node.parent
             except Exception:
@@ -1490,7 +1490,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.error("JFF ndate: typing failed", exc_info=True)
         want = sorted(_digits(value))
         after = ""
-        for _ in range(8):
+        for _k in range(8):
             seg_digits = "".join(
                 _digits(self._read_current_value(s)) for s in segs)
             cont = _digits(self._read_current_value(container))
@@ -1545,7 +1545,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.error("JFF date: paste failed", exc_info=True)
         want = sorted(_digits(value))
         after = ""
-        for _ in range(8):
+        for _k in range(8):
             after = self._read_current_value(obj)
             if after and sorted(_digits(after)) == want:
                 log.info("JFF date: after=%r verdict=confirmed" % after)
