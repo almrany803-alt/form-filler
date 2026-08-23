@@ -730,6 +730,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         processed_radio = set()
         processed_multi = set()
         processed_date = set()
+        native_date_left = False
 
         for obj in objs:
             fd = _descriptor_from_object(obj)
@@ -759,6 +760,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 try:
                     if len(self._collect_spinbuttons(obj.parent)) >= 2:
                         date_container = obj.parent
+                    else:
+                        # Segments not reachable from the button in browse mode.
+                        # Still recognise it as a date so it is named clearly and
+                        # the user is told exactly what to do.
+                        pfd = _descriptor_from_object(obj.parent)
+                        hint = ((fd.label or "") + " " + (fd.placeholder or "")
+                                + " " + (pfd.label or "")).lower()
+                        if pfd.input_type == "date" or "date" in hint:
+                            native_date_left = True
+                            leftovers.append(announce.human("date_of_birth"))
+                            log.info("JFF form field: native date left "
+                                     "(segments unreachable in whole-form)")
+                            continue
                 except Exception:
                     date_container = None
             if date_container is not None:
@@ -961,6 +975,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 leftovers.append(announce.human(result.key))
 
         summary = announce.build_summary(filled, guessed, leftovers)
+        if native_date_left:
+            summary += " " + _("For the date, put your cursor on it and press "
+                               "fill this field.")
         if prefilled:
             summary += " " + _("{n} field(s) already had values; open Review "
                                "fields to check them.").format(n=len(prefilled))
@@ -992,6 +1009,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if verdict == "confirmed":
                 ui.message(_("{f} set to {v}.").format(
                     f=label, v=", ".join(selected)))
+            else:
+                ui.message(announce.hand_back(label, kind, value))
+            return
+
+        if kind == controls.ASYNC_COMBOBOX:
+            verdict, pick = self._fill_async_combobox(obj, value)
+            if verdict == "confirmed":
+                ui.message(_("{f} set to {v}.").format(
+                    f=label, v=(pick.label if pick else value)))
             else:
                 ui.message(announce.hand_back(label, kind, value))
             return
@@ -1385,6 +1411,96 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.info("JFF multi: value=%r -> idx=%r label=%r selected=%s"
                      % (value, pick.index, pick.label, ok))
         return ("confirmed" if selected else "none"), selected
+
+    def _find_listbox(self, root, depth=0):
+        """Find a populated listbox near a combobox (the async results)."""
+        if depth > 4 or root is None:
+            return None
+        try:
+            kids = list(root.children or [])
+        except Exception:
+            kids = []
+        for c in kids:
+            try:
+                r = c.role
+            except Exception:
+                r = None
+            if r == controlTypes.Role.LIST:
+                labels, _opts = self._read_option_children(c, "async-check")
+                if labels:
+                    return c
+            found = self._find_listbox(c, depth + 1)
+            if found is not None:
+                return found
+        return None
+
+    def _read_async_options(self, obj):
+        # The results listbox is usually a sibling of the combobox; search up a
+        # couple of ancestors for a populated listbox.
+        node = obj
+        for _k in range(3):
+            try:
+                parent = node.parent
+            except Exception:
+                parent = None
+            if parent is None:
+                break
+            lb = self._find_listbox(parent)
+            if lb is not None:
+                return self._read_option_children(lb, "async")
+            node = parent
+        return [], []
+
+    def _fill_async_combobox(self, obj, value):
+        """Type into a search-box combobox, wait for options to load over the
+        network, then pick the best match. Returns (verdict, pick)."""
+        try:
+            obj.setFocus()
+            api.setFocusObject(obj)
+            time.sleep(0.05)
+        except Exception:
+            pass
+        try:
+            _paste_into_focused(obj, value)
+        except Exception:
+            log.error("JFF async: type failed", exc_info=True)
+        log.info("JFF async: typed %r, waiting for options" % value)
+        labels, opts = [], []
+        for _k in range(30):                       # up to ~3s for the fetch
+            labels, opts = self._read_async_options(obj)
+            if labels:
+                log.info("JFF async: %d option(s) after %d polls: %r"
+                         % (len(labels), _k, labels[:10]))
+                break
+            time.sleep(0.1)
+        if not labels:
+            log.info("JFF async: no options loaded")
+            return "unknown", None
+        pick = controls.choose_option(value, labels)
+        log.info("JFF async: value=%r -> idx=%r label=%r"
+                 % (value, pick.index, pick.label))
+        if pick.index is None or pick.index >= len(opts):
+            return "none", None
+        target = opts[pick.index]
+        try:
+            target.doAction()
+        except Exception:
+            try:
+                target.setFocus()
+                api.setFocusObject(target)
+                KeyboardInputGesture.fromName("enter").send()
+            except Exception:
+                log.error("JFF async: select failed", exc_info=True)
+        after = ""
+        for _k in range(10):
+            after = self._read_current_value(obj)
+            if after and (after == pick.label or pick.label in after
+                          or value.lower() in after.lower()):
+                log.info("JFF async: after=%r verdict=confirmed" % after)
+                return "confirmed", pick
+            time.sleep(0.06)
+        log.info("JFF async: after=%r verdict=mismatch" % after)
+        return "mismatch", pick
 
     def _date_segment_type(self, seg):
         try:

@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Async combobox form</title></head>
+<body>
+<h1>Application</h1>
+<form>
+  <div>
+    <label for="loc">City</label>
+    <input type="text" id="loc" role="combobox" aria-autocomplete="list"
+           aria-controls="loclist" aria-expanded="false" autocomplete="off">
+    <ul id="loclist" role="listbox" aria-label="City suggestions"></ul>
+  </div>
+</form>
+<script>
+  var inp = document.getElementById('loc'), list = document.getElementById('loclist');
+  var CITIES = ["Bristol, United Kingdom", "Bristol, TN, USA",
+                "Brighton, United Kingdom", "London, United Kingdom"];
+  var timer;
+  inp.addEventListener('input', function () {
+    clearTimeout(timer);
+    list.innerHTML = '';
+    inp.setAttribute('aria-expanded', 'false');
+    var q = inp.value.trim().toLowerCase();
+    if (!q) return;
+    timer = setTimeout(function () {          // simulate a 400ms network fetch
+      var matches = CITIES.filter(function (c) { return c.toLowerCase().indexOf(q) !== -1; });
+      matches.forEach(function (c) {
+        var li = document.createElement('li');
+        li.setAttribute('role', 'option');
+        li.textContent = c;
+        li.addEventListener('click', function () {
+          inp.value = c; list.innerHTML = ''; inp.setAttribute('aria-expanded', 'false');
+        });
+        list.appendChild(li);
+      });
+      inp.setAttribute('aria-expanded', matches.length ? 'true' : 'false');
+    }, 400);
+  });
+</script>
+</body></html>

@@ -67,6 +67,13 @@ Still to build (grounded in CONTROLS_RESEARCH, section 11):
 - Custom single-select combobox (button + listbox), multi-select, date fields,
   the async search-box combobox (location), and the post-CV-attach audit.
 - The review list as an accessible editor for every control type (the USP).
+  DATE ENTRY DECISION (user): in the profile dialog and the review editor, the
+  user enters a date via three accessible dropdowns (day, month, year), not a
+  typed YYYY-MM-DD box. Dropdowns are the most NVDA-friendly date input: arrow
+  through lists, no format to guess, no calendar to get trapped in. The addon
+  stores ISO internally and still writes to each form field with the tested
+  segment/text/custom-picker logic. So date entry uses three dropdowns; date
+  writing stays as built.
 
 ---
 

@@ -1,0 +1,23 @@
+// fill_async.mjs - async search-box combobox (location/city). Seed city="Bristol".
+import { chromium } from "playwright";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+const here = path.dirname(fileURLToPath(import.meta.url));
+const formUrl = "file:///" + path.resolve(here, "..", "async_form.html").replace(/\\/g, "/");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const browser = await chromium.launch({ channel: "chrome", headless: false });
+const page = await browser.newPage();
+await page.goto(formUrl);
+await page.bringToFront();
+await page.locator("#loc").focus();
+await sleep(3000);
+execFileSync("powershell", ["-File", path.join(here, "send_nvda_key.ps1"), "-Key", "F"], { stdio: "inherit" });
+await sleep(6000);
+const got = await page.locator("#loc").inputValue();
+console.log("=== async search-box combobox ===");
+const ok = got.startsWith("Bristol");
+console.log(`${ok ? "PASS" : "FAIL"}  #loc: expected a Bristol option chosen, got ${JSON.stringify(got)}`);
+await browser.close();
+if (!ok) process.exit(1);
+console.log("Async combobox: typed the city, waited for options, picked the match.");

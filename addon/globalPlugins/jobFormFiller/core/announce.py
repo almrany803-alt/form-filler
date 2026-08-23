@@ -46,11 +46,13 @@ def hand_back(field_label: str, kind: str, typed: str = "") -> str:
     """Honest message when we deliberately do not automate a control."""
     if kind == "async_combobox":
         return (f"{field_label} is a search box. I typed {typed}. "
-                "Please pick from the list.")
+                "Use the up and down arrows to pick from the list, then Enter.")
     if kind == "multiselect":
-        return f"{field_label} is a multi-select. Please choose the options yourself."
+        return (f"{field_label} is a multi-select. Put your cursor on it and "
+                "press fill this field, or choose the options yourself.")
     if kind == "datepicker":
-        return f"{field_label} is a date picker. Please enter the date yourself."
+        return (f"{field_label}: put your cursor on it and press fill this "
+                "field to set the date.")
     return f"{field_label}: please set this one yourself."
 
 
