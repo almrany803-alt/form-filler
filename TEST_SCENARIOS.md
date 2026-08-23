@@ -73,8 +73,11 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
   right-to-left labels all identify; name-only via html-input-name identifies.
 - [done] Couch-Potato: unlabelled, label-not-associated, native select, custom
   combobox, date picker are all correctly left alone.
-- [todo] Localization breadth: a full form labelled in Spanish, then Polish, then
-  German, each filled end to end.
+- [done] Localization breadth, grounded in the accessibility research: a form with
+  French and German labels (identified by label alone) alongside inaccessible
+  ATS-style fields (no visible label, identified by html attributes) and a bare
+  field with nothing to go on. On real NVDA the labelled and tagged fields filled;
+  the bare field was declined. Matcher identifies labels in all 9 languages.
 
 ## Feature: multi-section applications
 
@@ -151,6 +154,7 @@ lessons are not re-learned.
   saved end to end on real NVDA. PyMuPDF is a self-contained compiled library
   (the approach the working NVDA PDF add-on uses), so it fits NVDA's Python where
   pure-Python pypdf could not.
-- [todo] chain import → fill: import a CV, then fill a real application with it.
+- [done] Chain import to fill: import a Word CV, then fill a real form from it,
+  end to end on real NVDA (Jane Doe imported, then filled into the form).
 - [todo] Antisocial: a password-protected PDF; an image-only (scanned) PDF; a CV
   with no recognisable sections; a 40-page CV. Each must fail or degrade cleanly.
