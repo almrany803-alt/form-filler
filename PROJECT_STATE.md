@@ -145,7 +145,7 @@ GitHub API. On a real Windows runner with NVDA 2026.1.1 and real Chrome:
     random unbound combos, then prove a normal fill still works and that no
     uncaught error was logged.
 
-The pure-Python brain has 90 checks that run in the sandbox and on Linux CI
+The pure-Python brain has 96 checks that run in the sandbox and on Linux CI
 (`tests.yml`) on every push, including an adversarial "sabotage" suite
 (`test_adversarial.py`) that throws malformed and hostile input at every module
 and asserts nothing crashes.
@@ -216,7 +216,7 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
   `announce.py` (spoken summaries + the audit summary), `profile.py` (encrypted
   ProfileStore + DPAPI), `cvparse.py` (extract text from docx/pdf/txt + parse CV
   sections), `audit.py` (duplicate/extra/mismatch detector).
-- `tests/` — 90 pure-Python checks (matcher, data, cv extract, audit, langs, and
+- `tests/` — 96 pure-Python checks (matcher, data, cv extract, audit, langs, and
   `test_adversarial.py` sabotage/hostile-input cases), all runnable without NVDA.
 - `betatest/` — the real-NVDA-real-Chrome tests: `fill_test.mjs` (clean),
   `fill_messy.mjs` (messy stress), `fill_journey.mjs` (tabbing + multi-section),
@@ -302,6 +302,12 @@ needs the Actions permission), which is why the workflows run `on: push`.
   the fill, which runs after the menu closes. Also: a native menu stays open on a
   non-command key (unlike the old one-shot layer), so tests that fire junk keys
   must send Escape to close it.
+- **ATS field names need splitting.** Real ATS name fields as camelCase
+  ("firstName") or bracketed ("job_application[first_name]"). Without splitting
+  camelCase, "name" substring-matches "firstname" and the field is mislabelled a
+  full-name field. The normaliser now splits camelCase and treats brackets and
+  dots as separators. Tested against Greenhouse, Workday, Taleo and iCIMS
+  patterns ().
 - **No shared mutable defaults.** The store built each instance's data with a
   shallow copy of a module-level default, so every store shared one profiles
   dict. Build fresh nested data per instance instead.
