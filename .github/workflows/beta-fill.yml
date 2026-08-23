@@ -74,6 +74,8 @@ jobs:
           node fill_greenhouse.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
           Write-Host "===== Taleo-style form (camelCase names) ====="
           node fill_taleo.mjs;   if ($LASTEXITCODE -ne 0) { $failed = $true }
+          Write-Host "===== mangled parse: do not clobber a pre-filled value ====="
+          node fill_mangled.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
           if ($failed) { Write-Host "one or more beta tests failed"; exit 1 }
 
       - name: Fail if the add-on threw an uncaught error

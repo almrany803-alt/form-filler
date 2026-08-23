@@ -323,35 +323,45 @@ needs the Actions permission), which is why the workflows run `on: push`.
 
 ## 9. Roadmap (what is next, roughly in order)
 
-1. **CV import: finish Word and PDF.** Text CV import is wired and proven on
-   real NVDA (English + Arabic). Remaining: bundle the readers so Word and PDF
-   work on the user's machine (docx via stdlib zip+xml to avoid lxml; pypdf is
-   pure Python), then chain import → fill an application end to end.
-2. **Real multilingual, end-to-end CV testing.** Once import is wired: drive
-   Word/PDF/text CVs in English, Spanish, Polish, Arabic through import ->
-   review -> fill, as beta scenarios, using CVs modelled on real-world
-   structures (not real people's documents).
-2b. **Profiles as versions (started).** The store holds several named profiles,
-   each a version, switchable, tested. Next: a profile selector in the dialog,
-   import into the chosen version with a confirm-before-change step, and fill
-   picking the version by the form's language.
-3. **Dropdown / choice-control filling.** The classify/choose/verify logic
-   exists and is tested; wire it into the live fill (currently dropdowns are
-   correctly left).
-4. **Help with bespoke questions we cannot pre-fill.** Two features: a "jump to
-   the next field that needs you" command, and remembered answers for recurring
-   custom questions (notice period, right to work, "why do you want this role"),
-   keyed to the question wording.
-5. **Interaction testing of the menus/dialog.** DONE: an adversarial sabotage
-   suite (`test_adversarial.py`), a real-NVDA abuse/survival scenario
-   (`fill_abuse.mjs`), and the "My details" dialog driven entirely by keyboard
-   in CI (`dialog-test.yml`: open, tab, type, save, then verify the encrypted
-   profile on disk) all pass. The only interaction step not yet automated is
-   navigating the actual NVDA Tools menu to open the dialog (it is opened via a
-   test-bound key instead); fiddly to drive blind, but not impossible.
-6. **Later:** the post-CV-attach audit wired live; a settings panel; the layered
-   fallback for inaccessible forms (positional inference, remembered per-site
-   labels, OCR, AI vision); publishing to the NVDA add-on store.
+Done and proven on real NVDA: the NVDA+J menu (navigable, announced), fill this
+field / fill all fields, the review list (Fill from profile), profiles as
+versions (create/switch/delete), CV import (text, Word via stdlib, PDF via
+bundled PyMuPDF) across all 9 supported languages, the import-to-fill chain, real
+ATS field patterns (Greenhouse, Workday, Taleo, iCIMS) including the camelCase
+fix, accessible and inaccessible forms, and the do-not-clobber behaviour for a
+mangled ATS auto-parse.
+
+Still to do:
+1. Automate the last menu paths by keyboard in CI: the Profile submenu
+   (switch/new/delete), Import from CV, Enter your details. The operations are
+   tested; driving them from the menu itself is not yet scripted.
+2. Review list: CI-drive Go to, Edit and Clear (only Fill from profile is
+   automated end to end so far).
+3. A settings panel, home for the review-list "show every field vs only the
+   gaps" toggle, and the point to revisit whether the Tools-menu item still
+   earns its place.
+4. Dropdown / choice-control filling (the classify/choose/verify logic is tested;
+   dropdowns are currently left).
+5. Remembered answers for recurring bespoke questions (notice period, right to
+   work), keyed to the question wording; and a "jump to the next field that
+   needs you".
+6. Duplicate-and-extras audit after a CV attach (the ATS-mangle consequence):
+   flag likely duplicate or misplaced entries so the user can prune them.
+7. The AI opt-in rung, and OCR (Tesseract) for genuinely inaccessible fields.
+8. Publish to the NVDA add-on store (VirusTotal, CodeQL, note the ~18MB size
+   from PyMuPDF), once out of -dev.
+9. Housekeeping: revoke the repo access token when the build phase ends.
+
+## 9a. Logging (for real-world testing)
+
+Every add-on line is prefixed `JFF`. A startup banner records the version; each
+field logs what was read and what it matched (label, html name, aria-label,
+autocomplete, role -> key, confidence, source); a whole-form fill logs each
+field's action, the summary, and any field that already held a value (so an ATS
+auto-parse's wrong value is visible in the log rather than silently skipped). The
+menu logs the chosen command, import logs what was parsed, the review list logs
+what it collected and applied. See LOGGING.md for how to capture and read a log;
+set NVDA's logging level to Info.
 
 ---
 

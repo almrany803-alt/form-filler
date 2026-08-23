@@ -73,6 +73,11 @@ its current value or "empty, needs you". Arrow the list, Tab to the actions.
   fail-safe focus check skips rather than double-pastes).
 - [done] Antisocial / wrong-turn: press the key with focus on a non-editable
   element; it declines gracefully.
+- [done] Mangled parse (do not clobber): when a field already holds a value (an
+  ATS auto-parse often drops a WRONG one in), fill leaves it untouched, still
+  fills the empty fields, logs the existing value, and the summary says how many
+  already had values so you open Review fields to check them. Proven on real
+  NVDA; the review list's Fill from profile is the fix path.
 - [todo] Intellectual: a form with 60+ fields; performance and completeness.
 - [todo] Antisocial: press fill on a page mid-load, before fields are ready.
 

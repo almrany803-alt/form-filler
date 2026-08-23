@@ -138,6 +138,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # Encrypted profile store, in NVDA's config dir. On Windows the crypto is
         # DPAPI (tied to the user account); the store logic itself is our tested
         # code. self._profile is the active profile the fill commands read.
+        try:
+            import addonHandler
+            _ver = addonHandler.getCodeAddon().version
+        except Exception:
+            _ver = "?"
+        log.info("JFF: Job Form Filler %s starting" % _ver)
         self._store = None
         self._profile = {}
         try:
@@ -239,7 +245,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
         act = self._menuAction
         if not act:
+            log.info("JFF menu: closed with no choice")
             return
+        log.info("JFF menu: chose %r" % (act,))
         kind = act[0]
         if kind in ("field", "form", "review"):
             def runFill():
@@ -337,6 +345,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             from .core import cvparse
             fields = cvparse.cv_to_fields(
                 cvparse.parse_cv_text(cvparse.extract_text(path)))
+            log.info("JFF import: parsed %d field(s) from %s: %s"
+                     % (len(fields), os.path.basename(path),
+                        ", ".join(sorted(fields))))
         except Exception:
             log.error("JFF: CV import failed", exc_info=True)
             ui.message(_("Could not read that CV. Check the file and try again."))
@@ -414,6 +425,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if result is None:
             return
         changes, goto = result
+        log.info("JFF review: applying %d change(s), goto=%r"
+                 % (len(changes), goto))
         for idx, newval in changes:
             rec = records[idx]
             self._write_field(rec["obj"], rec["fd"], newval)
@@ -527,7 +540,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 objs.append(o)
         log.info("JFF form: found %d form fields, resolved %d objects"
                  % (len(items), len(objs)))
-        filled, guessed, leftovers = [], [], []
+        filled, guessed, leftovers, prefilled = [], [], [], []
 
         for obj in objs:
             fd = _descriptor_from_object(obj)
@@ -553,12 +566,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 continue
 
             # Skip fields that already hold a value, so we do not clobber them.
+            # An ATS that auto-parsed the CV often puts a WRONG value here; we do
+            # not overwrite it (we cannot know it is wrong), but we log it so the
+            # mangled value is visible, and the review list lets the user fix it.
             try:
                 existing = obj.value
             except Exception:
                 existing = None
             if existing:
-                log.info("JFF form field: %r already filled, skipping" % result.key)
+                log.info("JFF form field: %r already holds %r, left as-is "
+                         "(use Review fields to correct it)"
+                         % (result.key, existing))
+                prefilled.append(fd.label or announce.human(result.key))
                 continue
 
             # Focus the field, then paste, but ONLY once we've confirmed focus
@@ -590,7 +609,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 leftovers.append(announce.human(result.key))
 
         summary = announce.build_summary(filled, guessed, leftovers)
-        log.info("JFF form summary: %s" % summary)
+        if prefilled:
+            summary += " " + _("{n} field(s) already had values; open Review "
+                               "fields to check them.").format(n=len(prefilled))
+        log.info("JFF form summary: %s (prefilled: %d)" % (summary, len(prefilled)))
         # Delay so the last field's focus announcement does not cancel this.
         wx.CallLater(400, ui.message, summary)
 
