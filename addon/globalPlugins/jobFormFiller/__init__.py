@@ -184,6 +184,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         wx.CallAfter(self._popupMenu)
 
     def _popupMenu(self):
+        savedFocus = api.getFocusObject()
+        savedForeground = None
+        try:
+            import winUser
+            savedForeground = winUser.getForegroundWindow()
+        except Exception:
+            pass
         self._menuAction = None
         menu = wx.Menu()
         mField = menu.Append(wx.ID_ANY, _("Fill this &field"))
@@ -232,9 +239,21 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if not act:
             return
         kind = act[0]
+        if kind in ("field", "form"):
+            def runFill():
+                if savedForeground:
+                    try:
+                        import winUser
+                        winUser.setForegroundWindow(savedForeground)
+                    except Exception:
+                        pass
+                if kind == "field":
+                    self.script_fillField(None, focus=savedFocus)
+                else:
+                    self.script_fillForm(None, focus=savedFocus)
+            wx.CallAfter(runFill)
+            return
         after = {
-            "field": lambda: self.script_fillField(None),
-            "form": lambda: self.script_fillForm(None),
             "enter": lambda: self._onDetails(None),
             "import": self._onImportCV,
             "new": self._onNewProfile,
@@ -339,8 +358,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     @script(
         description=_("Fill the current field from your saved details"),
     )
-    def script_fillField(self, gesture):
-        obj = api.getFocusObject()
+    def script_fillField(self, gesture, focus=None):
+        obj = focus or api.getFocusObject()
         if obj is None:
             ui.message(_("No field is focused."))
             return
@@ -392,8 +411,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     @script(
         description=_("Fill the whole form from your saved details"),
     )
-    def script_fillForm(self, gesture):
-        focus = api.getFocusObject()
+    def script_fillForm(self, gesture, focus=None):
+        focus = focus or api.getFocusObject()
         if not self._profile:
             ui.message(_("No details saved yet. Import a CV or enter your "
                          "details first."))
