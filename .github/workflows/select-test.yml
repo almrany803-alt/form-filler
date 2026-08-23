@@ -50,7 +50,7 @@ jobs:
           Start-Process -FilePath "C:\Program Files\NVDA\nvda.exe" -ArgumentList "-c `"$cfg`" -f `"$cfg\nvda.log`" -l 10 -m"
           Start-Sleep -Seconds 20
 
-      - name: Fill the native select (single field: exact, locale, decline)
+      - name: "Fill the native select (single field: exact, locale, decline)"
         shell: pwsh
         run: |
           cd betatest
