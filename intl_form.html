@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><title>International application</title></head>
+<body>
+<h1>Application / Candidature / Bewerbung</h1>
+
+<!-- Accessible, French, identified by label only (no html name/autocomplete) -->
+<p><label for="fr_fn">Prénom</label><input id="fr_fn" type="text"></p>
+<p><label for="fr_ln">Nom de famille</label><input id="fr_ln" type="text"></p>
+<p><label for="fr_em">Courriel</label><input id="fr_em" type="email"></p>
+<p><label for="fr_ct">Ville</label><input id="fr_ct" type="text"></p>
+
+<!-- Accessible, German, identified by label only -->
+<p><label for="de_fn">Vorname</label><input id="de_fn" type="text"></p>
+<p><label for="de_ct">Stadt</label><input id="de_ct" type="text"></p>
+
+<!-- Inaccessible ATS style: NO visible label, but html attributes present -->
+<p><input id="ats_ph" type="tel" autocomplete="tel"></p>
+<p><input id="ats_co" name="country" autocomplete="country-name" type="text"></p>
+
+<!-- Truly inaccessible: nothing to go on -> must be declined -->
+<p><input id="ats_none" type="text"></p>
+<div id="ats_combo" role="combobox" tabindex="0">Select an option</div>
+</body></html>

@@ -66,6 +66,8 @@ jobs:
           node fill_journey.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
           Write-Host "===== abuse / survival ====="
           node fill_abuse.mjs;   if ($LASTEXITCODE -ne 0) { $failed = $true }
+          Write-Host "===== international + inaccessible (French/German + ATS) ====="
+          node fill_intl.mjs;    if ($LASTEXITCODE -ne 0) { $failed = $true }
           if ($failed) { Write-Host "one or more beta tests failed"; exit 1 }
 
       - name: Fail if the add-on threw an uncaught error
