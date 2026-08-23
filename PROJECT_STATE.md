@@ -393,3 +393,8 @@ meaningful name) is not identifiable and is correctly declined. The addon
 identifies fields via label, HTML name, and aria-label, all of which Chrome does
 expose. ia2['autocomplete'] (ARIA list/inline/both on comboboxes) is still read
 because it helps classify comboboxes.
+
+## TODO after the control build (user request)
+Consolidate CONTROLS_RESEARCH.md into this PROJECT_STATE, and update all docs
+(README.md, TEST_SCENARIOS.md, LOGGING.md) so everything is consistent and the
+grounded design is on record in the project file.

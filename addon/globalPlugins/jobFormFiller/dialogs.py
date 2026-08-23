@@ -33,6 +33,7 @@ FIELDS = [
     ("city", _("City")),
     ("postcode", _("Postcode")),
     ("country", _("Country")),
+    ("nationality", _("Nationality (optional)")),
     ("linkedin", _("LinkedIn")),
     ("work_authorisation", _("Work authorisation")),
 ]

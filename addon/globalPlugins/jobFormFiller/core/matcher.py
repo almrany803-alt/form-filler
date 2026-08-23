@@ -13,7 +13,7 @@ import unicodedata
 
 PROFILE_KEYS = (
     "given_name", "family_name", "full_name", "email", "phone",
-    "address_line1", "city", "postcode", "country",
+    "address_line1", "city", "postcode", "country", "nationality",
     "linkedin", "work_authorisation",
 )
 
@@ -78,11 +78,18 @@ LEXICON = {
         "nl": ["stad", "plaats", "woonplaats"], "ar": ["المدينة"],
     },
     "country": {
-        "en": ["country", "nationality"], "es": ["pais", "nacionalidad"],
-        "fr": ["pays", "nationalite"], "de": ["land", "staat"],
-        "it": ["paese", "nazionalita"], "pt": ["pais", "nacionalidade"],
-        "pl": ["kraj", "panstwo", "narodowosc"], "nl": ["land", "nationaliteit"],
-        "ar": ["الدولة", "البلد"],
+        "en": ["country", "country of residence"], "es": ["pais"],
+        "fr": ["pays"], "de": ["land", "staat"],
+        "it": ["paese"], "pt": ["pais"],
+        "pl": ["kraj", "panstwo"], "nl": ["land"],
+        "ar": ["الدولة", "البلد", "بلد الاقامة"],
+    },
+    "nationality": {
+        "en": ["nationality", "citizenship"], "es": ["nacionalidad"],
+        "fr": ["nationalite"], "de": ["staatsangehorigkeit", "nationalitat"],
+        "it": ["nazionalita"], "pt": ["nacionalidade"],
+        "pl": ["narodowosc", "obywatelstwo"], "nl": ["nationaliteit"],
+        "ar": ["الجنسية"],
     },
     "work_authorisation": {
         "en": ["work authorisation", "work authorization", "right to work",
