@@ -2,15 +2,25 @@
 <body>
 <h1>Application</h1>
 <p><label for="fn">First name</label><input id="fn" name="given-name" type="text"></p>
-<p>
-  <label for="country">Country</label>
+
+<!-- q1: same-language exact match -->
+<p><label for="country">Country</label>
   <select id="country" name="country">
     <option value="">Choose...</option>
-    <option>France</option>
-    <option>Germany</option>
-    <option>Saudi Arabia</option>
-    <option>United Kingdom</option>
-    <option>United States</option>
-  </select>
-</p>
+    <option>France</option><option>Germany</option><option>Saudi Arabia</option>
+    <option>United Kingdom</option><option>United States</option>
+  </select></p>
+
+<!-- q2: locale alias - English value, French option labels -->
+<p><label for="pays">Country</label>
+  <select id="pays" name="country_fr">
+    <option value="">Choisir...</option>
+    <option>France</option><option>Allemagne</option><option>Royaume-Uni</option>
+  </select></p>
+
+<!-- q3: saved value not among the options - must be declined, left as default -->
+<p><label for="country3">Country</label>
+  <select id="country3" name="country_x">
+    <option>France</option><option>Germany</option><option>Spain</option>
+  </select></p>
 </body></html>
