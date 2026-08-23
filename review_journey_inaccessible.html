@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<!-- review_journey_inaccessible.html - the SAME three fields as the accessible
+     fixture, in the same order and with the same ids, but deliberately made
+     inaccessible to stress the review editor:
+       - no <form> wrapper
+       - the text input has only a placeholder, no <label for=>
+       - the <select> has no label at all, just adjacent text
+       - the checkbox's text is an unassociated <span>, no <label for=>
+     A screen reader announces these poorly, but the review editor should still
+     enumerate them, open the closed select to read its options, and offer a
+     real chooser. The driver and checks are identical to the accessible run. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Review journey (inaccessible)</title></head>
+<body>
+  <div>Application</div>
+
+  <div>
+    <input type="text" id="name" placeholder="Full name">
+  </div>
+
+  <div>
+    Country
+    <select id="country">
+      <option value="FR">France</option>
+      <option value="GB">United Kingdom</option>
+      <option value="DE">Germany</option>
+    </select>
+  </div>
+
+  <div>
+    <input type="checkbox" id="auth"> <span>I have the right to work</span>
+  </div>
+</body>
+</html>

@@ -54,7 +54,7 @@ jobs:
           Start-Process -FilePath "C:\Program Files\NVDA\nvda.exe" -ArgumentList "-c `"$cfg`" -f `"$cfg\nvda.log`" -l 10 -m"
           Start-Sleep -Seconds 20
 
-      - name: Review journey (text, chooser, yes/no editors)
+      - name: Review journey (accessible + inaccessible forms)
         shell: pwsh
         run: |
           cd betatest

@@ -648,6 +648,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # fall back to a typed box rather than an empty chooser.
             if kind in (controls.EDITOR_SINGLE, controls.EDITOR_EDITABLE):
                 labels, _opts = self._read_option_children(obj, "review-choice")
+                if not labels and cc in (controls.NATIVE_SELECT,
+                                         controls.ARIA_COMBOBOX):
+                    # A closed native dropdown exposes no options to the cached
+                    # tree, so open it briefly to read them, as the fill does.
+                    labels = self._read_select_options(obj)
                 if not labels and kind == controls.EDITOR_SINGLE:
                     kind = controls.EDITOR_TEXT
                 records.append(self._review_record(
@@ -1281,6 +1286,44 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 opts.extend(sub_o)
         return labels, opts
 
+    def _read_select_options(self, obj):
+        """Read a native dropdown's option labels by briefly opening it, because
+        a closed <select> exposes no options to NVDA's cached tree. Closes the
+        popup afterwards with Escape, leaving the selection unchanged. Returns a
+        list of labels, or [] if it could not read them."""
+        try:
+            obj.setFocus()
+            api.setFocusObject(obj)
+            time.sleep(0.1)
+            KeyboardInputGesture.fromName("alt+downArrow").send()
+            time.sleep(0.35)
+        except Exception:
+            log.error("JFF review: could not open select to read options",
+                      exc_info=True)
+            return []
+        foc = api.getFocusObject()
+        roots = []
+        if foc is not None:
+            try:
+                par = foc.parent
+            except Exception:
+                par = None
+            if par is not None:
+                roots.append(par)
+            roots.append(foc)
+        labels = []
+        for root in roots:
+            labels, _opts = self._read_option_children(root, "review-open")
+            if labels:
+                break
+        try:
+            KeyboardInputGesture.fromName("escape").send()
+            time.sleep(0.1)
+        except Exception:
+            pass
+        log.info("JFF review: opened select, read %d option(s)" % len(labels))
+        return labels
+
     def _fill_native_select(self, obj, value, concept):
         """Open a native <select>, read its options from the popup, choose the
         best match (locale aware), select that option, and verify. Returns
@@ -1396,8 +1439,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         log.info("JFF nsel: after=%r verdict=%r" % (after, verdict))
         return pick, verdict
 
-    def _read_current_value(self, obj):
-        # Read the LIVE value via a raw IA2 call; NVDA caches obj.value on the
+    def _read_current_value(self, obj):        # Read the LIVE value via a raw IA2 call; NVDA caches obj.value on the
         # object instance, so repeated polls would re-read a stale cached value.
         try:
             iao = getattr(obj, "IAccessibleObject", None)
