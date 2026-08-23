@@ -93,7 +93,8 @@ LEXICON = {
     },
     "work_authorisation": {
         "en": ["work authorisation", "work authorization", "right to work",
-               "eligible to work", "visa", "sponsorship"],
+               "eligible to work", "authorised to work", "authorized to work",
+               "visa", "sponsorship"],
         "es": ["autorizacion de trabajo", "permiso de trabajo"],
         "fr": ["autorisation de travail", "droit de travailler"],
         "de": ["arbeitserlaubnis"],

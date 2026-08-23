@@ -577,8 +577,29 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return
 
         fd = _descriptor_from_object(obj)
-        result = matcher.match_field(fd)
         log.info("JFF read: %s" % _fd_summary(fd))
+
+        # Radios are special: the object's own label is the option ("Yes"), not
+        # the question, so match the group instead of the single radio. Handle it
+        # before the normal match, which would bail on the option label.
+        early_kind = controls.classify_control(controls.ControlDescriptor(
+            role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
+        if early_kind == controls.RADIO:
+            key, pick, verdict = self._fill_radio_group(obj)
+            if verdict == "confirmed":
+                ui.message(_("{q} set to {a}.").format(
+                    q=announce.human(key or _("this")),
+                    a=(pick.label if pick else "")))
+            elif verdict == "novalue":
+                ui.message(_("Nothing saved for {field}.").format(
+                    field=announce.human(key)))
+            elif verdict == "none" and key is None:
+                ui.message(_("I could not identify this question. Over to you."))
+            else:
+                ui.message(_("Could not set this one. Over to you."))
+            return
+
+        result = matcher.match_field(fd)
         log.info("JFF match: key=%r conf=%r src=%r lang=%r"
                  % (result.key, result.confidence, result.source, result.lang))
 
@@ -598,6 +619,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         kind = controls.classify_control(controls.ControlDescriptor(
             role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
 
+        if kind == controls.CHECKBOX:
+            verdict = self._fill_checkbox(obj, fd, value)
+            ui.message(announce.choice_set(
+                fd.label or announce.human(result.key), value, verdict))
+            return
         if kind == controls.TEXT:
             self._fill_text(obj, fd, result, value)
         else:
@@ -937,3 +963,161 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return obj.value or ""
         except Exception:
             return ""
+
+    def _live_checked(self, obj):
+        """Live checked/selected state via raw IA2 accState (NVDA caches states),
+        so verifying a radio or checkbox does not read a stale value."""
+        CHECKED = 0x10           # STATE_SYSTEM_CHECKED
+        SELECTED = 0x2           # STATE_SYSTEM_SELECTED
+        try:
+            iao = getattr(obj, "IAccessibleObject", None)
+            if iao is not None:
+                cid = getattr(obj, "IAccessibleChildID", 0)
+                st = iao.accState(cid)
+                if isinstance(st, int):
+                    return bool(st & (CHECKED | SELECTED))
+        except Exception:
+            pass
+        try:
+            S = controlTypes.State
+            return (S.CHECKED in obj.states) or (S.SELECTED in obj.states)
+        except Exception:
+            return False
+
+    def _radio_group(self, obj):
+        """Find a radio's group container and its sibling radio options. Logs the
+        parent chain so the real tree is visible for the first runs."""
+        RB = controlTypes.Role.RADIOBUTTON
+        chain = []
+        node = obj
+        group = None
+        for _ in range(4):
+            try:
+                parent = node.parent
+            except Exception:
+                parent = None
+            if parent is None:
+                break
+            try:
+                prole = parent.role
+                pname = parent.name or ""
+            except Exception:
+                prole, pname = None, ""
+            chain.append((getattr(prole, "name", "?"), pname))
+            # count radios directly under this parent
+            radios = self._collect_radios(parent)
+            if len(radios) >= 2:
+                group = parent
+                log.info("JFF radio: group at role=%s name=%r with %d options; "
+                         "chain=%r" % (getattr(prole, "name", "?"), pname,
+                                       len(radios), chain))
+                return group, radios
+            node = parent
+        log.info("JFF radio: no multi-radio group found; chain=%r" % chain)
+        return None, [obj]
+
+    def _collect_radios(self, root, depth=0):
+        RB = controlTypes.Role.RADIOBUTTON
+        out = []
+        if depth > 3:
+            return out
+        try:
+            kids = list(root.children or [])
+        except Exception:
+            kids = []
+        for c in kids:
+            try:
+                role = c.role
+            except Exception:
+                role = None
+            if role == RB:
+                out.append(c)
+            else:
+                out.extend(self._collect_radios(c, depth + 1))
+        return out
+
+    def _fill_radio_group(self, obj):
+        """Handle a radio as part of its group: find the question, match it to a
+        saved detail, select the matching option, verify. Returns (key, pick,
+        verdict) with verdict confirmed/mismatch/none/novalue."""
+        group, radios = self._radio_group(obj)
+        labels = []
+        for r in radios:
+            try:
+                labels.append(r.name or "")
+            except Exception:
+                labels.append("")
+        qlabel = ""
+        if group is not None:
+            try:
+                qlabel = group.name or ""
+            except Exception:
+                qlabel = ""
+        fd = _descriptor_from_object(obj)
+        log.info("JFF radio: question=%r options=%r name=%r"
+                 % (qlabel, labels, fd.name))
+        # Match the question label; fall back to the shared html name / id.
+        qfd = matcher.FieldDescriptor(label=qlabel, name=fd.name, id=fd.id,
+                                      role="radiogroup")
+        result = matcher.match_field(qfd)
+        log.info("JFF radio: match key=%r conf=%r src=%r"
+                 % (result.key, result.confidence, result.source))
+        if result.key is None:
+            return None, None, "none"
+        value = self._profile.get(result.key)
+        if not value:
+            return result.key, None, "novalue"
+        pick = controls.choose_option(
+            value, labels,
+            concept=result.key if result.key == "country" else "")
+        log.info("JFF radio: value=%r -> idx=%r label=%r"
+                 % (value, pick.index, pick.label))
+        if pick.index is None:
+            return result.key, pick, "none"
+        target = radios[pick.index]
+        try:
+            target.doAction()
+        except Exception:
+            try:
+                target.setFocus()
+                api.setFocusObject(target)
+                KeyboardInputGesture.fromName("space").send()
+            except Exception:
+                log.error("JFF radio: select failed", exc_info=True)
+        verdict = "unknown"
+        for _ in range(8):
+            if self._live_checked(target):
+                verdict = "confirmed"
+                break
+            time.sleep(0.06)
+        if verdict != "confirmed":
+            verdict = "mismatch"
+        log.info("JFF radio: verdict=%r" % verdict)
+        return result.key, pick, verdict
+
+    def _fill_checkbox(self, obj, fd, value):
+        """Toggle a checkbox to match a truthy/falsey value. Verifies via live
+        state. Most consent boxes have no saved value and reach here only from
+        the review list (where the user supplies yes/no)."""
+        want = str(value).strip().lower() in (
+            "yes", "true", "1", "on", "checked", "y", "نعم", "si", "oui", "ja")
+        cur = self._live_checked(obj)
+        if cur != want:
+            try:
+                obj.doAction()
+            except Exception:
+                try:
+                    obj.setFocus()
+                    api.setFocusObject(obj)
+                    KeyboardInputGesture.fromName("space").send()
+                except Exception:
+                    log.error("JFF checkbox: toggle failed", exc_info=True)
+        now = False
+        for _ in range(8):
+            now = self._live_checked(obj)
+            if now == want:
+                break
+            time.sleep(0.06)
+        verdict = "confirmed" if now == want else "mismatch"
+        log.info("JFF checkbox: want=%s now=%s verdict=%s" % (want, now, verdict))
+        return verdict

@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Radio and checkbox form</title></head>
+<body>
+<h1>Eligibility</h1>
+<form>
+  <!-- 1. native fieldset radio group -->
+  <fieldset>
+    <legend>Are you authorised to work in Saudi Arabia?</legend>
+    <label><input type="radio" name="wa" value="yes" id="wa_yes"> Yes</label>
+    <label><input type="radio" name="wa" value="no" id="wa_no"> No</label>
+  </fieldset>
+
+  <!-- 2. native checkbox mapping to the same detail -->
+  <p><label><input type="checkbox" id="consent"> I am authorised to work in Saudi Arabia</label></p>
+
+  <!-- 3. ARIA radiogroup (custom widget) with JS so activation sets aria-checked -->
+  <div role="radiogroup" aria-label="Are you legally authorized to work?">
+    <div role="radio" id="ar_yes" tabindex="0" aria-checked="false">Yes</div>
+    <div role="radio" id="ar_no" tabindex="0" aria-checked="false">No</div>
+  </div>
+</form>
+<script>
+  document.querySelectorAll('[role=radio]').forEach(function (r) {
+    r.addEventListener('click', function () {
+      r.parentElement.querySelectorAll('[role=radio]').forEach(function (x) {
+        x.setAttribute('aria-checked', 'false');
+      });
+      r.setAttribute('aria-checked', 'true');
+    });
+  });
+</script>
+</body></html>

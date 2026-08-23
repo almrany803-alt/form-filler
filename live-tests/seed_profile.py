@@ -15,6 +15,7 @@ store.add_profile("default", {
     "given_name": "Mohammed", "family_name": "Al Omrani",
     "email": "test@example.com", "phone": "+44 7700 900000",
     "city": "Bristol", "country": "United Kingdom",
+    "work_authorisation": "Yes", "nationality": "Saudi",
 })
 store.save()
 print("seeded profile via DPAPI")
