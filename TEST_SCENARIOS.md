@@ -24,8 +24,10 @@ its current value or "empty, needs you". Arrow the list, Tab to the actions.
 - [done] Fill from profile: on a field, pick a saved detail (the recognised one
   preselected); on close the value is written into the form field. Proven end to
   end (filled First name from the profile, landed in the page).
-- [todo] Go to (jump to the field in the page), Edit (type a literal value),
-  Clear (empty it): wired and compile, not yet driven from the list in CI.
+- [done] Edit (type a literal value) and Clear (empty it) are driven from the
+  list on real NVDA (`beta-fill.yml`): Edit wrote "Edited Name" into the field,
+  Clear emptied it. Go to is wired; the review-as-editor for choice controls is
+  the next USP step.
 - [todo] A setting to show only the gaps rather than every field (needs the
   settings panel).
 
@@ -176,6 +178,43 @@ lessons are not re-learned.
   the check now writes UTF-8. The data had survived; the harness had not.
 - [done] Untruncated logs: the CI console truncated the add-on's log lines, so the
   full NVDA log is uploaded as an artifact and read from there.
+
+## Feature: choice controls (dropdowns, radios, checkboxes)
+
+Grounded in the real ATS research (SuccessFactors, Taleo, Workday, Greenhouse,
+Lever, Jadarat). The spine: act on the target object's accessibility action,
+verify against the LIVE IA2 value or state (not NVDA's cached copy).
+
+- [done] Native dropdown, exact match: focus a Country select, fill, it lands on
+  United Kingdom; verified against the live value (`select-test.yml`).
+- [done] Native dropdown, locale alias: a French form listing Royaume-Uni is set
+  from the English value "United Kingdom" via the country aliases.
+- [done] Native dropdown, decline: when the saved value is not among the options,
+  the dropdown is left on its default, nothing wrong is picked.
+- [done] Whole-form: a placeholder dropdown is set alongside text; a dropdown
+  already on a real choice is left for review (do-not-clobber).
+- [done] Bug caught by reading a green log: keyboard-arrow selection queued behind
+  the running script and only applied after it returned (would misfire across
+  several dropdowns). Switched to the option object's action. Then the verify read
+  NVDA's cached value and reported a false mismatch; switched to a live IA2 read.
+- [done] Radio group (native fieldset): the question "Are you authorised to work
+  in Saudi Arabia?" is found from the group, matched to work authorisation, Yes is
+  selected and confirmed via the live checked state (`radio-test.yml`).
+- [done] Radio group (custom ARIA widget): the same on a div role=radiogroup with
+  role=radio children; the object action drives the widget's own handler.
+- [done] Checkbox: toggled to the wanted state and confirmed via the live state.
+- [done] Whole-form over text + select + radio + checkbox together: all four set
+  in one fill-all, with an honest summary ("Filled 4 of 4. Nothing left for you").
+- [todo] Custom single-select combobox (button + listbox), multi-select, dates,
+  and the async search-box combobox (location).
+- [todo] The review list as an accessible editor for each of the above.
+
+## Feature: nationality (Nitaqat / Saudi forms)
+
+- [done] Nationality is identified distinctly from country in English, Arabic
+  (الجنسية vs الدولة), and the other languages, and is a profile key
+  (`test_nationality.py`). It is optional: blank means the addon does not fill it.
+- [todo] On a real Saudi form, a nationality dropdown filled from the saved value.
 
 ## Feature: CV import
 

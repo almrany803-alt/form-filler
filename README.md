@@ -7,15 +7,21 @@ and what it left for you. It never submits a form.
 
 ## What it does
 
-- Fill the current field: NVDA+Shift+F.
-- Fill the whole form in one press: NVDA+Shift+A, with a spoken summary
-  ("Filled 4 of 6, two need you: ...").
+- One key, NVDA+J, opens a menu you can arrow through or drive by access key:
+  Fill this field, Fill all fields, Review fields, Profile (switch, create,
+  delete versions), Import from CV, Enter your details.
+- Fills text fields, native dropdowns (locale aware), radio groups, and
+  checkboxes, verifying each against the live accessibility state. Custom
+  comboboxes, multi-select, dates, and async search boxes are in progress.
+- Review fields: an accessible list over the current form where you can set and
+  fix any field, including controls the site built badly.
 - Multilingual field recognition (English, Spanish, French, German, Italian,
-  Portuguese, Polish, Dutch, Arabic), using the language-independent autocomplete
-  token first, then a keyword lexicon you can extend.
-- Declines fields it cannot confidently identify, rather than guessing.
+  Portuguese, Polish, Dutch, Arabic), by label, HTML name, and aria-label, then
+  a keyword lexicon you can extend. An optional nationality field for Saudi forms.
+- Declines fields it cannot confidently identify, rather than guessing, and
+  never submits a form.
 
-Both shortcuts are changeable in NVDA's Input Gestures, under "Job Form Filler".
+The menu key is changeable in NVDA's Input Gestures, under "Job Form Filler".
 
 ## Your data stays yours
 
@@ -45,7 +51,7 @@ python build.py        # produces jobFormFiller-<version>.nvda-addon
 ```
 
 Real-NVDA, real-browser tests (run on Windows or a Windows CI runner) live in
-`live-tests/`; see `live-tests/README.md`.
+`betatest/`, driven on real NVDA and real Chrome in GitHub Windows CI.
 
 ## Licence
 

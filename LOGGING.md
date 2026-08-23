@@ -41,6 +41,16 @@ Every add-on line starts with `JFF`. The useful ones:
 - `JFF form action: filled 'given_name' with 'Mohammed'` — a field that was
   filled, and with what.
 - `JFF form summary: Filled 4 of 6. 2 need you: ...` — the outcome.
+- `JFF nsel: read N option(s): [...]` / `JFF nsel: after='United Kingdom'
+  verdict='confirmed'` — a native dropdown: the options read, and the value read
+  back live after selecting, with the verdict. "mismatch" means it did not take.
+- `JFF radio: question='...' options=['Yes','No']` / `JFF radio: value='Yes' ->
+  idx=0` / `JFF radio: verdict='confirmed'` — a radio group: the question found,
+  the options, the option chosen, and whether the live checked state confirmed it.
+- `JFF checkbox: want=True now=True verdict=confirmed` — a checkbox: the wanted
+  state, the live state after, and the verdict.
+- `JFF options[...]: role=... name=...` — the raw tree read while opening a
+  dropdown or finding a radio group (verbose; useful when a control is missed).
 - `JFF review: collected N fields` / `JFF review: applying N change(s)` — the
   review list read the form / your edits were written back.
 - Any line with `Traceback` — an error, with the full stack. Include these.

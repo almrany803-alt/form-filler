@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.3.2-dev.
+points to. Last updated at version 0.9.6-dev.
 
 Repo: github.com/almrany803-alt/form-filler  (GPL v2, open source)
 
@@ -37,8 +37,14 @@ Working and proven on real hardware (see section 3):
 - Encrypted profile stored on the user's own machine (Windows DPAPI).
 - A "My details" form in the NVDA Tools menu to enter and edit your details.
 - Multilingual field identification (9 languages).
-- Correctly declines fields it cannot identify; leaves dropdowns alone (for now).
+- Fills native dropdowns (locale aware: picks Royaume-Uni for an English value),
+  radio groups (finds the question, picks the answer), and checkboxes; verifies
+  each against the live accessibility state. Custom comboboxes, multi-select,
+  dates, and async search boxes are the remaining controls.
+- Correctly declines fields it cannot identify; declines the controls not yet
+  built rather than guessing.
 - Handles multi-section applications: fill a section, press Next, fill the next.
+- Optional nationality field (Nitaqat on Saudi forms), split cleanly from country.
 
 Working, and proven end to end on real NVDA:
 - Profiles are versions: several named profiles, each a version (English,
@@ -49,10 +55,18 @@ Working, and proven end to end on real NVDA:
   tested in English and Arabic, all three formats, on real NVDA (`cv-import.yml`).
   Text and Word use the standard library; PDF uses bundled PyMuPDF.
 
-Built/tested but not yet wired or verified live:
-- Profile selector, create and delete are built and the store logic is tested,
-  but the create/delete keyboard flow is not yet driven in CI (next check).
-- Dropdown / choice-control filling; the post-CV-attach audit.
+Working and proven end to end on real NVDA (control filling):
+- Native <select> dropdowns: read the options, choose the best match (locale
+  aware via country aliases), select the option object, verify against the live
+  IA2 value. Single-field and whole-form (`select-test.yml`).
+- Radio groups and checkboxes: find the group question, match it to a saved
+  detail, select the option or toggle the box, verify the live checked state.
+  Native and custom ARIA widgets, single-field and whole-form (`radio-test.yml`).
+
+Still to build (grounded in CONTROLS_RESEARCH, section 11):
+- Custom single-select combobox (button + listbox), multi-select, date fields,
+  the async search-box combobox (location), and the post-CV-attach audit.
+- The review list as an accessible editor for every control type (the USP).
 
 ---
 
@@ -133,7 +147,7 @@ GitHub API. On a real Windows runner with NVDA 2026.1.1 and real Chrome:
 - A beta-tester fill test (`beta-fill.yml`) opens the form in Chrome, presses
   the add-on's key, and checks what actually landed. A warm-up run first absorbs
   the NVDA+Chrome cold start (see gotchas). It covers five scenarios, all
-  passing (46 assertions as of this writing):
+  passing (real-NVDA control tests add dropdown, radio, and checkbox coverage):
   - clean form (labelled fields fill),
   - messy form (placeholder-only, aria-label, Arabic RTL label fill; unlabelled,
     label-not-associated, native select, custom combobox, date picker all
@@ -145,7 +159,7 @@ GitHub API. On a real Windows runner with NVDA 2026.1.1 and real Chrome:
     random unbound combos, then prove a normal fill still works and that no
     uncaught error was logged.
 
-The pure-Python brain has 96 checks that run in the sandbox and on Linux CI
+The pure-Python brain has 98 checks that run in the sandbox and on Linux CI
 (`tests.yml`) on every push, including an adversarial "sabotage" suite
 (`test_adversarial.py`) that throws malformed and hostile input at every module
 and asserts nothing crashes.
@@ -199,6 +213,27 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
 
 - **Never guess.** Fields the matcher cannot confidently identify are declined
   and reported ("2 need you: ..."), never filled with a wrong value.
+
+- **The control-filling spine: act on the object, verify the live state.**
+  Selecting a dropdown option, a radio, or a checkbox is done by calling the
+  target object's own accessibility action (doAction), which applies
+  immediately. Keyboard-driven selection is avoided inside the whole-form loop
+  because injected keys queue behind the running script and only take effect
+  after it returns (they broke verification and would misfire across multiple
+  controls). Verification reads the LIVE IA2 value or state via a raw COM call
+  (accValue / accState), never NVDA's cached obj.value or obj.states, which lag
+  the change and caused false mismatches. Both lessons were caught by reading
+  the log while a test was green.
+
+- **Radios are matched by their group, not the single button.** A radio's own
+  label is the option ("Yes"), so the addon finds the group container, reads the
+  question from it, matches that, reads the sibling options, and selects the one
+  that matches the saved value. Radio groups are deduped in the whole-form pass.
+
+- **Dropdowns keep a real prior selection.** A select always has a value, often
+  a placeholder ("Choose..."). The whole-form fill sets a dropdown only when it
+  is still on a placeholder, and leaves a real prior choice for review, the same
+  do-not-clobber rule as pre-filled text.
 
 ---
 
@@ -353,8 +388,8 @@ Still to do:
 3. A settings panel, home for the review-list "show every field vs only the
    gaps" toggle, and the point to revisit whether the Tools-menu item still
    earns its place.
-4. Dropdown / choice-control filling (the classify/choose/verify logic is tested;
-   dropdowns are currently left).
+4. Remaining controls: custom combobox, multi-select, dates, async search box.
+   Native dropdowns, radios, and checkboxes are DONE and proven on real NVDA.
 5. Remembered answers for recurring bespoke questions (notice period, right to
    work), keyed to the question wording; and a "jump to the next field that
    needs you".
@@ -394,7 +429,49 @@ identifies fields via label, HTML name, and aria-label, all of which Chrome does
 expose. ia2['autocomplete'] (ARIA list/inline/both on comboboxes) is still read
 because it helps classify comboboxes.
 
-## TODO after the control build (user request)
-Consolidate CONTROLS_RESEARCH.md into this PROJECT_STATE, and update all docs
-(README.md, TEST_SCENARIOS.md, LOGGING.md) so everything is consistent and the
-grounded design is on record in the project file.
+## 11. Controls: grounded design (from real ATS research)
+
+Consolidated from CONTROLS_RESEARCH.md (which keeps the full detail and sources).
+The control work is built against how real application systems behave, not
+assumptions.
+
+### The systems Saudi applicants actually meet
+Company-run career sites dominate, not only the government portal.
+- SAP SuccessFactors: dominant (Aramco, most large corporates, government-linked).
+- Oracle Taleo: SABIC, banking (Al Rajhi, Saudi National Bank), telecoms.
+- Workday: the modern giga-projects (NEOM and similar).
+- MenaITech: regional ATS common among Saudi SMEs.
+- Jadarat: the government platform, auto-filled from Nafath.
+
+### Real control patterns and how the addon handles each
+- Native select: combobox, then LIST, then LISTITEM options. DONE.
+- Custom single-select combobox: button/input role=combobox, aria-haspopup=listbox,
+  aria-controls to a ul role=listbox with li role=option. The dominant modern
+  pattern (Workday, Greenhouse, SuccessFactors). Open it, act on the option.
+- Async search-box combobox: input role=combobox, aria-autocomplete=list; options
+  load over the network after you type (Greenhouse and Lever location). Type, wait,
+  pick. Review fallback: type a value, we enter it, the user confirms.
+- Radio group: fieldset or role=radiogroup with radio children. DONE.
+- Checkbox: input type=checkbox or role=checkbox. DONE. Many (consent) have no
+  saved value and are review-only.
+- Multi-select: native select multiple, a checkbox group, or a tag combobox.
+- Date: native input type=date (segmented), Workday segmented arrow spinbuttons,
+  Oracle/Taleo screen-reader mode which takes typed text, and custom calendars.
+
+### Saudi and Arabic specifics
+- Nationality and Iqama status are near-universal (Nitaqat). Nationality is
+  usually a required dropdown. Added as an optional profile field.
+- Phone expected in +966 format.
+- Much arrives pre-filled (Jadarat from Nafath, SuccessFactors from CV parse), so
+  the do-not-clobber rule matters most here.
+- Right-to-left Arabic is visual only; the labels the matcher reads are the same.
+  The Arabic lexicon and Arabic country and nationality aliases cover them.
+
+### Decisions
+- Nationality is optional: the user fills it only if they want it used.
+- File upload is out of auto-fill (the user picks the file); the review list may
+  still jump to it.
+- Repeatable work and education sections are out of auto-fill (CV-parsed or
+  user-managed); the review list may still jump to them.
+- Build order: radios and checkboxes (done), then custom combobox, multi-select,
+  dates, and the async search box, with the review-list editor across all of them.
