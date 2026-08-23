@@ -719,29 +719,114 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             ui.message(announce.hand_back(label, kind, value))
             return
 
-        # Real build: read the option labels from obj's children/list, then:
-        options = self._read_options(obj)                     # -> list[str]
-        pick = controls.choose_option(value, options,
-                                      concept=result.key if result.key == "country" else "")
+        labels, opts = self._read_options(obj)
+        if not labels:
+            log.info("JFF select: no options read for %r, handing back" % result.key)
+            ui.message(announce.hand_back(label, kind, value))
+            return
+        pick = controls.choose_option(
+            value, labels,
+            concept=result.key if result.key == "country" else "")
+        log.info("JFF select: value=%r -> pick idx=%r label=%r conf=%r"
+                 % (value, pick.index, pick.label, pick.confidence))
         if pick.index is None:
             ui.message(announce.hand_back(label, kind, value))
             return
 
-        self._select_option(obj, pick)                        # pattern or keyboard
-        after = self._read_current_value(obj)                 # read it back
+        self._select_option(obj, pick, opts)
+        after = self._read_current_value(obj)
         verdict = controls.verify_selection(pick.label, after)
+        log.info("JFF select: after=%r verdict=%r" % (after, verdict))
         ui.message(announce.choice_set(label, pick.label, verdict))
 
-    # --- NVDA plumbing to be fleshed out and tested on hardware --------------
     def _read_options(self, obj):
-        # From native <select>: iterate obj children (role listItem/option).
-        # From an ARIA combobox: open it and read the popped-up listbox.
-        return []
+        """Read option labels + their objects from a choice control. Native
+        <select> options are child list items (sometimes wrapped one list deep).
+        Logs the raw structure so the real tree is visible, not guessed."""
+        labels, opts = [], []
+        seen = [0]
+        LI = controlTypes.Role.LISTITEM
 
-    def _select_option(self, obj, pick):
-        # Prefer the accessibility selection pattern (UIA SelectionItem.Select /
-        # IA2 accSelect). Fall back to: open, typeahead/arrow, commit Enter/Tab.
-        pass
+        def walk(node, depth):
+            if depth > 3 or seen[0] > 500:
+                return
+            try:
+                children = list(node.children or [])
+            except Exception:
+                children = []
+            for c in children:
+                seen[0] += 1
+                try:
+                    role = c.role
+                except Exception:
+                    role = None
+                try:
+                    nm = c.name or ""
+                except Exception:
+                    nm = ""
+                if role == LI:
+                    if nm:
+                        labels.append(nm)
+                        opts.append(c)
+                else:
+                    walk(c, depth + 1)
+
+        walk(obj, 0)
+        if not labels:
+            # Collapsed native selects sometimes expose no options until opened.
+            # Open it (Alt+Down), let the popup render, then read again.
+            try:
+                obj.setFocus()
+                api.setFocusObject(obj)
+                KeyboardInputGesture.fromName("alt+downArrow").send()
+                time.sleep(0.15)
+                seen[0] = 0
+                walk(obj, 0)
+                if not labels:
+                    # Some popups sit under the foreground, not under obj.
+                    fg = api.getForegroundObject()
+                    if fg is not None and fg is not obj:
+                        walk(fg, 0)
+            except Exception:
+                log.error("JFF options: open-then-read failed", exc_info=True)
+        log.info("JFF options: read %d option(s): %r"
+                 % (len(labels), labels[:20]))
+        return labels, opts
+
+    def _select_option(self, obj, pick, opts):
+        """Select the matched option. Prefer acting on the option object; fall
+        back to native-select typeahead (type the label fast so Chrome matches).
+        The caller verifies by reading the value back."""
+        target = None
+        if opts and pick.index is not None and pick.index < len(opts):
+            target = opts[pick.index]
+        if target is not None:
+            try:
+                target.setFocus()
+                api.setFocusObject(target)
+                try:
+                    target.doAction()
+                except Exception:
+                    pass
+                KeyboardInputGesture.fromName("enter").send()
+                log.info("JFF select: chose via option object")
+                return
+            except Exception:
+                log.error("JFF select: option-object path failed", exc_info=True)
+        # Typeahead fallback.
+        try:
+            obj.setFocus()
+            api.setFocusObject(obj)
+            for ch in pick.label:
+                key = "space" if ch == " " else ch.lower()
+                try:
+                    KeyboardInputGesture.fromName(key).send()
+                except Exception:
+                    pass
+            KeyboardInputGesture.fromName("enter").send()
+            log.info("JFF select: chose via typeahead")
+        except Exception:
+            log.error("JFF select: typeahead failed", exc_info=True)
 
     def _read_current_value(self, obj):
         # Re-read the control's exposed value to verify the selection stuck.
