@@ -91,3 +91,33 @@ accessibility features, Greenhouse Job Board API schema and support docs, Lever
 application form docs, Jadarat (HRDF) apply pages, Saudi CV and ATS guides
 (SuccessFactors and Taleo dominance, Nitaqat, Iqama, +966), WAI-ARIA combobox
 and date-picker patterns.
+
+## Dates: formats and inaccessible pickers (researched + handled)
+
+Grounded in real screen-reader reports (Telerik, react-datepicker NVDA issue
+12644, Angular Material, IBM Maximo, DigitalA11y's native input type=date walk).
+
+Findings:
+- Native input type=date is the good case but it is NOT one text box: it is
+  separate day, month, and year spin buttons plus a calendar button. Typing a
+  full slashed string misfires (the slashes jump you to the wrong segment).
+- The fiddly/inaccessible ones are custom calendar widgets: react-datepicker
+  (NVDA reads one character at a time and skips days), Angular Material (the
+  highlighted day does not move), jQuery UI, Telerik/Kendo, IBM Maximo (arrow
+  keys do not move focus at all). NVDA users get trapped in the calendar grid.
+- Format differs by locale: UK DD/MM/YYYY, US MM/DD/YYYY, ISO YYYY-MM-DD.
+
+How the addon handles dates (stored as ISO YYYY-MM-DD):
+- Text date field: format to the field's own placeholder hint (DD/MM/YYYY etc.),
+  else the order implied by the saved country (US month-first, else day-first).
+  Proven on real NVDA for UK and US formats.
+- Native input type=date: type each segment in the order the segments appear
+  (which is the browser's display order), identifying each segment as day, month,
+  or year from its own name and placeholder, so it is locale-independent. Never
+  types a slashed string, never opens the calendar. Verified by reading the
+  segment values back. Proven on real NVDA.
+- Custom calendar widget (react-datepicker and friends): NEVER navigate the grid.
+  Prefer the underlying text input (type the formatted date straight in); if the
+  widget is calendar-only with no text input, hand back honestly ("this is a
+  calendar date picker, over to you") and let the review editor offer a plain
+  box. Do not pretend.

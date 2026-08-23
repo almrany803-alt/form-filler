@@ -455,8 +455,10 @@ Company-run career sites dominate, not only the government portal.
 - Checkbox: input type=checkbox or role=checkbox. DONE. Many (consent) have no
   saved value and are review-only.
 - Multi-select: native select multiple, a checkbox group, or a tag combobox.
-- Date: native input type=date (segmented), Workday segmented arrow spinbuttons,
-  Oracle/Taleo screen-reader mode which takes typed text, and custom calendars.
+- Date: DONE for native input type=date (fill each segment in display order,
+  locale-independent) and text date fields (format from the placeholder hint or
+  the country-implied UK/US order). Custom calendar widgets: prefer the text
+  input, never navigate the grid, hand back honestly if calendar-only.
 
 ### Saudi and Arabic specifics
 - Nationality and Iqama status are near-universal (Nitaqat). Nationality is
