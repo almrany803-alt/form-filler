@@ -666,9 +666,40 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                  % (len(items), len(objs)))
         filled, guessed, leftovers, prefilled = [], [], [], []
         processed_radio = set()
+        processed_multi = set()
 
         for obj in objs:
             fd = _descriptor_from_object(obj)
+
+            # Multi-select: browse mode enumerates the option listitems, not the
+            # listbox, so handle the parent listbox once from any of its options.
+            try:
+                parent = obj.parent if obj.role == controlTypes.Role.LISTITEM \
+                    else None
+                parent_multi = (parent is not None and
+                                controlTypes.State.MULTISELECTABLE in parent.states)
+            except Exception:
+                parent, parent_multi = None, False
+            if parent_multi:
+                lfd = _descriptor_from_object(parent)
+                lid = lfd.label or lfd.id or str(id(parent))
+                if lid in processed_multi:
+                    continue
+                processed_multi.add(lid)
+                lresult = matcher.match_field(lfd)
+                lvalue = self._profile.get(lresult.key) if lresult.key else None
+                if lresult.key and lvalue:
+                    verdict, selected = self._fill_multiselect(parent, [lvalue])
+                    if verdict == "confirmed":
+                        filled.append(lresult.key)
+                        log.info("JFF form field: multi-select %r set to %r"
+                                 % (lresult.key, selected))
+                    else:
+                        leftovers.append(lfd.label
+                                         or announce.human(lresult.key))
+                else:
+                    leftovers.append(lfd.label or _("a multi-select"))
+                continue
 
             # Radios first: the object's own label is the option, not the
             # question, so the standard match would bail. Handle the group once.
