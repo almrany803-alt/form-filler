@@ -1286,11 +1286,36 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 opts.extend(sub_o)
         return labels, opts
 
+    def _options_via_controls(self, obj):
+        """Read a combobox's options straight from the listbox it points at with
+        aria-controls, using NVDA's controllerFor relation. This finds a listbox
+        rendered far from the combobox (a portal at the end of the body), which
+        walking the parent tree would miss. Returns (labels, opts) or ([], [])."""
+        try:
+            targets = obj.controllerFor or []
+        except Exception:
+            targets = []
+        for target in targets:
+            try:
+                labels, opts = self._read_option_children(target, "aria-controls")
+                if labels:
+                    log.info("JFF nsel: read %d option(s) via aria-controls"
+                             % len(labels))
+                    return labels, opts
+            except Exception:
+                continue
+        return [], []
+
     def _read_select_options(self, obj):
         """Read a native dropdown's option labels by briefly opening it, because
         a closed <select> exposes no options to NVDA's cached tree. Closes the
         popup afterwards with Escape, leaving the selection unchanged. Returns a
         list of labels, or [] if it could not read them."""
+        # Fast path: read the controlled listbox via aria-controls, without
+        # opening. This also reaches a portal listbox the parent-walk misses.
+        labels, _opts = self._options_via_controls(obj)
+        if labels:
+            return labels
         try:
             obj.setFocus()
             api.setFocusObject(obj)
@@ -1316,6 +1341,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             labels, _opts = self._read_option_children(root, "review-open")
             if labels:
                 break
+        if not labels:
+            labels, _opts = self._options_via_controls(obj)   # portal, now open
         try:
             KeyboardInputGesture.fromName("escape").send()
             time.sleep(0.1)
@@ -1373,6 +1400,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             labels, opts = self._read_option_children(root, tag)
             if labels:
                 break
+        if not labels:
+            # Parent-walk found nothing: the listbox may be a portal, far from
+            # the combobox. Follow aria-controls straight to it.
+            labels, opts = self._options_via_controls(obj)
         log.info("JFF nsel: read %d option(s): %r" % (len(labels), labels[:20]))
 
         if not labels:

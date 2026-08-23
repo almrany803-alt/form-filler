@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!-- combobox_portal_form.html - a custom combobox whose listbox is rendered in a
+     PORTAL: a direct child of <body> at the very end, far from the combobox in
+     the DOM (the React pattern). The combobox links to it only by aria-controls.
+     Walking the parent tree from the combobox may not reach it; following
+     aria-controls goes straight there. Same behaviour and data-value as the
+     non-portal fixture, so the same fill test works. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Portal combobox</title></head>
+<body>
+  <h1>Application</h1>
+  <div><div><div>
+    <p id="country-label">Country</p>
+    <div id="country" role="combobox" tabindex="0" aria-haspopup="listbox"
+         aria-expanded="false" aria-controls="country-list"
+         aria-labelledby="country-label" data-value="">Select a country</div>
+  </div></div></div>
+
+  <div id="unrelated-1">Some other content</div>
+  <div id="unrelated-2">More content, to sit between the combobox and its list</div>
+
+  <!-- the listbox: a portal at the end of the body, not near the combobox -->
+  <ul id="country-list" role="listbox" aria-labelledby="country-label" hidden>
+    <li role="option" id="opt-fr" data-value="FR">France</li>
+    <li role="option" id="opt-gb" data-value="GB">United Kingdom</li>
+    <li role="option" id="opt-de" data-value="DE">Germany</li>
+  </ul>
+
+  <script>
+    const combo = document.getElementById("country");
+    const list = document.getElementById("country-list");
+    const options = Array.from(list.querySelectorAll('[role="option"]'));
+    let active = -1;
+    function open() { list.hidden = false; combo.setAttribute("aria-expanded", "true"); if (active < 0) active = 0; setActive(active); }
+    function close() { list.hidden = true; combo.setAttribute("aria-expanded", "false"); combo.removeAttribute("aria-activedescendant"); }
+    function setActive(i) { active = i; options.forEach((o, j) => o.setAttribute("aria-selected", j === i ? "true" : "false")); combo.setAttribute("aria-activedescendant", options[i].id); }
+    function choose(i) { const o = options[i]; combo.setAttribute("data-value", o.getAttribute("data-value")); combo.textContent = o.textContent; close(); }
+    combo.addEventListener("keydown", (e) => {
+      const open_now = combo.getAttribute("aria-expanded") === "true";
+      if (!open_now && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " " || (e.altKey && e.key === "ArrowDown"))) { e.preventDefault(); open(); return; }
+      if (open_now) {
+        if (e.key === "ArrowDown") { e.preventDefault(); setActive(Math.min(active + 1, options.length - 1)); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); setActive(Math.max(active - 1, 0)); }
+        else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(active); }
+        else if (e.key === "Escape") { e.preventDefault(); close(); }
+      }
+    });
+    combo.addEventListener("click", () => { if (combo.getAttribute("aria-expanded") === "true") close(); else open(); });
+    options.forEach((o, i) => o.addEventListener("click", (e) => { e.stopPropagation(); choose(i); }));
+  </script>
+</body>
+</html>
