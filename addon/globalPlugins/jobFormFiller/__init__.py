@@ -171,45 +171,156 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if saved is not None:
             self._profile = self._store.get_active() or {}
 
-    # --- command layer: press NVDA+J, then a single letter -------------------
-    # One entry key instead of many globals. Global plugins are resolved before
-    # browse mode, so these letters win over single-letter quick-nav on a page.
-    _LAYER = {
-        "f": "script_fillField",
-        "a": "script_fillForm",
-        "d": "script_editDetails",
-    }
-
+    # --- add-on menu: press NVDA+J for a navigable menu ----------------------
+    # A real native popup menu: arrow to an item and press Enter, or press its
+    # access key. NVDA announces each item, so it is discoverable rather than a
+    # memorised letter. Fill actions run AFTER the menu closes, so focus is back
+    # on the form field they act on.
     @script(
-        description=_("Job Form Filler commands (then press F, A or D)"),
+        description=_("Open the Job Form Filler menu"),
         gesture="kb:NVDA+j",
     )
-    def script_commandLayer(self, gesture):
-        self._layerActive = True
-        self._layerGen += 1
-        gen = self._layerGen
-        ui.message(_("Job Form Filler. F fill field, A fill form, D details."))
-        wx.CallLater(4000, self._cancelLayer, gen)
+    def script_menu(self, gesture):
+        wx.CallAfter(self._popupMenu)
 
-    def _cancelLayer(self, gen):
-        # Only the latest layer's own timer may close it; older timers are stale.
-        if gen == self._layerGen:
-            self._layerActive = False
+    def _popupMenu(self):
+        self._menuAction = None
+        menu = wx.Menu()
+        mField = menu.Append(wx.ID_ANY, _("Fill this &field"))
+        mForm = menu.Append(wx.ID_ANY, _("Fill &all fields"))
+        menu.AppendSeparator()
 
-    def getScript(self, gesture):
-        # While the layer is open the next key is the command, and it is a
-        # one-shot: whatever is pressed, the layer closes. An unmapped key just
-        # falls through to its normal behaviour.
-        if self._layerActive:
-            self._layerActive = False
-            self._layerGen += 1          # invalidate this layer's pending timer
-            key = getattr(gesture, "mainKeyName", None)
-            mods = getattr(gesture, "modifierNames", None) or []
-            if key and not mods:
-                name = self._LAYER.get(key.lower())
-                if name:
-                    return getattr(self, name)
-        return super().getScript(gesture)
+        # Profile submenu, labelled with the active version (or "none").
+        names = self._store.profile_names() if self._store else []
+        active = self._store.active_name() if self._store else None
+        profMenu = wx.Menu()
+        radioIds = {}
+        for n in names:
+            it = profMenu.AppendRadioItem(wx.ID_ANY, n)
+            if n == active:
+                it.Check(True)
+            radioIds[it.GetId()] = n
+        if names:
+            profMenu.AppendSeparator()
+        mNew = profMenu.Append(wx.ID_ANY, _("&New profile..."))
+        mDel = profMenu.Append(wx.ID_ANY, _("&Delete profile"))
+        menu.AppendSubMenu(
+            profMenu, _("&Profile: {name}").format(name=active or _("none")))
+        menu.AppendSeparator()
+
+        mImport = menu.Append(wx.ID_ANY, _("&Import from CV..."))
+        mEnter = menu.Append(wx.ID_ANY, _("&Enter your details..."))
+
+        frame = gui.mainFrame
+        frame.prePopup()
+        frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("field"), mField)
+        frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("form"), mForm)
+        frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("new"), mNew)
+        frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("del"), mDel)
+        frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("import"), mImport)
+        frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("enter"), mEnter)
+        for iid, n in radioIds.items():
+            frame.Bind(
+                wx.EVT_MENU,
+                (lambda name: lambda e: self._setMenuAction("switch", name))(n),
+                id=iid)
+        frame.PopupMenu(menu)
+        frame.postPopup()
+        menu.Destroy()
+
+        act = self._menuAction
+        if not act:
+            return
+        kind = act[0]
+        after = {
+            "field": lambda: self.script_fillField(None),
+            "form": lambda: self.script_fillForm(None),
+            "enter": lambda: self._onDetails(None),
+            "import": self._onImportCV,
+            "new": self._onNewProfile,
+            "del": self._onDeleteProfile,
+            "switch": lambda: self._onSwitchProfile(act[1]),
+        }.get(kind)
+        if after:
+            wx.CallAfter(after)
+
+    def _setMenuAction(self, *action):
+        self._menuAction = action
+
+    def _onSwitchProfile(self, name):
+        if self._store is None:
+            return
+        self._store.set_active(name)
+        try:
+            self._store.save()
+        except Exception:
+            log.error("JFF: could not save active profile", exc_info=True)
+        self._profile = self._store.get_active() or {}
+        ui.message(_("Switched to {name}.").format(name=name))
+
+    def _onNewProfile(self):
+        if self._store is None:
+            return
+        with wx.TextEntryDialog(
+                gui.mainFrame,
+                _("Name for the new version (for example English, Saudi):"),
+                _("New profile")) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            name = dlg.GetValue().strip()
+        if not name:
+            return
+        self._store.add_profile(name, {})
+        self._store.set_active(name)
+        try:
+            self._store.save()
+        except Exception:
+            log.error("JFF: could not save new profile", exc_info=True)
+        self._profile = self._store.get_active() or {}
+        ui.message(_("New profile {name}.").format(name=name))
+        self._onDetails(None)
+
+    def _onDeleteProfile(self):
+        if self._store is None or not self._store.active_name():
+            ui.message(_("No profile to delete."))
+            return
+        name = self._store.active_name()
+        with wx.MessageDialog(
+                gui.mainFrame,
+                _("Delete the profile {name}? This cannot be undone.").format(
+                    name=name),
+                _("Delete profile"), wx.YES_NO | wx.ICON_WARNING) as dlg:
+            if dlg.ShowModal() != wx.ID_YES:
+                return
+        self._store.delete_profile(name)
+        try:
+            self._store.save()
+        except Exception:
+            log.error("JFF: could not save after delete", exc_info=True)
+        self._profile = self._store.get_active() or {}
+        ui.message(_("Deleted {name}.").format(name=name))
+
+    def _onImportCV(self):
+        # Pick a file, parse it, then open the details dialog with the imported
+        # values shown for review before saving.
+        with wx.FileDialog(
+                gui.mainFrame, _("Choose your CV"),
+                wildcard=_("CV files (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt"),
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fd:
+            if fd.ShowModal() != wx.ID_OK:
+                return
+            path = fd.GetPath()
+        try:
+            from .core import cvparse
+            fields = cvparse.cv_to_fields(
+                cvparse.parse_cv_text(cvparse.extract_text(path)))
+        except Exception:
+            log.error("JFF: CV import failed", exc_info=True)
+            ui.message(_("Could not read that CV. Check the file and try again."))
+            return
+        if self._store is not None:
+            dialogs.edit_details(self._store, prefill=fields)
+            self._profile = self._store.get_active() or {}
 
     @script(
         description=_("Edit your saved details"),
@@ -232,6 +343,23 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         obj = api.getFocusObject()
         if obj is None:
             ui.message(_("No field is focused."))
+            return
+        if not self._profile:
+            ui.message(_("No details saved yet. Import a CV or enter your "
+                         "details first."))
+            return
+        try:
+            import controlTypes
+            editable = (controlTypes.State.EDITABLE in obj.states
+                        or obj.role in (controlTypes.Role.EDITABLETEXT,
+                                        controlTypes.Role.COMBOBOX,
+                                        controlTypes.Role.CHECKBOX,
+                                        controlTypes.Role.RADIOBUTTON))
+        except Exception:
+            editable = True  # if unsure, do not block
+        if not editable:
+            ui.message(_("This isn't a form field. Put your cursor in a field "
+                         "and try again."))
             return
 
         fd = _descriptor_from_object(obj)
@@ -266,6 +394,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     )
     def script_fillForm(self, gesture):
         focus = api.getFocusObject()
+        if not self._profile:
+            ui.message(_("No details saved yet. Import a CV or enter your "
+                         "details first."))
+            return
         ti = getattr(focus, "treeInterceptor", None)
         if ti is None or not isinstance(ti, browseMode.BrowseModeDocumentTreeInterceptor):
             log.info("JFF form: not a browse-mode document; use single-field fill")

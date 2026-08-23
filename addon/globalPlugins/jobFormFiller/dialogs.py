@@ -39,7 +39,7 @@ FIELDS = [
 
 
 class DetailsDialog(wx.Dialog):
-    def __init__(self, parent, store):
+    def __init__(self, parent, store, prefill=None):
         super().__init__(parent, title=_("Job Form Filler: My details"))
         self._store = store
         self._ctrls = {}
@@ -66,6 +66,10 @@ class DetailsDialog(wx.Dialog):
         for key, label in FIELDS:
             self._ctrls[key] = helper.addLabeledControl(label + ":", wx.TextCtrl)
         self._loadFields(self._current)
+        if prefill:
+            for k, v in prefill.items():
+                if k in self._ctrls and v:
+                    self._ctrls[k].SetValue(v)
 
         importBtn = wx.Button(self, label=_("&Import from CV..."))
         importBtn.Bind(wx.EVT_BUTTON, self._onImport)
@@ -201,7 +205,7 @@ def edit_details(store, prefill=None):
     gui.mainFrame.prePopup()
     saved = None
     try:
-        dlg = DetailsDialog(gui.mainFrame, store)
+        dlg = DetailsDialog(gui.mainFrame, store, prefill=prefill)
         if dlg.ShowModal() == wx.ID_OK:
             dlg.commit()
             try:
