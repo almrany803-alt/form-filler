@@ -828,8 +828,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def _fill_choice(self, obj, fd, kind, result, value):
         label = fd.label or announce.human(result.key)
 
-        # Controls we deliberately do not automate: hand back clearly.
-        if kind in (controls.MULTISELECT, controls.DATEPICKER, controls.ASYNC_COMBOBOX):
+        if kind == controls.MULTISELECT:
+            verdict, selected = self._fill_multiselect(obj, [value])
+            if verdict == "confirmed":
+                ui.message(_("{f} set to {v}.").format(
+                    f=label, v=", ".join(selected)))
+            else:
+                ui.message(announce.hand_back(label, kind, value))
+            return
+
+        # Controls we deliberately do not automate yet: hand back clearly.
+        if kind in (controls.DATEPICKER, controls.ASYNC_COMBOBOX):
             ui.message(announce.hand_back(label, kind, value))
             return
 
@@ -1163,3 +1172,50 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         verdict = "confirmed" if now == want else "mismatch"
         log.info("JFF checkbox: want=%s now=%s verdict=%s" % (want, now, verdict))
         return verdict
+
+    def _fill_multiselect(self, obj, values):
+        """Select the option(s) matching the given value(s) in a multi-select,
+        without disturbing options already chosen (a multi-select adds to the
+        selection). Verifies each via the live selected state. Returns
+        (verdict, [selected labels])."""
+        # If focus landed on an option rather than the listbox itself, step up to
+        # the container so its options can be read.
+        root = obj
+        try:
+            if obj.role == controlTypes.Role.LISTITEM and obj.parent is not None:
+                root = obj.parent
+        except Exception:
+            pass
+        labels, opts = self._read_option_children(root, "multi")
+        if not labels:
+            log.info("JFF multi: no options read")
+            return "unknown", []
+        log.info("JFF multi: %d option(s): %r" % (len(labels), labels[:20]))
+        selected = []
+        for value in values:
+            pick = controls.choose_option(value, labels)
+            if pick.index is None or pick.index >= len(opts):
+                log.info("JFF multi: value=%r no match" % (value,))
+                continue
+            target = opts[pick.index]
+            if not self._live_checked(target):
+                try:
+                    target.doAction()
+                except Exception:
+                    try:
+                        target.setFocus()
+                        api.setFocusObject(target)
+                        KeyboardInputGesture.fromName("space").send()
+                    except Exception:
+                        log.error("JFF multi: select failed", exc_info=True)
+            ok = False
+            for _ in range(8):
+                if self._live_checked(target):
+                    ok = True
+                    break
+                time.sleep(0.06)
+            if ok:
+                selected.append(pick.label)
+            log.info("JFF multi: value=%r -> idx=%r label=%r selected=%s"
+                     % (value, pick.index, pick.label, ok))
+        return ("confirmed" if selected else "none"), selected
