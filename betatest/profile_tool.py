@@ -86,3 +86,14 @@ elif cmd == "check_deleted":
           and store.get_profile("English").get("given_name") == "John")
     print("PASS check_deleted" if ok else "FAIL check_deleted")
     sys.exit(0 if ok else 1)
+
+elif cmd == "check_import_menu":
+    store.load()
+    names = set(store.profile_names())
+    p = store.get_active() or {}
+    print("names:", names, "active:", store.active_name(), "profile:", p)
+    ok = (p.get("given_name") == "Jane" and p.get("family_name") == "Doe"
+          and p.get("email") == "jane.doe@example.co.uk"
+          and store.active_name() is not None)
+    print("PASS check_import_menu" if ok else "FAIL check_import_menu")
+    sys.exit(0 if ok else 1)

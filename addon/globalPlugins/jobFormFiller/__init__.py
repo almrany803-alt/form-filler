@@ -278,6 +278,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def _setMenuAction(self, *action):
         self._menuAction = action
 
+    def _critical(self, message, caption=None):
+        # Critical messages must not be spoken-and-cancelled by the page's focus
+        # announcement (that is the "message did not sound in time" bug). A modal
+        # box cannot be cut off and forces acknowledgement.
+        try:
+            gui.messageBox(message, caption or _("Job Form Filler"),
+                           wx.OK | wx.ICON_INFORMATION)
+        except Exception:
+            log.error("JFF: could not show message box", exc_info=True)
+            ui.message(message)
+
     def _onSwitchProfile(self, name):
         if self._store is None:
             return
@@ -332,8 +343,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         ui.message(_("Deleted {name}.").format(name=name))
 
     def _onImportCV(self):
-        # Pick a file, parse it, then open the details dialog with the imported
-        # values shown for review before saving.
+        if self._store is None:
+            return
+        # 1. Pick the CV.
         with wx.FileDialog(
                 gui.mainFrame, _("Choose your CV"),
                 wildcard=_("CV files (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt"),
@@ -341,6 +353,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if fd.ShowModal() != wx.ID_OK:
                 return
             path = fd.GetPath()
+        # 2. Parse it.
         try:
             from .core import cvparse
             fields = cvparse.cv_to_fields(
@@ -350,11 +363,40 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                         ", ".join(sorted(fields))))
         except Exception:
             log.error("JFF: CV import failed", exc_info=True)
-            ui.message(_("Could not read that CV. Check the file and try again."))
+            self._critical(_("Could not read that CV. Check the file and try "
+                             "again. Word and text files work best."))
             return
-        if self._store is not None:
-            dialogs.edit_details(self._store, prefill=fields)
-            self._profile = self._store.get_active() or {}
+        if not fields:
+            self._critical(_("No details could be read from that CV. Try "
+                             "entering your details by hand instead."))
+            return
+        # 3. Name the profile (like New profile), defaulting to the CV's name.
+        default_name = ((fields.get("given_name", "") + " "
+                         + fields.get("family_name", "")).strip()
+                        or _("Imported"))
+        with wx.TextEntryDialog(
+                gui.mainFrame,
+                _("Name for this profile (a version, for example English or "
+                  "Saudi):"), _("Import from CV"), value=default_name) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            name = dlg.GetValue().strip() or default_name
+        # 4. Create the profile WITH the parsed fields and save it now, so the
+        #    import persists even if the review is cancelled.
+        self._store.add_profile(name, dict(fields))
+        self._store.set_active(name)
+        try:
+            self._store.save()
+        except Exception:
+            log.error("JFF import: save failed", exc_info=True)
+            self._critical(_("Could not save the imported profile."))
+            return
+        self._profile = self._store.get_active() or {}
+        log.info("JFF import: created profile %r with %d field(s)"
+                 % (name, len(fields)))
+        # 5. Open the dialog to review and adjust; it is already saved.
+        dialogs.edit_details(self._store)
+        self._profile = self._store.get_active() or {}
 
     # --- review list ---------------------------------------------------------
     def _form_field_objs(self, focus):
@@ -462,8 +504,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             ui.message(_("No field is focused."))
             return
         if not self._profile:
-            ui.message(_("No details saved yet. Import a CV or enter your "
-                         "details first."))
+            self._critical(_("No details saved yet. Import a CV or enter your "
+                             "details first."))
             return
         try:
             import controlTypes
@@ -512,8 +554,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def script_fillForm(self, gesture, focus=None):
         focus = focus or api.getFocusObject()
         if not self._profile:
-            ui.message(_("No details saved yet. Import a CV or enter your "
-                         "details first."))
+            self._critical(_("No details saved yet. Import a CV or enter your "
+                             "details first."))
             return
         ti = getattr(focus, "treeInterceptor", None)
         if ti is None or not isinstance(ti, browseMode.BrowseModeDocumentTreeInterceptor):

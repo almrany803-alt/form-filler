@@ -216,7 +216,8 @@ def edit_details(store, prefill=None):
                 log.info("JFF: details saved for profile %r" % store.active_name())
             except Exception:
                 log.error("JFF: could not save details", exc_info=True)
-                ui.message(_("Could not save your details."))
+                gui.messageBox(_("Could not save your details."),
+                               _("Job Form Filler"), wx.OK | wx.ICON_ERROR)
         dlg.Destroy()
     finally:
         gui.mainFrame.postPopup()
