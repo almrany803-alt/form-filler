@@ -1540,6 +1540,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                  "formatted=%r" % (role, fd.input_type, fd.placeholder, before,
                                    value, formatted))
         try:
+            obj.setFocus()
+            api.setFocusObject(obj)
+            time.sleep(0.05)
+        except Exception:
+            pass
+        try:
             _paste_into_focused(obj, formatted)
         except Exception:
             log.error("JFF date: paste failed", exc_info=True)
