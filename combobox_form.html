@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!-- combobox_form.html - a real custom single-select combobox built to the APG
+     select-only pattern: a role=combobox trigger with aria-controls pointing at
+     a role=listbox popup of role=option items. The popup is hidden until opened.
+     Opens on Down, Alt+Down, Enter, Space, or click; options select on click or
+     Enter; Escape closes. On selection it sets data-value and the visible text,
+     so the test can read the chosen value. This is the control the addon must
+     open, read, and choose from (or hand back on). -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Custom combobox</title></head>
+<body>
+  <h1>Application</h1>
+  <p id="country-label">Country</p>
+  <div id="country" role="combobox" tabindex="0" aria-haspopup="listbox"
+       aria-expanded="false" aria-controls="country-list"
+       aria-labelledby="country-label" data-value="">Select a country</div>
+  <ul id="country-list" role="listbox" aria-labelledby="country-label" hidden>
+    <li role="option" id="opt-fr" data-value="FR">France</li>
+    <li role="option" id="opt-gb" data-value="GB">United Kingdom</li>
+    <li role="option" id="opt-de" data-value="DE">Germany</li>
+  </ul>
+
+  <script>
+    const combo = document.getElementById("country");
+    const list = document.getElementById("country-list");
+    const options = Array.from(list.querySelectorAll('[role="option"]'));
+    let active = -1;
+
+    function open() {
+      list.hidden = false;
+      combo.setAttribute("aria-expanded", "true");
+      if (active < 0) active = 0;
+      setActive(active);
+    }
+    function close() {
+      list.hidden = true;
+      combo.setAttribute("aria-expanded", "false");
+      combo.removeAttribute("aria-activedescendant");
+    }
+    function setActive(i) {
+      active = i;
+      options.forEach((o, j) => o.setAttribute("aria-selected", j === i ? "true" : "false"));
+      combo.setAttribute("aria-activedescendant", options[i].id);
+    }
+    function choose(i) {
+      const o = options[i];
+      combo.setAttribute("data-value", o.getAttribute("data-value"));
+      combo.textContent = o.textContent;
+      close();
+    }
+
+    combo.addEventListener("keydown", (e) => {
+      const open_now = combo.getAttribute("aria-expanded") === "true";
+      if (!open_now && (e.key === "ArrowDown" || e.key === "ArrowUp" ||
+          e.key === "Enter" || e.key === " " ||
+          (e.altKey && e.key === "ArrowDown"))) {
+        e.preventDefault(); open(); return;
+      }
+      if (open_now) {
+        if (e.key === "ArrowDown") { e.preventDefault(); setActive(Math.min(active + 1, options.length - 1)); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); setActive(Math.max(active - 1, 0)); }
+        else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(active); }
+        else if (e.key === "Escape") { e.preventDefault(); close(); }
+      }
+    });
+    combo.addEventListener("click", () => {
+      if (combo.getAttribute("aria-expanded") === "true") close(); else open();
+    });
+    options.forEach((o, i) => o.addEventListener("click", (e) => { e.stopPropagation(); choose(i); }));
+  </script>
+</body>
+</html>
