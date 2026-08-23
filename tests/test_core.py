@@ -166,7 +166,8 @@ class TestAnnounce(unittest.TestCase):
     def test_hand_back_async(self):
         self.assertEqual(
             announce.hand_back("Country", "async_combobox", "United Kingdom"),
-            "Country is a search box. I typed United Kingdom. Please pick from the list.")
+            "Country is a search box. I typed United Kingdom. "
+            "Use the up and down arrows to pick from the list, then Enter.")
 
 
 if __name__ == "__main__":

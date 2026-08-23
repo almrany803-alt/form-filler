@@ -506,24 +506,212 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 objs.append(o)
         return objs
 
+    def _selected_radio_label(self, group):
+        """The label of the radio currently checked in a group, or ''. Reuses
+        the same live-checked read the fill path verifies with."""
+        if group is None:
+            return ""
+        for r in self._collect_radios(group):
+            try:
+                if self._live_checked(r):
+                    return r.name or ""
+            except Exception:
+                continue
+        return ""
+
+    def _review_record(self, obj, fd, key, kind, options, group):
+        """Build one review row. For a radio group the value is the option now
+        selected and the name is the group's question, not the single option."""
+        try:
+            value = obj.value or ""
+        except Exception:
+            value = ""
+        if group is not None:
+            sel = self._selected_radio_label(group)
+            if sel:
+                value = sel
+        name = (announce.human(key) if key
+                else (fd.label or _("an unlabelled field")))
+        if group is not None:
+            try:
+                gname = group.name or ""
+            except Exception:
+                gname = ""
+            if gname:
+                name = gname
+        return {"obj": obj, "fd": fd, "key": key, "name": name,
+                "value": value, "kind": kind, "options": options,
+                "group": group}
+
     def _collect_review(self, focus):
+        """Enumerate the form's fields and attach, to each, the accessible
+        editor kind and its options, so the dialog stays pure UI. Mirrors the
+        whole-form fill loop's order and dedup keys exactly, so the review list
+        never drifts from how a field actually fills: date first, then a
+        multi-select collapsed from its option listitems, then a radio group
+        collapsed to its question, then the single-choice and text controls."""
         objs = self._form_field_objs(focus)
         if objs is None:
             return None
         records = []
+        processed_radio = set()
+        processed_multi = set()
         for obj in objs:
             fd = _descriptor_from_object(obj)
             result = matcher.match_field(fd)
+            key = result.key
+            cc = controls.classify_control(controls.ControlDescriptor(
+                role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
+
+            # Date: one row, three dropdowns in the editor.
+            if (key == "date_of_birth" or fd.input_type == "date"
+                    or cc == controls.DATEPICKER):
+                records.append(self._review_record(
+                    obj, fd, key, controls.EDITOR_DATE, [], None))
+                continue
+
+            # Multi-select: browse mode enumerates the option listitems, not the
+            # listbox, so collapse to the parent, keyed as the fill loop keys it.
             try:
-                value = obj.value or ""
+                parent = obj.parent if obj.role == controlTypes.Role.LISTITEM \
+                    else None
+                parent_multi = (parent is not None and
+                                controlTypes.State.MULTISELECTABLE in parent.states)
             except Exception:
-                value = ""
-            name = (announce.human(result.key) if result.key
-                    else (fd.label or _("an unlabelled field")))
-            records.append({"obj": obj, "fd": fd, "key": result.key,
-                            "name": name, "value": value})
-        log.info("JFF review: collected %d fields" % len(records))
+                parent, parent_multi = None, False
+            if parent_multi:
+                lfd = _descriptor_from_object(parent)
+                lid = lfd.label or lfd.id or str(id(parent))
+                if lid in processed_multi:
+                    continue
+                processed_multi.add(lid)
+                labels, _opts = self._read_option_children(parent, "review-multi")
+                lresult = matcher.match_field(lfd)
+                records.append(self._review_record(
+                    parent, lfd, lresult.key, controls.EDITOR_MULTI, labels, None))
+                continue
+
+            # Native multi-select where the listbox itself is the form field
+            # (not its option listitems): read its options directly.
+            if cc == controls.MULTISELECT:
+                mid = fd.label or fd.id or str(id(obj))
+                if mid in processed_multi:
+                    continue
+                processed_multi.add(mid)
+                labels, _opts = self._read_option_children(obj, "review-multi")
+                records.append(self._review_record(
+                    obj, fd, key, controls.EDITOR_MULTI, labels, None))
+                continue
+
+            # Radios: collapse the group to one row, same key as the fill loop.
+            if cc == controls.RADIO:
+                group, radios = self._radio_group(obj)
+                gid = ""
+                try:
+                    gid = (group.name if group is not None else "") or ""
+                except Exception:
+                    gid = ""
+                gid = gid or fd.name or str(id(group))
+                if gid in processed_radio:
+                    continue
+                processed_radio.add(gid)
+                labels = []
+                for r in radios:
+                    try:
+                        labels.append(r.name or "")
+                    except Exception:
+                        labels.append("")
+                labels = [l for l in labels if l]
+                records.append(self._review_record(
+                    obj, fd, key, controls.EDITOR_SINGLE, labels, group))
+                continue
+
+            kind = controls.editor_kind(cc, key or "", fd.input_type or "")
+
+            # Checkbox: Yes / No. No option list to read.
+            if kind == controls.EDITOR_YESNO:
+                records.append(self._review_record(
+                    obj, fd, key, controls.EDITOR_YESNO, [], None))
+                continue
+
+            # Single-choice or editable combobox: read the real options so the
+            # dialog can offer an accessible chooser. If a select-only custom
+            # combobox hides its options behind a closed popup we cannot read,
+            # fall back to a typed box rather than an empty chooser.
+            if kind in (controls.EDITOR_SINGLE, controls.EDITOR_EDITABLE):
+                labels, _opts = self._read_option_children(obj, "review-choice")
+                if not labels and kind == controls.EDITOR_SINGLE:
+                    kind = controls.EDITOR_TEXT
+                records.append(self._review_record(
+                    obj, fd, key, kind, labels, None))
+                continue
+
+            # Text and async: a typed box. Async hands back to its live list at
+            # fill time, since NVDA reports its network-loaded options as empty.
+            records.append(self._review_record(
+                obj, fd, key, controls.EDITOR_TEXT, [], None))
+        log.info("JFF review: collected %d field(s) [%s]"
+                 % (len(records), ", ".join(r["kind"] for r in records)))
         return records
+
+    def _apply_review_change(self, rec, newval):
+        """Write one review change back through the primitive that matches the
+        field's kind, not a blind paste. The user chose an explicit value in the
+        review list, so we set exactly that. Returns True if it took."""
+        kind = rec.get("kind", "text")
+        obj, fd = rec["obj"], rec["fd"]
+        try:
+            if kind == "single" and rec.get("group") is not None:
+                return self._select_radio_by_label(rec["group"], newval)
+            if kind == "single":
+                _pick, verdict = self._fill_native_select(
+                    obj, newval, rec.get("key") or "")
+                return verdict == "confirmed"
+            if kind == "yesno":
+                return self._fill_checkbox(obj, fd, newval) == "confirmed"
+            if kind == "multi":
+                values = newval if isinstance(newval, list) else [newval]
+                verdict, _sel = self._fill_multiselect(obj, values)
+                return verdict == "confirmed"
+            if kind == "date":
+                return self._fill_date(obj, fd, newval) == "confirmed"
+            return self._write_field(obj, fd, newval)
+        except Exception:
+            log.error("JFF review: writeback failed kind=%r" % kind,
+                      exc_info=True)
+            return False
+
+    def _select_radio_by_label(self, group, label):
+        """Select the radio in a group whose label matches the chosen text.
+        Used by the review editor, where the user picked an explicit option."""
+        radios = self._collect_radios(group)
+        labels = []
+        for r in radios:
+            try:
+                labels.append(r.name or "")
+            except Exception:
+                labels.append("")
+        pick = controls.choose_option(label, labels)
+        if pick.index is None or pick.index >= len(radios):
+            log.info("JFF review: radio label %r not found" % label)
+            return False
+        target = radios[pick.index]
+        if not self._live_checked(target):
+            try:
+                target.doAction()
+            except Exception:
+                try:
+                    target.setFocus()
+                    api.setFocusObject(target)
+                    KeyboardInputGesture.fromName("space").send()
+                except Exception:
+                    log.error("JFF review: radio select failed", exc_info=True)
+                    return False
+        for _k in range(8):
+            if self._live_checked(target):
+                return True
+            time.sleep(0.06)
+        return False
 
     def _write_field(self, obj, fd, value):
         target_id = fd.id
@@ -558,11 +746,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         changes, goto = result
         log.info("JFF review: applying %d change(s), goto=%r"
                  % (len(changes), goto))
+        applied = 0
         for idx, newval in changes:
-            rec = records[idx]
-            self._write_field(rec["obj"], rec["fd"], newval)
+            if self._apply_review_change(records[idx], newval):
+                applied += 1
         if changes:
-            ui.message(_("Applied {n} change(s).").format(n=len(changes)))
+            ui.message(_("Applied {n} of {m} change(s).").format(
+                n=applied, m=len(changes)))
         if goto is not None:
             try:
                 records[goto]["obj"].setFocus()

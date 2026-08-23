@@ -76,6 +76,42 @@ METHOD_PLAN = {
 }
 
 
+# --- review editor kinds ------------------------------------------------------
+# Which accessible control the review dialog shows for a field. The whole point
+# of the review editor is to make an inaccessible control accessible in its own
+# idiom: a combobox becomes an accessible combobox you arrow through, a radio
+# group an accessible chooser, a multi-select an accessible multi-check list, a
+# date three dropdowns. It never flattens a chooser into a plain text box.
+EDITOR_TEXT = "text"          # a typed edit box (also async: type then hand back)
+EDITOR_SINGLE = "single"      # accessible chooser: arrow the options, pick one
+EDITOR_EDITABLE = "editable"  # accessible editable combobox: type OR arrow-pick
+EDITOR_YESNO = "yesno"        # accessible Yes / No
+EDITOR_MULTI = "multi"        # accessible list: check several
+EDITOR_DATE = "date"          # three dropdowns: day, month, year
+
+
+def editor_kind(control_kind: str, key: str = "", input_type: str = "") -> str:
+    """Map a classify_control kind to the accessible editor the review dialog
+    offers. Pure and testable; reading the options and collapsing groups lives
+    in the NVDA layer. Date wins first, matching the fill path's ordering.
+
+    ARIA_COMBOBOX maps to a chooser structurally, but if its options sit behind
+    a closed popup the NVDA layer cannot read, that layer downgrades it to a
+    typed box. Async stays a typed box: its options load over the network and
+    NVDA reports them empty to us, so we type and hand back to the live list."""
+    if key == "date_of_birth" or input_type == "date" or control_kind == DATEPICKER:
+        return EDITOR_DATE
+    if control_kind == CHECKBOX:
+        return EDITOR_YESNO
+    if control_kind in (RADIO, NATIVE_SELECT, ARIA_COMBOBOX):
+        return EDITOR_SINGLE
+    if control_kind == MULTISELECT:
+        return EDITOR_MULTI
+    if control_kind == EDITABLE_COMBOBOX:
+        return EDITOR_EDITABLE
+    return EDITOR_TEXT
+
+
 # --- value to option matching -------------------------------------------------
 
 # A tiny locale option map: the same concept named differently per language.

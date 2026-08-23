@@ -5,6 +5,8 @@
 # pick a version from the selector, edit its fields, create new ones, delete
 # ones you no longer want, and import a CV into the version you have selected.
 
+import datetime
+
 import wx
 import gui
 from gui import guiHelper
@@ -194,6 +196,98 @@ def edit_details(store):
     return saved
 
 
+_MONTHS = [_("January"), _("February"), _("March"), _("April"), _("May"),
+           _("June"), _("July"), _("August"), _("September"), _("October"),
+           _("November"), _("December")]
+
+
+class _ComboEntryDialog(wx.Dialog):
+    """An accessible editable combo box: type a value, or arrow the options and
+    pick one. This is how the review editor makes an inaccessible editable
+    combobox usable, in its own idiom, rather than flattening it to a text box."""
+
+    def __init__(self, parent, message, options, value):
+        super().__init__(parent, title=_("Type or choose"))
+        main = wx.BoxSizer(wx.VERTICAL)
+        main.Add(wx.StaticText(self, label=message), 0, wx.ALL, 8)
+        self._combo = wx.ComboBox(self, value=value, choices=options,
+                                  style=wx.CB_DROPDOWN)
+        main.Add(self._combo, 0, wx.EXPAND | wx.ALL, 8)
+        main.Add(self.CreateButtonSizer(wx.OK | wx.CANCEL), 0,
+                 wx.EXPAND | wx.ALL, 8)
+        self.SetSizerAndFit(main)
+        self._combo.SetFocus()
+
+    def GetValue(self):
+        return self._combo.GetValue()
+
+
+class _DateDialog(wx.Dialog):
+    """Three accessible dropdowns: day, month, year. No format to guess and no
+    calendar to trap you. Returns an ISO date; the fill layer then formats it to
+    whatever the field on the page actually wants (segments, UK or US text)."""
+
+    def __init__(self, parent, name, iso):
+        super().__init__(parent, title=_("Set date"))
+        this_year = datetime.date.today().year
+        main = wx.BoxSizer(wx.VERTICAL)
+        main.Add(wx.StaticText(
+            self, label=_("Date for {name}:").format(name=name)), 0, wx.ALL, 8)
+
+        days = [_("Day")] + ["%d" % d for d in range(1, 32)]
+        months = [_("Month")] + _MONTHS
+        self._years = [_("Year")] + [str(y) for y in
+                                     range(this_year, this_year - 101, -1)]
+        self._day = self._labelled(main, _("Day"), days)
+        self._month = self._labelled(main, _("Month"), months)
+        self._year = self._labelled(main, _("Year"), self._years)
+
+        y, m, d = self._split(iso)
+        if 1 <= d <= 31:
+            self._day.SetSelection(d)
+        if 1 <= m <= 12:
+            self._month.SetSelection(m)
+        if str(y) in self._years:
+            self._year.SetSelection(self._years.index(str(y)))
+
+        main.Add(self.CreateButtonSizer(wx.OK | wx.CANCEL), 0,
+                 wx.EXPAND | wx.ALL, 8)
+        self.SetSizerAndFit(main)
+        self._day.SetFocus()
+
+    def _labelled(self, sizer, label, choices):
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        row.Add(wx.StaticText(self, label=label + ":"), 0,
+                wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+        ch = wx.Choice(self, choices=choices)
+        ch.SetSelection(0)
+        try:
+            ch.SetName(label)
+        except Exception:
+            pass
+        row.Add(ch, 0)
+        sizer.Add(row, 0, wx.ALL, 6)
+        return ch
+
+    @staticmethod
+    def _split(iso):
+        try:
+            parts = str(iso or "").split("-")
+            if len(parts) == 3:
+                return int(parts[0]), int(parts[1]), int(parts[2])
+        except Exception:
+            pass
+        return 0, 0, 0
+
+    def GetISO(self):
+        d = self._day.GetSelection()      # 0 is the "Day" placeholder
+        m = self._month.GetSelection()    # 0 is the "Month" placeholder
+        yi = self._year.GetSelection()    # 0 is the "Year" placeholder
+        if d <= 0 or m <= 0 or yi <= 0:
+            return ""
+        return "%s-%02d-%02d" % (self._years[yi], m, d)
+
+
 class ReviewDialog(wx.Dialog):
     """An accessible list over the form you are filling: every field, one per
     line, with its current value or "empty, needs you". Arrow through the list,
@@ -233,7 +327,10 @@ class ReviewDialog(wx.Dialog):
 
     def _shownValue(self, i):
         if i in self._pending:
-            return self._pending[i] or _("empty")
+            v = self._pending[i]
+            if isinstance(v, list):
+                return ", ".join(v) if v else _("empty")
+            return v or _("empty")
         return self._records[i]["value"] or _("empty, needs you")
 
     def _lines(self):
@@ -259,13 +356,102 @@ class ReviewDialog(wx.Dialog):
         i = self._sel()
         if i is None:
             return
-        cur = self._pending.get(i, self._records[i]["value"])
+        kind = self._records[i].get("kind", "text")
+        if kind == "single":
+            self._editChoice(i, multiple=False)
+        elif kind == "multi":
+            self._editChoice(i, multiple=True)
+        elif kind == "yesno":
+            self._editYesNo(i)
+        elif kind == "date":
+            self._editDate(i)
+        elif kind == "editable":
+            self._editEditable(i)
+        else:
+            self._editText(i)
+
+    def _editText(self, i):
+        rec = self._records[i]
+        cur = self._pending.get(i, rec["value"])
+        if isinstance(cur, list):
+            cur = ", ".join(cur)
         with wx.TextEntryDialog(
-                self, _("Value for {name}:").format(name=self._records[i]["name"]),
-                _("Edit field"), value=cur) as dlg:
+                self, _("Value for {name}:").format(name=rec["name"]),
+                _("Edit field"), value=cur or "") as dlg:
             if dlg.ShowModal() != wx.ID_OK:
                 return
             self._pending[i] = dlg.GetValue()
+        self._refresh(i)
+
+    def _editChoice(self, i, multiple):
+        rec = self._records[i]
+        options = rec.get("options") or []
+        if not options:
+            # We could not read this control's options, so fall back to typing.
+            self._editText(i)
+            return
+        cur = self._pending.get(i, rec["value"])
+        if multiple:
+            if isinstance(cur, str):
+                cur = [c.strip() for c in cur.split(",") if c.strip()]
+            preset = [j for j, o in enumerate(options) if o in (cur or [])]
+            with wx.MultiChoiceDialog(
+                    self, _("Choose any that apply for {name}:").format(
+                        name=rec["name"]),
+                    _("Choose several"), options) as dlg:
+                dlg.SetSelections(preset)
+                if dlg.ShowModal() != wx.ID_OK:
+                    return
+                self._pending[i] = [options[j] for j in dlg.GetSelections()]
+        else:
+            preset = (options.index(cur)
+                      if isinstance(cur, str) and cur in options else 0)
+            with wx.SingleChoiceDialog(
+                    self, _("Choose one for {name}:").format(name=rec["name"]),
+                    _("Choose"), options) as dlg:
+                dlg.SetSelection(preset)
+                if dlg.ShowModal() != wx.ID_OK:
+                    return
+                self._pending[i] = options[dlg.GetSelection()]
+        self._refresh(i)
+
+    def _editYesNo(self, i):
+        rec = self._records[i]
+        opts = [_("Yes"), _("No")]
+        cur = str(self._pending.get(i, rec["value"]) or "").strip().lower()
+        preset = 0 if cur in ("yes", "true", "1", "on", "checked", "y") else 1
+        with wx.SingleChoiceDialog(
+                self, _("Set {name} to:").format(name=rec["name"]),
+                _("Yes or no"), opts) as dlg:
+            dlg.SetSelection(preset)
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            self._pending[i] = opts[dlg.GetSelection()]
+        self._refresh(i)
+
+    def _editEditable(self, i):
+        rec = self._records[i]
+        cur = self._pending.get(i, rec["value"])
+        if isinstance(cur, list):
+            cur = ", ".join(cur)
+        with _ComboEntryDialog(
+                self, _("Type a value or choose one for {name}:").format(
+                    name=rec["name"]),
+                rec.get("options") or [], cur or "") as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            self._pending[i] = dlg.GetValue()
+        self._refresh(i)
+
+    def _editDate(self, i):
+        rec = self._records[i]
+        cur = self._pending.get(i, rec["value"])
+        if isinstance(cur, list):
+            cur = ""
+        with _DateDialog(self, rec["name"], cur or "") as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            self._pending[i] = dlg.GetISO()
         self._refresh(i)
 
     def _onFill(self, evt):
