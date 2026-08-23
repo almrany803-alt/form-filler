@@ -922,7 +922,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         return pick, verdict
 
     def _read_current_value(self, obj):
-        # Re-read the control's exposed value to verify the selection stuck.
+        # Read the LIVE value via a raw IA2 call; NVDA caches obj.value on the
+        # object instance, so repeated polls would re-read a stale cached value.
+        try:
+            iao = getattr(obj, "IAccessibleObject", None)
+            if iao is not None:
+                cid = getattr(obj, "IAccessibleChildID", 0)
+                v = iao.accValue(cid)
+                if v:
+                    return v
+        except Exception:
+            pass
         try:
             return obj.value or ""
         except Exception:
