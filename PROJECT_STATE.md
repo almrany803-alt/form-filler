@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.6-dev.
+points to. Last updated at version 0.9.11-dev.
 
 Repo: github.com/almrany803-alt/form-filler  (GPL v2, open source)
 
@@ -30,17 +30,32 @@ Working and proven on real hardware (see section 3):
   (a submenu to switch, create, delete versions), Review fields, Import from CV,
   Enter your details. Fills and the review list act on the page: focus and
   foreground are captured before the menu opens and restored before acting.
-- Review fields (NVDA+J, R): an accessible list over the current form, every
-  field with its value or "empty, needs you". Actions per field: Go to, Edit,
-  Fill from profile (recognised detail preselected), Clear; changes apply on
-  close. Proven on real NVDA (lists the form, fills a field from the profile).
+- Review fields (NVDA+J, R), the USP: an accessible list over the current form,
+  every field with its value or "empty, needs you". Edit is kind-aware: each
+  field opens the right accessible control, a text box, a chooser you arrow
+  through for a dropdown or radio group, Yes/No for a checkbox, a multi-check
+  list, or three dropdowns for a date. A closed dropdown is opened briefly to
+  read its real options, so the chooser works even when the page exposes none.
+  Writeback routes each kind to its proven primitive, not a blind paste. Proven
+  end to end on real NVDA on an accessible form AND an inaccessible one (text,
+  chooser, yes/no); the date and multi editors are built and logic-proven, not
+  yet driven by the NVDA journey.
 - Encrypted profile stored on the user's own machine (Windows DPAPI).
 - A "My details" form in the NVDA Tools menu to enter and edit your details.
-- Multilingual field identification (9 languages).
-- Fills native dropdowns (locale aware: picks Royaume-Uni for an English value),
-  radio groups (finds the question, picks the answer), and checkboxes; verifies
-  each against the live accessibility state. Custom comboboxes, multi-select,
-  dates, and async search boxes are the remaining controls.
+- Multilingual field identification (9 languages: Arabic, Dutch, English,
+  French, German, Italian, Polish, Portuguese, Spanish).
+- Country and nationality match through a bundled dataset of all 250 countries
+  in 24 languages plus demonyms and phone codes, so "Saudi" fills السعودية on an
+  Arabic form and a French form's Royaume-Uni matches. Both are chosen from a
+  type-ahead dropdown in the profile, not typed. On CV import the country is
+  detected (any of the 24 languages, or the phone's calling code) and pre-filled.
+- Date of birth is three accessible dropdowns (day, month, year) in both the
+  profile dialog and the review editor, sharing one date helper set.
+- Fills native dropdowns (dataset-aware across 24 languages), radio groups,
+  checkboxes, multi-selects, and dates (native segmented, UK/US text, custom
+  picker), and hands back on async search boxes; verifies each against the live
+  accessibility state. The custom single-select combobox (button + listbox) is
+  the main remaining control.
 - Correctly declines fields it cannot identify; declines the controls not yet
   built rather than guessing.
 - Handles multi-section applications: fill a section, press Next, fill the next.
@@ -64,16 +79,25 @@ Working and proven end to end on real NVDA (control filling):
   Native and custom ARIA widgets, single-field and whole-form (`radio-test.yml`).
 
 Still to build (grounded in CONTROLS_RESEARCH, section 11):
-- Custom single-select combobox (button + listbox), multi-select, date fields,
-  the async search-box combobox (location), and the post-CV-attach audit.
-- The review list as an accessible editor for every control type (the USP).
-  DATE ENTRY DECISION (user): in the profile dialog and the review editor, the
-  user enters a date via three accessible dropdowns (day, month, year), not a
-  typed YYYY-MM-DD box. Dropdowns are the most NVDA-friendly date input: arrow
-  through lists, no format to guess, no calendar to get trapped in. The addon
-  stores ISO internally and still writes to each form field with the tested
-  segment/text/custom-picker logic. So date entry uses three dropdowns; date
-  writing stays as built.
+- The custom single-select combobox (button + listbox), the dominant modern ATS
+  control, is the main remaining control.
+- The post-CV-attach audit: audit.py exists and is tested, but is not yet wired
+  or fed a rich profile. Read a portal's repeating rows and flag duplicates and
+  mis-maps as a list, like the review.
+- The rich profile: the CV's real sections (summary, education, experience,
+  skills, certifications, languages, projects, references), with sections the
+  user can add or remove.
+- The testing personas battery. The review journey is the first persona, the
+  methodical navigator; next come the quick-nav jumper, multilingual applicant,
+  many-versions applicant, backtracker, stuck applicant, re-reader, browse-mode
+  reader.
+- The date and multi editors are built; driving them through the NVDA review
+  journey (many precise keystrokes) is a clean follow-up.
+
+DATE ENTRY, DONE (user decision): the profile dialog and the review editor both
+enter a date via three accessible dropdowns (day, month, year), not a typed box.
+The addon stores ISO internally and writes to each form field with the tested
+segment/text/custom-picker logic.
 
 ---
 
@@ -379,24 +403,30 @@ needs the Actions permission), which is why the workflows run `on: push`.
 ## 9. Roadmap (what is next, roughly in order)
 
 Done and proven on real NVDA: the NVDA+J menu (navigable, announced), fill this
-field / fill all fields, the review list (Fill from profile), profiles as
-versions (create/switch/delete), CV import (text, Word via stdlib, PDF via
-bundled PyMuPDF) across all 9 supported languages, the import-to-fill chain, real
-ATS field patterns (Greenhouse, Workday, Taleo, iCIMS) including the camelCase
-fix, accessible and inaccessible forms, and the do-not-clobber behaviour for a
-mangled ATS auto-parse.
+field / fill all fields, the kind-aware review editor (the USP: text, chooser
+and yes/no editors on an accessible AND an inaccessible form, opening a closed
+dropdown to read its options), native dropdowns / radios / checkboxes /
+multi-select / dates, country and nationality via the bundled 24-language
+dataset (the nationality demonym fix), country/nationality type-ahead dropdowns
+and the three-dropdown date of birth, CV country detection, profiles as versions
+(create/switch/delete), CV import (text, Word via stdlib, PDF via bundled
+PyMuPDF) across all 9 field languages, the import-to-fill chain, real ATS field
+patterns (Greenhouse, Workday, Taleo, iCIMS) including the camelCase fix,
+multi-section applications (fill, Next, fill), and the do-not-clobber behaviour
+for a mangled ATS auto-parse.
 
 Still to do:
 1. Automate the remaining menu paths by keyboard in CI: the Profile submenu
    (switch/new/delete) and Enter your details. Import from CV IS now driven from
    the menu (first-run.yml); the other two are not yet.
-2. Review list: CI-drive Go to, Edit and Clear (only Fill from profile is
-   automated end to end so far).
+2. Extend the review journey to drive the date (three dropdowns) and
+   multi-check editors by keyboard (text, chooser and yes/no are done).
 3. A settings panel, home for the review-list "show every field vs only the
    gaps" toggle, and the point to revisit whether the Tools-menu item still
    earns its place.
-4. Remaining controls: custom combobox, multi-select, dates, async search box.
-   Native dropdowns, radios, and checkboxes are DONE and proven on real NVDA.
+4. The custom single-select combobox (button + listbox) is the main remaining
+   control. Native dropdowns, radios, checkboxes, multi-select and dates are
+   DONE and proven on real NVDA.
 5. Remembered answers for recurring bespoke questions (notice period, right to
    work), keyed to the question wording; and a "jump to the next field that
    needs you".
@@ -415,8 +445,10 @@ autocomplete, role -> key, confidence, source); a whole-form fill logs each
 field's action, the summary, and any field that already held a value (so an ATS
 auto-parse's wrong value is visible in the log rather than silently skipped). The
 menu logs the chosen command, import logs what was parsed, the review list logs
-what it collected and applied. See LOGGING.md for how to capture and read a log;
-set NVDA's logging level to Info.
+what it collected and applied (including opening a closed dropdown to read its
+options). See LOGGING.md for how to capture and read a log. Info is enough for
+normal use; the review journey CI runs NVDA at debug (-l 10) so the log carries
+the speech and can confirm each editor announced.
 
 ---
 
@@ -486,3 +518,32 @@ Company-run career sites dominate, not only the government portal.
   user-managed); the review list may still jump to them.
 - Build order: radios and checkboxes (done), then custom combobox, multi-select,
   dates, and the async search box, with the review-list editor across all of them.
+
+---
+
+## 12. Country data (design and attribution)
+
+Country and nationality are backed by one bundled dataset,
+`core/countries.json`, loaded by `core/countries.py`. For each of 250 countries
+it holds the canonical English name, ISO code, phone calling code, whether the
+country is independent, and every name it goes by: official, common, native,
+demonyms, and translations across 24 languages. This is what lets the addon
+match a page's option whatever language it is written in, resolve a demonym
+("Saudi" -> Saudi Arabia), and detect a CV's country.
+
+Matching is script-aware, because scripts differ. Latin, Cyrillic, Arabic and
+Korean put spaces between words, so a name is matched as a whole word; short
+foreign names are allowed, short ASCII strings are not, so a two-letter code
+cannot match a common word. Chinese and Japanese do not use spaces, so those
+match by substring. Names are compared accent-folded. CV detection prefers the
+phone's calling code (a +966 number is Saudi Arabia) over scattered place
+mentions. All of this is pure Python and covered by `tests/test_countries.py`,
+including a per-language sweep.
+
+The field-recognition lexicon (which box is name, email, and so on) is still 9
+languages, so the country layer understands more languages than the field layer.
+Widening the lexicon is recognition data, not translating the interface.
+
+ATTRIBUTION: the country dataset is built from the open mledoze/countries
+project (https://github.com/mledoze/countries), licensed ODbL 1.0 for the data.
+It is reused here with attribution, as that licence allows.

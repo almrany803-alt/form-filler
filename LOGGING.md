@@ -61,3 +61,21 @@ For a form that misbehaved: the `JFF: ... starting` line, then every `JFF read`
 / `JFF match` / `JFF form field` line for that form, the `JFF form summary`
 line, and any `Traceback`. That is enough to see, field by field, what the
 add-on saw and decided.
+
+## Review editor and country (0.9.11-dev)
+
+The kind-aware review editor logs what it collected and how:
+- `JFF review: collected N field(s) [text, single, yesno, date, multi]` names
+  the accessible editor chosen for each field, in order.
+- `JFF review: opened select, read N option(s)` appears when a closed dropdown
+  exposed no options to the cached tree, so the addon opened it to read them.
+- `JFF review: applying N change(s)` on close; `wrote idx=.. kind=.. ok=..` per
+  change, so a writeback that did not take is visible.
+- The per-option dump (one line per dropdown option) has been removed; a long
+  dropdown now logs a count and a sample, and speaks "Reading the list, one
+  moment" before the read.
+
+The review journey CI runs NVDA at debug (`-l 10`), so the log carries the
+`Speaking [...]` lines and focus events. Read those to confirm each editor
+actually announced (the chooser reading its options, Yes/No, the date dropdowns),
+not just that the DOM changed.

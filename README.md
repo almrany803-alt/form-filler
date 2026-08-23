@@ -10,14 +10,20 @@ and what it left for you. It never submits a form.
 - One key, NVDA+J, opens a menu you can arrow through or drive by access key:
   Fill this field, Fill all fields, Review fields, Profile (switch, create,
   delete versions), Import from CV, Enter your details.
-- Fills text fields, native dropdowns (locale aware), radio groups, and
-  checkboxes, verifying each against the live accessibility state. Custom
-  comboboxes, multi-select, dates, and async search boxes are in progress.
+- Fills text fields, native dropdowns, radio groups, checkboxes, multi-selects,
+  and dates, verifying each against the live accessibility state, and hands back
+  on async search boxes. The custom single-select combobox is in progress.
 - Review fields: an accessible list over the current form where you can set and
-  fix any field, including controls the site built badly.
+  fix any field through the right accessible control, a chooser you arrow
+  through for a dropdown or radio group, Yes/No for a checkbox, a multi-check
+  list, or three dropdowns for a date, even on controls the site built badly.
 - Multilingual field recognition (English, Spanish, French, German, Italian,
   Portuguese, Polish, Dutch, Arabic), by label, HTML name, and aria-label, then
-  a keyword lexicon you can extend. An optional nationality field for Saudi forms.
+  a keyword lexicon you can extend.
+- Country and nationality are chosen from a dropdown of all countries and match
+  the page's option in 24 languages (so an Arabic or French form still matches);
+  on CV import your country is detected and pre-filled. Date of birth is three
+  dropdowns.
 - Declines fields it cannot confidently identify, rather than guessing, and
   never submits a form.
 
@@ -52,6 +58,12 @@ python build.py        # produces jobFormFiller-<version>.nvda-addon
 
 Real-NVDA, real-browser tests (run on Windows or a Windows CI runner) live in
 `betatest/`, driven on real NVDA and real Chrome in GitHub Windows CI.
+
+## Country data
+
+The country list and its translations come from the open mledoze/countries
+project (https://github.com/mledoze/countries), reused with attribution under
+its ODbL 1.0 data licence.
 
 ## Licence
 

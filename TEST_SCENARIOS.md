@@ -235,3 +235,15 @@ verify against the LIVE IA2 value or state (not NVDA's cached copy).
   end to end on real NVDA (Jane Doe imported, then filled into the form).
 - [todo] Antisocial: a password-protected PDF; an image-only (scanned) PDF; a CV
   with no recognisable sections; a 40-page CV. Each must fail or degrade cleanly.
+
+## Feature: the review editor as an accessible editor (the USP)
+
+[done] Methodical navigator, accessible form: open the review list, change the
+name via the text editor, the country via the chooser (arrow to United Kingdom),
+and the right-to-work checkbox via Yes/No; confirm each landed in the DOM and
+each announced in the debug speech log. (review-journey.yml, fill_review_journey)
+[done] Same journey on an INACCESSIBLE form (no labels, bare select): the review
+still enumerates the fields, opens the closed dropdown to read its real options,
+and the three editors still write back.
+[todo] Drive the date (three dropdowns) and multi-check editors by keyboard.
+[todo] Backtracker: fill, go back, change an answer through the review editor.
