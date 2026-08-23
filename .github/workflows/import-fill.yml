@@ -1,0 +1,65 @@
+name: Import-to-fill chain (Chrome + NVDA)
+
+# The whole journey in one go: import a CV through the dialog (no profile seeded),
+# then open a real form and fill it from the imported details. End to end.
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  chain:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Install NVDA 2026.1.1
+        shell: pwsh
+        run: |
+          Invoke-WebRequest "https://download.nvaccess.org/releases/2026.1.1/nvda_2026.1.1.exe" -OutFile nvda_setup.exe
+          Start-Process -Wait -FilePath ".\nvda_setup.exe" -ArgumentList '--install-silent'
+          Start-Sleep -Seconds 5
+          Start-Process -Wait -FilePath "C:\Program Files\NVDA\nvda.exe" -ArgumentList '-q'
+          Start-Sleep -Seconds 3
+
+      - name: Load add-on, bind the dialog key (no profile seeded)
+        shell: pwsh
+        run: |
+          $cfg = "$env:RUNNER_TEMP\nvdacfg"
+          New-Item -ItemType Directory -Force -Path "$cfg\scratchpad\globalPlugins" | Out-Null
+          Copy-Item -Recurse -Force "addon\globalPlugins\jobFormFiller" "$cfg\scratchpad\globalPlugins\"
+          Set-Content -Path "$cfg\nvda.ini" -Value "[development]`r`n`tenableScratchpadDir = True`r`n"
+          $f = "$cfg\scratchpad\globalPlugins\jobFormFiller\__init__.py"
+          (Get-Content $f -Raw) -replace 'description=_\("Edit your saved details"\),', 'description=_("Edit your saved details"), gesture="kb:NVDA+shift+d",' | Set-Content $f
+
+      - name: Start NVDA
+        shell: pwsh
+        run: |
+          $cfg = "$env:RUNNER_TEMP\nvdacfg"
+          Start-Process -FilePath "C:\Program Files\NVDA\nvda.exe" -ArgumentList "-c `"$cfg`" -f `"$cfg\nvda.log`" -l 10 -m"
+          Start-Sleep -Seconds 20
+
+      - name: Import a CV through the dialog
+        shell: pwsh
+        run: |
+          $cv = (Resolve-Path "betatest\cvs\cv_en.docx").Path
+          pwsh -File betatest\drive_cv.ps1 -CvPath "$cv"
+
+      - name: Fill a real form from the imported CV
+        working-directory: betatest
+        shell: pwsh
+        run: |
+          npm install | Out-Null
+          npx playwright install chromium | Out-Null
+          node warmup.mjs
+          node fill_chain.mjs
+
+      - name: Upload the NVDA log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-log-chain
+          path: ${{ runner.temp }}\nvdacfg\nvda.log
+          if-no-files-found: warn

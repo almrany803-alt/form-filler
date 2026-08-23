@@ -41,6 +41,24 @@ class TestCvFormats(unittest.TestCase):
         self.assertEqual(f["given_name"], "Maria")
         self.assertEqual(f["family_name"], "Garcia Lopez")
 
+    def test_all_supported_languages(self):
+        # Realistic CVs modelled on real structures, one per remaining supported
+        # language, in both Word and PDF. Name, email, phone must extract
+        # regardless of language or script.
+        expect = {
+            "cv_fr": ("Camille", "Laurent"),
+            "cv_de": ("Lukas", "Muller"),
+            "cv_it": ("Giulia", "Rossi"),
+            "cv_pt": ("Joao", "Santos Silva"),
+            "cv_nl": ("Sanne", "de Vries"),
+            "cv_pl": ("Katarzyna", "Nowak"),
+        }
+        for stem, (given, family) in expect.items():
+            for ext in ("docx", "pdf"):
+                f = self._fields(f"{stem}.{ext}")
+                self.assertEqual(f["given_name"], given, f"{stem}.{ext}")
+                self.assertEqual(f["family_name"], family, f"{stem}.{ext}")
+
     def test_unsupported_format_raises_cleanly(self):
         with self.assertRaises(Exception):
             cvparse.extract_text("resume.rtf")
