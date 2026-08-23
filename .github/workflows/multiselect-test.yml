@@ -56,6 +56,12 @@ jobs:
           cd betatest
           node fill_multiselect.mjs
 
+      - name: Whole-form fill over text + multi-select
+        shell: pwsh
+        run: |
+          cd betatest
+          node fill_multiselect_form.mjs
+
       - name: Upload the NVDA log
         if: always()
         uses: actions/upload-artifact@v4

@@ -724,6 +724,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     leftovers.append(fd.label or announce.human(result.key))
                 continue
 
+            if kind == controls.MULTISELECT:
+                verdict, selected = self._fill_multiselect(obj, [value])
+                if verdict == "confirmed":
+                    filled.append(result.key)
+                    log.info("JFF form field: multi-select %r set to %r"
+                             % (result.key, selected))
+                else:
+                    leftovers.append(fd.label or announce.human(result.key))
+                continue
+
             if kind in (controls.NATIVE_SELECT, controls.ARIA_COMBOBOX):
                 # A dropdown always has a value, often a placeholder. Only fill
                 # when it is still on a placeholder; a real selection is left for
