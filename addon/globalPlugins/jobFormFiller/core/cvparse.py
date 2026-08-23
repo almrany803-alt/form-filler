@@ -157,7 +157,7 @@ def cv_to_fields(parsed: dict) -> dict:
 def extract_text(path: str) -> str:
     """Get plain text out of a CV file. Text, Word and PDF are what CVs actually
     come in. .docx is read with the standard library (a docx is just a zip of
-    XML, so no lxml is needed); .pdf is read with the bundled pure-Python pypdf.
+    XML, so no lxml is needed); .pdf is read with the bundled PyMuPDF (compiled, self-contained).
     Image-only (scanned) PDFs yield little or no text and are the OCR case,
     handled by the fallback rung, not here."""
     ext = path.lower().rsplit(".", 1)[-1] if "." in path else ""

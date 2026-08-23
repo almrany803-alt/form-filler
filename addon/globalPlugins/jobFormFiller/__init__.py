@@ -98,7 +98,14 @@ def _descriptor_from_object(obj):
 
     html_name = ia2.get("html-input-name", "") or ia2.get("name", "")
     input_type = (ia2.get("text-input-type", "") or "").lower()
-    autocomplete = {"email": "email", "tel": "tel", "url": "url"}.get(input_type, "")
+    # Prefer the real HTML autocomplete token (given-name, family-name, email,
+    # tel, address-line1, postal-code, country-name...): it is the strongest,
+    # language-independent signal, and Chrome exposes it in IA2. Fall back to a
+    # token synthesised from the input type. ARIA autocomplete values (list,
+    # inline, both) are not fill tokens, so the matcher ignores them harmlessly.
+    ac_attr = (ia2.get("autocomplete", "") or "").strip().lower()
+    synth = {"email": "email", "tel": "tel", "url": "url"}.get(input_type, "")
+    autocomplete = ac_attr or synth
 
     # If the only "label" came from the placeholder or a tooltip, treat it as a
     # placeholder (a guess), not a real label (strong).

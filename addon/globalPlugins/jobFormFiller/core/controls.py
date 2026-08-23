@@ -43,7 +43,7 @@ def classify_control(c: ControlDescriptor) -> str:
         return RADIO
     if "datepicker" in role or "date" == role:
         return DATEPICKER
-    if "multiselectable" in states or role == "listbox" and "multiselectable" in states:
+    if "multiselectable" in states:
         return MULTISELECT
 
     if role in ("combobox", "listbox"):
