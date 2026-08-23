@@ -56,6 +56,12 @@ jobs:
           cd betatest
           node fill_radio.mjs
 
+      - name: Whole-form fill over text, select, radio, checkbox
+        shell: pwsh
+        run: |
+          cd betatest
+          node fill_radio_form.mjs
+
       - name: Upload the NVDA log
         if: always()
         uses: actions/upload-artifact@v4

@@ -664,9 +664,39 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         log.info("JFF form: found %d form fields, resolved %d objects"
                  % (len(items), len(objs)))
         filled, guessed, leftovers, prefilled = [], [], [], []
+        processed_radio = set()
 
         for obj in objs:
             fd = _descriptor_from_object(obj)
+
+            # Radios first: the object's own label is the option, not the
+            # question, so the standard match would bail. Handle the group once.
+            early_kind = controls.classify_control(controls.ControlDescriptor(
+                role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
+            if early_kind == controls.RADIO:
+                group, radios = self._radio_group(obj)
+                gid = ""
+                try:
+                    gid = (group.name if group is not None else "") or ""
+                except Exception:
+                    gid = ""
+                gid = gid or fd.name or str(id(group))
+                if gid in processed_radio:
+                    continue
+                processed_radio.add(gid)
+                key, pick, verdict = self._fill_radio_group(obj, group, radios)
+                qname = gid if gid else announce.human(key or "")
+                if verdict == "confirmed":
+                    (guessed if (pick and pick.confidence == "guess")
+                     else filled).append(key)
+                    log.info("JFF form field: radio %r set to %r"
+                             % (key, pick.label if pick else ""))
+                else:
+                    leftovers.append(qname)
+                    log.info("JFF form field: radio %r not set (verdict=%s)"
+                             % (key, verdict))
+                continue
+
             result = matcher.match_field(fd)
             log.info("JFF form field: %s -> key=%r conf=%r"
                      % (_fd_summary(fd), result.key, result.confidence))
@@ -681,6 +711,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
             kind = controls.classify_control(controls.ControlDescriptor(
                 role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
+
+            if kind == controls.CHECKBOX:
+                # Only auto-toggle when the state is wrong; a checkbox already in
+                # the wanted state is left alone (and counts as done).
+                verdict = self._fill_checkbox(obj, fd, value)
+                if verdict == "confirmed":
+                    filled.append(result.key)
+                    log.info("JFF form field: checkbox %r set" % result.key)
+                else:
+                    leftovers.append(fd.label or announce.human(result.key))
+                continue
 
             if kind in (controls.NATIVE_SELECT, controls.ARIA_COMBOBOX):
                 # A dropdown always has a value, often a placeholder. Only fill
@@ -1036,11 +1077,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 out.extend(self._collect_radios(c, depth + 1))
         return out
 
-    def _fill_radio_group(self, obj):
+    def _fill_radio_group(self, obj, group=None, radios=None):
         """Handle a radio as part of its group: find the question, match it to a
         saved detail, select the matching option, verify. Returns (key, pick,
         verdict) with verdict confirmed/mismatch/none/novalue."""
-        group, radios = self._radio_group(obj)
+        if group is None and radios is None:
+            group, radios = self._radio_group(obj)
         labels = []
         for r in radios:
             try:
