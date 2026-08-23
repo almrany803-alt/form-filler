@@ -719,114 +719,118 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             ui.message(announce.hand_back(label, kind, value))
             return
 
-        labels, opts = self._read_options(obj)
-        if not labels:
-            log.info("JFF select: no options read for %r, handing back" % result.key)
-            ui.message(announce.hand_back(label, kind, value))
+        concept = result.key if result.key == "country" else ""
+        pick, verdict = self._fill_native_select(obj, value, concept)
+        if verdict in ("confirmed", "mismatch"):
+            ui.message(announce.choice_set(label, pick.label, verdict))
             return
-        pick = controls.choose_option(
-            value, labels,
-            concept=result.key if result.key == "country" else "")
-        log.info("JFF select: value=%r -> pick idx=%r label=%r conf=%r"
-                 % (value, pick.index, pick.label, pick.confidence))
-        if pick.index is None:
-            ui.message(announce.hand_back(label, kind, value))
-            return
+        # Could not read/choose (nothing matched, or options unreadable).
+        ui.message(announce.hand_back(label, kind, value))
 
-        self._select_option(obj, pick, opts)
-        after = self._read_current_value(obj)
-        verdict = controls.verify_selection(pick.label, after)
-        log.info("JFF select: after=%r verdict=%r" % (after, verdict))
-        ui.message(announce.choice_set(label, pick.label, verdict))
-
-    def _read_options(self, obj):
-        """Read option labels + their objects from a choice control. Native
-        <select> options are child list items (sometimes wrapped one list deep).
-        Logs the raw structure so the real tree is visible, not guessed."""
-        labels, opts = [], []
-        seen = [0]
+    def _read_option_children(self, root, tag):
+        """Collect (label, obj) for option-like children of root, logging each so
+        the real tree is visible. Chrome exposes native-select options as a menu,
+        so accept menu items as well as list items."""
         LI = controlTypes.Role.LISTITEM
-
-        def walk(node, depth):
-            if depth > 3 or seen[0] > 500:
-                return
+        MI = controlTypes.Role.MENUITEM
+        labels, opts = [], []
+        try:
+            kids = list(root.children or [])
+        except Exception:
+            kids = []
+        try:
+            rrole = getattr(root.role, "name", "?")
+        except Exception:
+            rrole = "?"
+        log.info("JFF nsel[%s]: root role=%s children=%d" % (tag, rrole, len(kids)))
+        for c in kids:
             try:
-                children = list(node.children or [])
+                role = c.role
             except Exception:
-                children = []
-            for c in children:
-                seen[0] += 1
-                try:
-                    role = c.role
-                except Exception:
-                    role = None
-                try:
-                    nm = c.name or ""
-                except Exception:
-                    nm = ""
-                if role == LI:
-                    if nm:
-                        labels.append(nm)
-                        opts.append(c)
-                else:
-                    walk(c, depth + 1)
-
-        walk(obj, 0)
-        if not labels:
-            # Collapsed native selects sometimes expose no options until opened.
-            # Open it (Alt+Down), let the popup render, then read again.
+                role = None
             try:
-                obj.setFocus()
-                api.setFocusObject(obj)
-                KeyboardInputGesture.fromName("alt+downArrow").send()
-                time.sleep(0.15)
-                seen[0] = 0
-                walk(obj, 0)
-                if not labels:
-                    # Some popups sit under the foreground, not under obj.
-                    fg = api.getForegroundObject()
-                    if fg is not None and fg is not obj:
-                        walk(fg, 0)
+                nm = c.name or ""
             except Exception:
-                log.error("JFF options: open-then-read failed", exc_info=True)
-        log.info("JFF options: read %d option(s): %r"
-                 % (len(labels), labels[:20]))
+                nm = ""
+            log.info("JFF nsel[%s]: child role=%s name=%r"
+                     % (tag, getattr(role, "name", "?"), nm))
+            if role in (LI, MI) and nm:
+                labels.append(nm)
+                opts.append(c)
         return labels, opts
 
-    def _select_option(self, obj, pick, opts):
-        """Select the matched option. Prefer acting on the option object; fall
-        back to native-select typeahead (type the label fast so Chrome matches).
-        The caller verifies by reading the value back."""
-        target = None
-        if opts and pick.index is not None and pick.index < len(opts):
-            target = opts[pick.index]
-        if target is not None:
-            try:
-                target.setFocus()
-                api.setFocusObject(target)
-                try:
-                    target.doAction()
-                except Exception:
-                    pass
-                KeyboardInputGesture.fromName("enter").send()
-                log.info("JFF select: chose via option object")
-                return
-            except Exception:
-                log.error("JFF select: option-object path failed", exc_info=True)
-        # Typeahead fallback.
+    def _fill_native_select(self, obj, value, concept):
+        """Open a native <select>, read its options from the popup, choose the
+        best match (locale aware), select that option, and verify. Returns
+        (pick, verdict) where verdict is confirmed/mismatch/none/unknown."""
+        # Open the popup so the options exist in the tree.
         try:
             obj.setFocus()
             api.setFocusObject(obj)
-            for ch in pick.label:
-                key = "space" if ch == " " else ch.lower()
-                try:
-                    KeyboardInputGesture.fromName(key).send()
-                except Exception:
-                    pass
-            KeyboardInputGesture.fromName("enter").send()
-            log.info("JFF select: chose via typeahead")
+            time.sleep(0.1)
+            KeyboardInputGesture.fromName("alt+downArrow").send()
+            time.sleep(0.35)
         except Exception:
-            log.error("JFF select: typeahead failed", exc_info=True)
+            log.error("JFF nsel: could not open the select", exc_info=True)
+            return None, "unknown"
+
+        foc = api.getFocusObject()
+        try:
+            frole = getattr(foc.role, "name", "?")
+            fname = foc.name or ""
+        except Exception:
+            frole, fname = "?", ""
+        log.info("JFF nsel: after open, focus role=%s name=%r" % (frole, fname))
+
+        labels, opts = [], []
+        roots = []
+        if foc is not None:
+            par = None
+            try:
+                par = foc.parent
+            except Exception:
+                par = None
+            if par is not None:
+                roots.append((par, "focus.parent"))
+            roots.append((foc, "focus"))
+        for root, tag in roots:
+            labels, opts = self._read_option_children(root, tag)
+            if labels:
+                break
+        log.info("JFF nsel: read %d option(s): %r" % (len(labels), labels[:20]))
+
+        if not labels:
+            try:
+                KeyboardInputGesture.fromName("escape").send()
+            except Exception:
+                pass
+            return None, "unknown"
+
+        pick = controls.choose_option(value, labels, concept=concept)
+        log.info("JFF nsel: value=%r -> idx=%r label=%r conf=%r"
+                 % (value, pick.index, pick.label, pick.confidence))
+        if pick.index is None:
+            try:
+                KeyboardInputGesture.fromName("escape").send()
+            except Exception:
+                pass
+            return pick, "none"
+
+        # Select the chosen option object, then commit.
+        try:
+            target = opts[pick.index]
+            target.setFocus()
+            api.setFocusObject(target)
+            time.sleep(0.08)
+            KeyboardInputGesture.fromName("enter").send()
+            time.sleep(0.12)
+        except Exception:
+            log.error("JFF nsel: selecting the option failed", exc_info=True)
+
+        after = self._read_current_value(obj)
+        verdict = controls.verify_selection(pick.label, after)
+        log.info("JFF nsel: after=%r verdict=%r" % (after, verdict))
+        return pick, verdict
 
     def _read_current_value(self, obj):
         # Re-read the control's exposed value to verify the selection stuck.
