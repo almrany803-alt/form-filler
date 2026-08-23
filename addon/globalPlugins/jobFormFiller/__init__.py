@@ -899,8 +899,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         except Exception:
             log.error("JFF nsel: arrow-to-index failed", exc_info=True)
 
-        after = self._read_current_value(obj)
-        verdict = controls.verify_selection(pick.label, after)
+        # Read back with a few retries: the select's exposed value can lag the
+        # keystrokes, and a single early read gives a false mismatch (seen in the
+        # whole-form path, where it wrongly marked a filled dropdown "needs you").
+        after = ""
+        verdict = "unknown"
+        for _ in range(8):
+            after = self._read_current_value(obj)
+            verdict = controls.verify_selection(pick.label, after)
+            if verdict == "confirmed":
+                break
+            time.sleep(0.08)
         log.info("JFF nsel: after=%r verdict=%r" % (after, verdict))
         return pick, verdict
 
