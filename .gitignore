@@ -20,3 +20,7 @@ live-tests/playwright-report/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Personal CVs (kept local, never committed)
+betatest/cvs/M_Alomrani_*
+*_personal_cv*

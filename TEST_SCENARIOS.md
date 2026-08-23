@@ -97,8 +97,9 @@ version by. Import asks before it changes anything you already saved.
 - [done] Store: create, switch, edit, rename, delete (re-points active), all
   round-tripped and tested. Dialog import+save through the selected version is
   proven on real NVDA.
-- [todo] Drive the selector, New profile, and Delete by keyboard in CI: create a
-  second version, switch, delete one, confirm both the create and delete stick.
+- [done] Drive New profile and Delete by keyboard on real NVDA: create a second
+  version (Teaching), save, both exist with the new one active; delete the active
+  version, save, only the other remains and is active (`profile-crud.yml`).
 - [todo] Import into the chosen version, and where the CV would change a value
   you already have, ask before applying (per field or all).
 - [todo] Fill picks the version by the form's language, or you choose.

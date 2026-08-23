@@ -53,3 +53,36 @@ elif cmd == "check":
         print("MISMATCH (field: got vs expected):", bad)
         sys.exit(1)
     print("PASS", mode)
+
+elif cmd == "seed_english":
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    store.add_profile("English", {
+        "given_name": "John", "family_name": "Smith",
+        "email": "john@example.com"})
+    store.set_active("English")
+    store.save()
+    print("seeded English")
+
+elif cmd == "check_created":
+    store.load()
+    names = set(store.profile_names())
+    teach = store.get_profile("Teaching")
+    eng = store.get_profile("English")
+    print("names:", names, "active:", store.active_name(),
+          "Teaching.given:", teach.get("given_name"),
+          "English.given:", eng.get("given_name"))
+    ok = (names == {"English", "Teaching"}
+          and teach.get("given_name") == "Sarah"
+          and eng.get("given_name") == "John"
+          and store.active_name() == "Teaching")
+    print("PASS check_created" if ok else "FAIL check_created")
+    sys.exit(0 if ok else 1)
+
+elif cmd == "check_deleted":
+    store.load()
+    names = set(store.profile_names())
+    print("names:", names, "active:", store.active_name())
+    ok = (names == {"English"} and store.active_name() == "English"
+          and store.get_profile("English").get("given_name") == "John")
+    print("PASS check_deleted" if ok else "FAIL check_deleted")
+    sys.exit(0 if ok else 1)

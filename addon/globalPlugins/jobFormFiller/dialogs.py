@@ -39,8 +39,6 @@ FIELDS = [
 
 
 class DetailsDialog(wx.Dialog):
-    NEW_LABEL = _("New profile...")
-
     def __init__(self, parent, store):
         super().__init__(parent, title=_("Job Form Filler: My details"))
         self._store = store
@@ -50,15 +48,20 @@ class DetailsDialog(wx.Dialog):
         main = wx.BoxSizer(wx.VERTICAL)
         helper = guiHelper.BoxSizerHelper(self, sizer=main)
 
-        # Version selector.
+        # Version selector plus New / Delete.
         self._choice = helper.addLabeledControl(
-            _("Profile (version):"), wx.Choice, choices=self._items())
+            _("&Profile (version):"), wx.Choice, choices=self._items())
         self._selectCurrent()
         self._choice.Bind(wx.EVT_CHOICE, self._onChoose)
 
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        newBtn = wx.Button(self, label=_("&New profile..."))
+        newBtn.Bind(wx.EVT_BUTTON, self._onNew)
         delBtn = wx.Button(self, label=_("De&lete this profile"))
         delBtn.Bind(wx.EVT_BUTTON, self._onDelete)
-        main.Add(delBtn, flag=wx.ALL, border=8)
+        row.Add(newBtn, flag=wx.RIGHT, border=8)
+        row.Add(delBtn)
+        main.Add(row, flag=wx.ALL, border=8)
 
         for key, label in FIELDS:
             self._ctrls[key] = helper.addLabeledControl(label + ":", wx.TextCtrl)
@@ -76,7 +79,7 @@ class DetailsDialog(wx.Dialog):
 
     # --- profile selector ----------------------------------------------------
     def _items(self):
-        return list(self._store.profile_names()) + [self.NEW_LABEL]
+        return list(self._store.profile_names())
 
     def _selectCurrent(self):
         names = self._store.profile_names()
@@ -85,8 +88,7 @@ class DetailsDialog(wx.Dialog):
         elif names:
             self._choice.SetSelection(0)
             self._current = names[0]
-        else:
-            self._choice.SetSelection(len(self._items()) - 1)  # New profile...
+
 
     def _refresh(self):
         self._choice.Set(self._items())
@@ -107,24 +109,25 @@ class DetailsDialog(wx.Dialog):
 
     def _onChoose(self, evt):
         sel = self._choice.GetStringSelection()
-        if sel == self.NEW_LABEL:
-            name = self._promptName()
-            if not name:
-                self._selectCurrent()
-                return
-            self._stash()
-            self._store.add_profile(name, {})
-            self._store.set_active(name)
-            self._current = name
-            self._refresh()
-            self._loadFields(name)
-            ui.message(_("New profile %s. Enter or import details.") % name)
-        elif sel != self._current:
+        if sel and sel != self._current:
             self._stash()
             self._current = sel
             self._store.set_active(sel)
             self._loadFields(sel)
             ui.message(_("Profile %s.") % sel)
+
+    def _onNew(self, evt):
+        name = self._promptName()
+        if not name:
+            return
+        self._stash()
+        self._store.add_profile(name, {})
+        self._store.set_active(name)
+        self._current = name
+        self._refresh()
+        self._loadFields(name)
+        ui.message(_("New profile %s. Enter or import details.") % name)
+        self._ctrls["given_name"].SetFocus()
 
     def _promptName(self):
         with wx.TextEntryDialog(
@@ -150,6 +153,7 @@ class DetailsDialog(wx.Dialog):
         self._refresh()
         self._loadFields(self._current)
         ui.message(_("Deleted %s.") % gone)
+        self._ctrls["given_name"].SetFocus()
 
     # --- CV import -----------------------------------------------------------
     def _onImport(self, evt):
