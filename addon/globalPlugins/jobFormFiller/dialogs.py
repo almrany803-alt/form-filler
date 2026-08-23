@@ -11,6 +11,7 @@ from gui import guiHelper
 import ui
 
 from .core import cvparse
+from .core import announce
 
 try:
     from logHandler import log
@@ -220,3 +221,123 @@ def edit_details(store, prefill=None):
     finally:
         gui.mainFrame.postPopup()
     return saved
+
+
+class ReviewDialog(wx.Dialog):
+    """An accessible list over the form you are filling: every field, one per
+    line, with its current value or "empty, needs you". Arrow through the list,
+    Tab to the actions. Edit types a value in (an accessible box over a field
+    that may not be), Fill from profile picks a saved detail, Clear empties it,
+    Go to jumps to the field in the page. Changes are applied when you close."""
+
+    def __init__(self, parent, records, profile):
+        super().__init__(parent, title=_("Job Form Filler: review fields"))
+        self._records = records
+        self._profile = profile or {}
+        self._pending = {}     # index -> new value ("" means clear)
+        self._goto = None
+
+        main = wx.BoxSizer(wx.VERTICAL)
+        self._list = wx.ListBox(self, choices=self._lines(), style=wx.LB_SINGLE)
+        if records:
+            self._list.SetSelection(0)
+        main.Add(self._list, 1, wx.EXPAND | wx.ALL, 8)
+
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        for label, handler in (
+            (_("&Go to"), self._onGoto),
+            (_("&Edit..."), self._onEdit),
+            (_("&Fill from profile..."), self._onFill),
+            (_("&Clear"), self._onClear),
+        ):
+            b = wx.Button(self, label=label)
+            b.Bind(wx.EVT_BUTTON, handler)
+            row.Add(b, 0, wx.RIGHT, 6)
+        main.Add(row, 0, wx.ALL, 8)
+        main.Add(self.CreateButtonSizer(wx.CLOSE), 0, wx.EXPAND | wx.ALL, 8)
+        self.Bind(wx.EVT_BUTTON, lambda e: self.EndModal(wx.ID_OK), id=wx.ID_CLOSE)
+
+        self.SetSizerAndFit(main)
+        self._list.SetFocus()
+
+    def _shownValue(self, i):
+        if i in self._pending:
+            return self._pending[i] or _("empty")
+        return self._records[i]["value"] or _("empty, needs you")
+
+    def _lines(self):
+        return ["{name}: {val}".format(name=r["name"], val=self._shownValue(i))
+                for i, r in enumerate(self._records)]
+
+    def _refresh(self, keep):
+        self._list.Set(self._lines())
+        self._list.SetSelection(keep)
+
+    def _sel(self):
+        i = self._list.GetSelection()
+        return None if i == wx.NOT_FOUND else i
+
+    def _onGoto(self, evt):
+        i = self._sel()
+        if i is None:
+            return
+        self._goto = i
+        self.EndModal(wx.ID_OK)
+
+    def _onEdit(self, evt):
+        i = self._sel()
+        if i is None:
+            return
+        cur = self._pending.get(i, self._records[i]["value"])
+        with wx.TextEntryDialog(
+                self, _("Value for {name}:").format(name=self._records[i]["name"]),
+                _("Edit field"), value=cur) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            self._pending[i] = dlg.GetValue()
+        self._refresh(i)
+
+    def _onFill(self, evt):
+        i = self._sel()
+        if i is None:
+            return
+        keys = [k for k in self._profile if self._profile.get(k)]
+        if not keys:
+            ui.message(_("No saved details to choose from."))
+            return
+        labels = ["{name}: {val}".format(name=announce.human(k), val=self._profile[k])
+                  for k in keys]
+        rec_key = self._records[i]["key"]
+        preselect = keys.index(rec_key) if rec_key in keys else 0
+        with wx.SingleChoiceDialog(
+                self,
+                _("Which detail goes in {name}?").format(
+                    name=self._records[i]["name"]),
+                _("Fill from profile"), labels) as dlg:
+            dlg.SetSelection(preselect)
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            self._pending[i] = self._profile[keys[dlg.GetSelection()]]
+        self._refresh(i)
+
+    def _onClear(self, evt):
+        i = self._sel()
+        if i is None:
+            return
+        self._pending[i] = ""
+        self._refresh(i)
+
+
+def review_fields(records, profile):
+    """Open the review list. Returns (changes, goto) where changes is a list of
+    (index, new_value) and goto is an index to focus, or None. Main thread only."""
+    gui.mainFrame.prePopup()
+    try:
+        dlg = ReviewDialog(gui.mainFrame, records, profile)
+        dlg.ShowModal()
+        changes = list(dlg._pending.items())
+        goto = dlg._goto
+        dlg.Destroy()
+    finally:
+        gui.mainFrame.postPopup()
+    return changes, goto

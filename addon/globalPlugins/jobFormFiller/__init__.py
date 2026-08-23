@@ -195,6 +195,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         menu = wx.Menu()
         mField = menu.Append(wx.ID_ANY, _("Fill this &field"))
         mForm = menu.Append(wx.ID_ANY, _("Fill &all fields"))
+        mReview = menu.Append(wx.ID_ANY, _("&Review fields"))
         menu.AppendSeparator()
 
         # Profile submenu, labelled with the active version (or "none").
@@ -222,6 +223,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         frame.prePopup()
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("field"), mField)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("form"), mForm)
+        frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("review"), mReview)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("new"), mNew)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("del"), mDel)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("import"), mImport)
@@ -239,7 +241,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if not act:
             return
         kind = act[0]
-        if kind in ("field", "form"):
+        if kind in ("field", "form", "review"):
             def runFill():
                 if savedForeground:
                     try:
@@ -249,8 +251,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                         pass
                 if kind == "field":
                     self.script_fillField(None, focus=savedFocus)
-                else:
+                elif kind == "form":
                     self.script_fillForm(None, focus=savedFocus)
+                else:
+                    self._openReview(savedFocus)
             wx.CallAfter(runFill)
             return
         after = {
@@ -340,6 +344,87 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if self._store is not None:
             dialogs.edit_details(self._store, prefill=fields)
             self._profile = self._store.get_active() or {}
+
+    # --- review list ---------------------------------------------------------
+    def _form_field_objs(self, focus):
+        ti = getattr(focus, "treeInterceptor", None)
+        if ti is None or not isinstance(
+                ti, browseMode.BrowseModeDocumentTreeInterceptor):
+            return None
+        try:
+            start = ti.makeTextInfo(textInfos.POSITION_FIRST)
+            items = list(ti._iterNodesByType("formField", "next", start))
+        except Exception:
+            log.error("JFF review: could not enumerate fields", exc_info=True)
+            return None
+        objs = []
+        for item in items:
+            o = _obj_from_item(item)
+            if o is not None:
+                objs.append(o)
+        return objs
+
+    def _collect_review(self, focus):
+        objs = self._form_field_objs(focus)
+        if objs is None:
+            return None
+        records = []
+        for obj in objs:
+            fd = _descriptor_from_object(obj)
+            result = matcher.match_field(fd)
+            try:
+                value = obj.value or ""
+            except Exception:
+                value = ""
+            name = (announce.human(result.key) if result.key
+                    else (fd.label or _("an unlabelled field")))
+            records.append({"obj": obj, "fd": fd, "key": result.key,
+                            "name": name, "value": value})
+        log.info("JFF review: collected %d fields" % len(records))
+        return records
+
+    def _write_field(self, obj, fd, value):
+        target_id = fd.id
+        moved = False
+        for _attempt in range(3):
+            obj.setFocus()
+            api.setFocusObject(obj)
+            foc = api.getFocusObject()
+            foc_id = (getattr(foc, "IA2Attributes", {}) or {}).get("id", "")
+            if not target_id or not foc_id or foc_id == target_id:
+                moved = True
+                break
+            time.sleep(0.05)
+        if not moved:
+            log.info("JFF review: focus did not land on %r" % target_id)
+            return False
+        KeyboardInputGesture.fromName("control+a").send()
+        if value:
+            _paste_into_focused(obj, value)
+        else:
+            KeyboardInputGesture.fromName("delete").send()
+        return True
+
+    def _openReview(self, focus):
+        records = self._collect_review(focus)
+        if not records:
+            ui.message(_("No form fields found here."))
+            return
+        result = dialogs.review_fields(records, self._profile)
+        if result is None:
+            return
+        changes, goto = result
+        for idx, newval in changes:
+            rec = records[idx]
+            self._write_field(rec["obj"], rec["fd"], newval)
+        if changes:
+            ui.message(_("Applied {n} change(s).").format(n=len(changes)))
+        if goto is not None:
+            try:
+                records[goto]["obj"].setFocus()
+                api.setFocusObject(records[goto]["obj"])
+            except Exception:
+                log.error("JFF review: go to field failed", exc_info=True)
 
     @script(
         description=_("Edit your saved details"),
