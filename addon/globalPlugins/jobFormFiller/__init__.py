@@ -874,30 +874,38 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 pass
             return pick, "none"
 
-        # Select by index. Put NVDA in focus mode so keys reach the control,
-        # close the popup to a known state, jump to the first option with Home,
-        # then arrow Down to the target index (a native select updates its value
-        # as you arrow, no commit key needed).
-        try:
-            ti = getattr(obj, "treeInterceptor", None)
-            if ti is not None:
-                ti.passThrough = True
-        except Exception:
-            pass
-        try:
-            obj.setFocus()
-            api.setFocusObject(obj)
-            time.sleep(0.08)
-            KeyboardInputGesture.fromName("escape").send()
-            time.sleep(0.05)
-            KeyboardInputGesture.fromName("home").send()
-            time.sleep(0.05)
-            for _ in range(pick.index):
-                KeyboardInputGesture.fromName("downArrow").send()
-                time.sleep(0.03)
-            time.sleep(0.12)
-        except Exception:
-            log.error("JFF nsel: arrow-to-index failed", exc_info=True)
+        # Select synchronously via the option object's accessibility action.
+        # Keyboard selection queues behind the running script and does not take
+        # effect until the whole fill returns, which breaks verification and
+        # multi-select forms; acting on the object applies immediately.
+        target = opts[pick.index] if pick.index < len(opts) else None
+        selected = False
+        if target is not None:
+            try:
+                target.doAction()
+                selected = True
+                log.info("JFF nsel: selected via option doAction")
+            except Exception:
+                log.error("JFF nsel: doAction failed", exc_info=True)
+        if not selected:
+            # Fallback: focus mode, then arrow to the index. Works for a single
+            # field; unreliable mid-form (kept only as a last resort).
+            try:
+                ti = getattr(obj, "treeInterceptor", None)
+                if ti is not None:
+                    ti.passThrough = True
+                obj.setFocus()
+                api.setFocusObject(obj)
+                time.sleep(0.08)
+                KeyboardInputGesture.fromName("escape").send()
+                time.sleep(0.05)
+                KeyboardInputGesture.fromName("home").send()
+                time.sleep(0.05)
+                for _ in range(pick.index):
+                    KeyboardInputGesture.fromName("downArrow").send()
+                    time.sleep(0.03)
+            except Exception:
+                log.error("JFF nsel: arrow fallback failed", exc_info=True)
 
         # Read back with a few retries: the select's exposed value can lag the
         # keystrokes, and a single early read gives a false mismatch (seen in the
