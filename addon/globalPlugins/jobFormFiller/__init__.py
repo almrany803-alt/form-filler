@@ -103,6 +103,11 @@ def _descriptor_from_object(obj):
     # language-independent signal, and Chrome exposes it in IA2. Fall back to a
     # token synthesised from the input type. ARIA autocomplete values (list,
     # inline, both) are not fill tokens, so the matcher ignores them harmlessly.
+    # NOTE (verified on real Chrome+NVDA): Chrome does NOT expose the HTML
+    # autocomplete purpose (given-name, family-name...) here for plain inputs,
+    # even inside a <form>. ia2['autocomplete'] only carries ARIA autocomplete
+    # (list/inline/both) on comboboxes, which the matcher ignores but which
+    # helps classify_control. Identity comes from label, html name, aria-label.
     ac_attr = (ia2.get("autocomplete", "") or "").strip().lower()
     synth = {"email": "email", "tel": "tel", "url": "url"}.get(input_type, "")
     autocomplete = ac_attr or synth

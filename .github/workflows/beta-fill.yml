@@ -72,7 +72,7 @@ jobs:
           node fill_review.mjs;  if ($LASTEXITCODE -ne 0) { $failed = $true }
           Write-Host "===== review list Edit + Clear ====="
           node fill_review_actions.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
-          Write-Host "===== autocomplete-only fields (the strongest signal) ====="
+          Write-Host "===== autocomplete-only fields (IA2 limitation: declined) ====="
           node fill_autocomplete.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
           Write-Host "===== Greenhouse-style form (real ATS) ====="
           node fill_greenhouse.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }

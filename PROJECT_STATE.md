@@ -384,3 +384,12 @@ Read this file, then `addon/globalPlugins/jobFormFiller/__init__.py` and the
 `core/` modules. The tests in `tests/` and `betatest/` show intended behaviour.
 Trust the repo over any summary. Keep the beta-tester approach in section 2:
 drive the real feature, read the real log, fail safe, and be adversarial.
+
+## Verified platform limitation (autocomplete)
+Chrome does not expose the HTML autocomplete purpose (given-name, family-name,
+address-line1...) via the IA2 object attributes NVDA reads, even inside a <form>.
+Confirmed empirically: a field with only an autocomplete attribute (no label, no
+meaningful name) is not identifiable and is correctly declined. The addon
+identifies fields via label, HTML name, and aria-label, all of which Chrome does
+expose. ia2['autocomplete'] (ARIA list/inline/both on comboboxes) is still read
+because it helps classify comboboxes.
