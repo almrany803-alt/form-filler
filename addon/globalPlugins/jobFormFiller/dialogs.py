@@ -10,7 +10,6 @@ import gui
 from gui import guiHelper
 import ui
 
-from .core import cvparse
 from .core import announce
 
 try:
@@ -40,7 +39,7 @@ FIELDS = [
 
 
 class DetailsDialog(wx.Dialog):
-    def __init__(self, parent, store, prefill=None):
+    def __init__(self, parent, store):
         super().__init__(parent, title=_("Job Form Filler: My details"))
         self._store = store
         self._ctrls = {}
@@ -67,14 +66,6 @@ class DetailsDialog(wx.Dialog):
         for key, label in FIELDS:
             self._ctrls[key] = helper.addLabeledControl(label + ":", wx.TextCtrl)
         self._loadFields(self._current)
-        if prefill:
-            for k, v in prefill.items():
-                if k in self._ctrls and v:
-                    self._ctrls[k].SetValue(v)
-
-        importBtn = wx.Button(self, label=_("&Import from CV..."))
-        importBtn.Bind(wx.EVT_BUTTON, self._onImport)
-        main.Add(importBtn, flag=wx.ALL, border=8)
 
         buttons = self.CreateButtonSizer(wx.OK | wx.CANCEL)
         main.Add(buttons, flag=wx.EXPAND | wx.ALL, border=8)
@@ -137,7 +128,7 @@ class DetailsDialog(wx.Dialog):
     def _promptName(self):
         with wx.TextEntryDialog(
                 self,
-                _("Name for this version (for example English, Arabic, Teaching):"),
+                _("Name for this version (for example Work or Teaching):"),
                 _("New profile")) as dlg:
             if dlg.ShowModal() != wx.ID_OK:
                 return None
@@ -160,53 +151,30 @@ class DetailsDialog(wx.Dialog):
         ui.message(_("Deleted %s.") % gone)
         self._ctrls["given_name"].SetFocus()
 
-    # --- CV import -----------------------------------------------------------
-    def _onImport(self, evt):
-        with wx.FileDialog(
-                self, _("Choose your CV"),
-                wildcard=_("CV files (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt"),
-                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fd:
-            if fd.ShowModal() != wx.ID_OK:
-                return
-            path = fd.GetPath()
-        try:
-            text = cvparse.extract_text(path)
-            fields = cvparse.cv_to_fields(cvparse.parse_cv_text(text))
-        except Exception:
-            log.error("JFF: CV import failed", exc_info=True)
-            ui.message(_("Could not read that CV. Check the file and try again."))
-            return
-        count = 0
-        for key, value in fields.items():
-            if key in self._ctrls and value:
-                self._ctrls[key].SetValue(value)
-                count += 1
-        log.info("JFF: imported %d field(s) from CV" % count)
-        ui.message(_("Imported %d detail(s) from your CV. Review them, then save.")
-                   % count)
-        self._ctrls["given_name"].SetFocus()
-
     # --- save ----------------------------------------------------------------
     def commit(self):
-        """Write the current form into the active version. If every profile was
-        deleted, create one from the form so the details are not lost."""
+        """Write the current form into the active version. If there is no
+        profile yet, create one from the form so the details are not lost, named
+        after the person (or "My details"), never a confusing "default"."""
         if self._current:
             self._stash()
             return
         vals = self._fieldValues()
         if any(vals.values()):
-            self._store.add_profile("default", vals)
-            self._store.set_active("default")
-            self._current = "default"
+            name = ((vals.get("given_name", "") + " "
+                     + vals.get("family_name", "")).strip() or _("My details"))
+            self._store.add_profile(name, vals)
+            self._store.set_active(name)
+            self._current = name
 
 
-def edit_details(store, prefill=None):
+def edit_details(store):
     """Open the details form. On OK, save to the store. Returns the saved dict,
     or None if cancelled. Must be called on the main (GUI) thread."""
     gui.mainFrame.prePopup()
     saved = None
     try:
-        dlg = DetailsDialog(gui.mainFrame, store, prefill=prefill)
+        dlg = DetailsDialog(gui.mainFrame, store)
         if dlg.ShowModal() == wx.ID_OK:
             dlg.commit()
             try:

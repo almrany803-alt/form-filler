@@ -45,7 +45,7 @@ jobs:
         shell: pwsh
         run: |
           $cv = (Resolve-Path "betatest\sample_cv_en.txt").Path
-          pwsh -File betatest\drive_cv.ps1 -CvPath "$cv"
+          pwsh -File betatest\drive_import_menu.ps1 -CvPath "$cv"
           $env:JFF_CFG = "$env:RUNNER_TEMP\nvdacfg"
           python betatest\profile_tool.py check cv_en
 
@@ -53,7 +53,7 @@ jobs:
         shell: pwsh
         run: |
           $cv = (Resolve-Path "betatest\sample_cv_ar.txt").Path
-          pwsh -File betatest\drive_cv.ps1 -CvPath "$cv"
+          pwsh -File betatest\drive_import_menu.ps1 -CvPath "$cv"
           $env:JFF_CFG = "$env:RUNNER_TEMP\nvdacfg"
           python betatest\profile_tool.py check cv_ar
 
@@ -61,7 +61,7 @@ jobs:
         shell: pwsh
         run: |
           $cv = (Resolve-Path "betatest\cvs\cv_en.docx").Path
-          pwsh -File betatest\drive_cv.ps1 -CvPath "$cv"
+          pwsh -File betatest\drive_import_menu.ps1 -CvPath "$cv"
           $env:JFF_CFG = "$env:RUNNER_TEMP\nvdacfg"
           python betatest\profile_tool.py check cv_docx
 
@@ -69,7 +69,7 @@ jobs:
         shell: pwsh
         run: |
           $cv = (Resolve-Path "betatest\cvs\cv_en.pdf").Path
-          pwsh -File betatest\drive_cv.ps1 -CvPath "$cv"
+          pwsh -File betatest\drive_import_menu.ps1 -CvPath "$cv"
           $env:JFF_CFG = "$env:RUNNER_TEMP\nvdacfg"
           python betatest\profile_tool.py check cv_pdf
 

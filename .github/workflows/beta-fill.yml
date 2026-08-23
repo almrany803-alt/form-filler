@@ -70,6 +70,8 @@ jobs:
           node fill_intl.mjs;    if ($LASTEXITCODE -ne 0) { $failed = $true }
           Write-Host "===== review list (open, list fields, fill one) ====="
           node fill_review.mjs;  if ($LASTEXITCODE -ne 0) { $failed = $true }
+          Write-Host "===== review list Edit + Clear ====="
+          node fill_review_actions.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
           Write-Host "===== Greenhouse-style form (real ATS) ====="
           node fill_greenhouse.mjs; if ($LASTEXITCODE -ne 0) { $failed = $true }
           Write-Host "===== Taleo-style form (camelCase names) ====="

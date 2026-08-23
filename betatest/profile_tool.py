@@ -97,3 +97,21 @@ elif cmd == "check_import_menu":
           and store.active_name() is not None)
     print("PASS check_import_menu" if ok else "FAIL check_import_menu")
     sys.exit(0 if ok else 1)
+
+elif cmd == "check_menu_new":
+    store.load()
+    names = set(store.profile_names())
+    ok = ("Teaching" in names and store.active_name() == "Teaching"
+          and "English" in names)
+    print("names:", names, "active:", store.active_name())
+    print("PASS check_menu_new" if ok else "FAIL check_menu_new")
+    sys.exit(0 if ok else 1)
+
+elif cmd == "check_menu_del":
+    store.load()
+    names = set(store.profile_names())
+    ok = ("Teaching" not in names and "English" in names
+          and store.active_name() == "English")
+    print("names:", names, "active:", store.active_name())
+    print("PASS check_menu_del" if ok else "FAIL check_menu_del")
+    sys.exit(0 if ok else 1)

@@ -204,9 +204,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         mReview = menu.Append(wx.ID_ANY, _("&Review fields"))
         menu.AppendSeparator()
 
-        # Profile submenu, labelled with the active version (or "none").
+        # Profile submenu, always shown. Your details ARE a profile, so switch,
+        # create, edit and delete all live here in one place.
         names = self._store.profile_names() if self._store else []
         active = self._store.active_name() if self._store else None
+        has_profile = bool(active)
         profMenu = wx.Menu()
         radioIds = {}
         for n in names:
@@ -217,13 +219,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if names:
             profMenu.AppendSeparator()
         mNew = profMenu.Append(wx.ID_ANY, _("&New profile..."))
+        mEditP = profMenu.Append(wx.ID_ANY, _("&Edit profile..."))
         mDel = profMenu.Append(wx.ID_ANY, _("&Delete profile"))
+        mEditP.Enable(has_profile)
+        mDel.Enable(has_profile)
         menu.AppendSubMenu(
             profMenu, _("&Profile: {name}").format(name=active or _("none")))
         menu.AppendSeparator()
 
         mImport = menu.Append(wx.ID_ANY, _("&Import from CV..."))
-        mEnter = menu.Append(wx.ID_ANY, _("&Enter your details..."))
+        # The manual on-ramp only appears when there is no profile yet; once you
+        # have one, editing lives in the Profile submenu (Edit profile).
+        mEnter = None
+        if not has_profile:
+            mEnter = menu.Append(wx.ID_ANY, _("Enter your details &manually..."))
 
         frame = gui.mainFrame
         frame.prePopup()
@@ -231,9 +240,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("form"), mForm)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("review"), mReview)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("new"), mNew)
+        frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("editp"), mEditP)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("del"), mDel)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("import"), mImport)
-        frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("enter"), mEnter)
+        if mEnter is not None:
+            frame.Bind(wx.EVT_MENU,
+                       lambda e: self._setMenuAction("new"), mEnter)
         for iid, n in radioIds.items():
             frame.Bind(
                 wx.EVT_MENU,
@@ -266,7 +278,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             wx.CallAfter(runFill)
             return
         after = {
-            "enter": lambda: self._onDetails(None),
+            "editp": lambda: self._onDetails(None),
             "import": self._onImportCV,
             "new": self._onNewProfile,
             "del": self._onDeleteProfile,
@@ -300,18 +312,29 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._profile = self._store.get_active() or {}
         ui.message(_("Switched to {name}.").format(name=name))
 
+    def _uniqueProfileName(self, name):
+        # Never overwrite an existing profile: if the name is taken, add a number.
+        existing = set(self._store.profile_names()) if self._store else set()
+        if name not in existing:
+            return name
+        i = 2
+        while "{0} {1}".format(name, i) in existing:
+            i += 1
+        return "{0} {1}".format(name, i)
+
     def _onNewProfile(self):
         if self._store is None:
             return
         with wx.TextEntryDialog(
                 gui.mainFrame,
-                _("Name for the new version (for example English, Saudi):"),
+                _("Name for this version (for example Work or Teaching):"),
                 _("New profile")) as dlg:
             if dlg.ShowModal() != wx.ID_OK:
                 return
             name = dlg.GetValue().strip()
         if not name:
             return
+        name = self._uniqueProfileName(name)
         self._store.add_profile(name, {})
         self._store.set_active(name)
         try:
@@ -376,13 +399,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                         or _("Imported"))
         with wx.TextEntryDialog(
                 gui.mainFrame,
-                _("Name for this profile (a version, for example English or "
-                  "Saudi):"), _("Import from CV"), value=default_name) as dlg:
+                _("Name for this version (for example Work or Teaching):"),
+                _("Import from CV"), value=default_name) as dlg:
             if dlg.ShowModal() != wx.ID_OK:
                 return
             name = dlg.GetValue().strip() or default_name
         # 4. Create the profile WITH the parsed fields and save it now, so the
-        #    import persists even if the review is cancelled.
+        #    import persists even if the review is cancelled. A unique name means
+        #    an existing profile is never overwritten.
+        name = self._uniqueProfileName(name)
         self._store.add_profile(name, dict(fields))
         self._store.set_active(name)
         try:
