@@ -827,16 +827,30 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 pass
             return pick, "none"
 
-        # Select the chosen option object, then commit.
+        # Select by index. Put NVDA in focus mode so keys reach the control,
+        # close the popup to a known state, jump to the first option with Home,
+        # then arrow Down to the target index (a native select updates its value
+        # as you arrow, no commit key needed).
         try:
-            target = opts[pick.index]
-            target.setFocus()
-            api.setFocusObject(target)
+            ti = getattr(obj, "treeInterceptor", None)
+            if ti is not None:
+                ti.passThrough = True
+        except Exception:
+            pass
+        try:
+            obj.setFocus()
+            api.setFocusObject(obj)
             time.sleep(0.08)
-            KeyboardInputGesture.fromName("enter").send()
+            KeyboardInputGesture.fromName("escape").send()
+            time.sleep(0.05)
+            KeyboardInputGesture.fromName("home").send()
+            time.sleep(0.05)
+            for _ in range(pick.index):
+                KeyboardInputGesture.fromName("downArrow").send()
+                time.sleep(0.03)
             time.sleep(0.12)
         except Exception:
-            log.error("JFF nsel: selecting the option failed", exc_info=True)
+            log.error("JFF nsel: arrow-to-index failed", exc_info=True)
 
         after = self._read_current_value(obj)
         verdict = controls.verify_selection(pick.label, after)
