@@ -56,6 +56,12 @@ jobs:
           cd betatest
           node fill_date.mjs
 
+      - name: Whole-form fill over text + native date + text date
+        shell: pwsh
+        run: |
+          cd betatest
+          node fill_date_form.mjs
+
       - name: Upload the NVDA log
         if: always()
         uses: actions/upload-artifact@v4

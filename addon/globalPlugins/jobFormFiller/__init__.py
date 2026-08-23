@@ -729,9 +729,46 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         filled, guessed, leftovers, prefilled = [], [], [], []
         processed_radio = set()
         processed_multi = set()
+        processed_date = set()
 
         for obj in objs:
             fd = _descriptor_from_object(obj)
+
+            # Native date: browse mode enumerates the day/month/year spin buttons,
+            # not the date input, so handle the date once from any segment.
+            if (obj.role == controlTypes.Role.SPINBUTTON
+                    or fd.input_type == "date"):
+                container = obj
+                if len(self._collect_spinbuttons(obj)) < 2:
+                    node = obj
+                    for _ in range(4):
+                        try:
+                            p = node.parent
+                        except Exception:
+                            p = None
+                        if p is None:
+                            break
+                        if len(self._collect_spinbuttons(p)) >= 2:
+                            container = p
+                            break
+                        node = p
+                did = str(id(container))
+                if did in processed_date:
+                    continue
+                processed_date.add(did)
+                key, verdict = self._fill_native_date(obj)
+                if verdict == "confirmed":
+                    filled.append("date_of_birth")
+                    log.info("JFF form field: native date set")
+                elif verdict == "novalue":
+                    leftovers.append(announce.human("date_of_birth"))
+                elif key != "date_of_birth":
+                    # not a date field we recognise; leave for normal handling
+                    processed_date.discard(did)
+                else:
+                    leftovers.append(announce.human("date_of_birth"))
+                if verdict != "none":
+                    continue
 
             # Multi-select: browse mode enumerates the option listitems, not the
             # listbox, so handle the parent listbox once from any of its options.
@@ -813,6 +850,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 if verdict == "confirmed":
                     filled.append(result.key)
                     log.info("JFF form field: checkbox %r set" % result.key)
+                else:
+                    leftovers.append(fd.label or announce.human(result.key))
+                continue
+
+            if result.key == "date_of_birth" or kind == controls.DATEPICKER:
+                # Text date field (a native input was handled above as segments);
+                # format to the field's own hint or the country-implied order.
+                verdict = self._fill_date(obj, fd, value)
+                if verdict == "confirmed":
+                    filled.append(result.key)
+                    log.info("JFF form field: date %r set" % result.key)
                 else:
                     leftovers.append(fd.label or announce.human(result.key))
                 continue
