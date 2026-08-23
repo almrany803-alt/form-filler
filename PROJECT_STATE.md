@@ -25,8 +25,11 @@ user loses time on.
 ### Status at a glance
 
 Working and proven on real hardware (see section 3):
-- Commands live in one place: press NVDA+J, then a letter. F fills the current
-  field, A fills the whole form (with a spoken summary), D opens your details.
+- One key, NVDA+J, opens a native menu you can arrow through (NVDA announces
+  each item) or drive by access key: Fill this field, Fill all fields, Profile
+  (a submenu to switch, create, delete versions), Import from CV, Enter your
+  details. Fills act on the page: focus and foreground are captured before the
+  menu opens and restored before filling.
 - Encrypted profile stored on the user's own machine (Windows DPAPI).
 - A "My details" form in the NVDA Tools menu to enter and edit your details.
 - Multilingual field identification (9 languages).
@@ -288,6 +291,13 @@ needs the Actions permission), which is why the workflows run `on: push`.
   COMPILED library. PDF uses bundled PyMuPDF (an abi3 win_amd64 wheel, forward
   compatible across 3.10+), which is C code and needs no stdlib extras. For .docx,
   a stdlib zip+xml reader is enough.
+- **A popup menu steals page focus.** Opening a menu from NVDA's frame pulls
+  focus off the web page, so a fill run straight after finds no document and the
+  paste lands in the wrong window. Capture the page's focus object and foreground
+  window before the menu, and restore the foreground and pass the saved focus to
+  the fill, which runs after the menu closes. Also: a native menu stays open on a
+  non-command key (unlike the old one-shot layer), so tests that fire junk keys
+  must send Escape to close it.
 - **No shared mutable defaults.** The store built each instance's data with a
   shallow copy of a module-level default, so every store shared one profiles
   dict. Build fresh nested data per instance instead.

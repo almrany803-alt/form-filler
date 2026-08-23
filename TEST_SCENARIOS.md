@@ -13,7 +13,7 @@ real, impatient, non-linear, multilingual user would, and see what breaks.
 
 ---
 
-## Feature: command layer (NVDA+J, then a letter)
+## Feature: the add-on menu (NVDA+J)
 
 - [done] Guidebook: NVDA+J then A fills the whole form; NVDA+J then F fills the
   focused field. Proven on real NVDA through the layer (the letter wins over
