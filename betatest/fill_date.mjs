@@ -26,6 +26,12 @@ console.log("=== dates: native, UK, US ===");
 await fillCheck("dob1", "1990-05-20", "native input type=date (ISO)");
 await fillCheck("dob2", "20/05/1990", "UK text DD/MM/YYYY");
 await fillCheck("dob3", "05/20/1990", "US text MM/DD/YYYY");
+// custom calendar widget (react-datepicker-like): fill the input, ignore the grid
+await fillCheck("dob4", "05/20/1990", "custom picker: type into input, ignore calendar");
+// prove the calendar grid was never used (its day button sets 01/01/2000)
+const viaGrid = (await page.locator("#dob4").inputValue()) === "01/01/2000";
+console.log(`${!viaGrid ? "PASS" : "FAIL"}  #dob4: value came from typing, not the calendar grid`);
+ok = ok && !viaGrid;
 await browser.close();
 if (!ok) process.exit(1);
 console.log("Dates filled in the right format for each field.");

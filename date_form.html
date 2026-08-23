@@ -8,5 +8,18 @@
      <input type="text" id="dob2" name="dob2" placeholder="DD/MM/YYYY"></p>
   <p><label for="dob3">Date of birth</label>
      <input type="text" id="dob3" name="dob3" placeholder="MM/DD/YYYY"></p>
+
+  <!-- react-datepicker-like: a real text input that pops a calendar on focus,
+       but is still typable. The addon should type into the input, not the grid. -->
+  <p><label for="dob4">Date of birth</label>
+     <input type="text" id="dob4" name="dob4" placeholder="MM/DD/YYYY" autocomplete="off"></p>
+  <div id="cal" role="dialog" aria-label="calendar" style="display:none">
+    <button type="button" id="calday" onclick="document.getElementById('dob4').value='01/01/2000';">1</button>
+  </div>
 </form>
+<script>
+  var inp = document.getElementById('dob4'), cal = document.getElementById('cal');
+  inp.addEventListener('focus', function () { cal.style.display = 'block'; });
+  inp.addEventListener('blur', function () { cal.style.display = 'none'; });
+</script>
 </body></html>
