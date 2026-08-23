@@ -17,7 +17,7 @@ const CASES = [
   ["rtl_city",    "Arabic (RTL) label",          "fill", "Bristol"],
   ["surn",        "label NOT associated",        "empty", ""],
   ["q9f2",        "fully unlabelled",            "empty", ""],
-  ["country_sel", "native select (dropdown)",    "empty", ""],
+  ["country_sel", "native select (dropdown)",    "fill", "uk"],  // now filled: United Kingdom
   ["combo",       "custom combobox",             "empty", ""],
   ["dob",         "date input (no stored value)","empty", ""],
 ];
