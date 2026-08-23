@@ -45,10 +45,8 @@ jobs:
           $cfg = "$env:RUNNER_TEMP\nvdacfg"
           Start-Process -FilePath "C:\Program Files\NVDA\nvda.exe" -ArgumentList "-c `"$cfg`" -f `"$cfg\nvda.log`" -l 10 -m"
           Start-Sleep -Seconds 20
-      - name: Fill a LIVE public application (no submit)
+      - name: Fill a LIVE Lever application (no submit)
         shell: pwsh
-        env:
-          
         run: |
           cd betatest
           node fill_live_lever.mjs
