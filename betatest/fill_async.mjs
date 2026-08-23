@@ -16,8 +16,8 @@ execFileSync("powershell", ["-File", path.join(here, "send_nvda_key.ps1"), "-Key
 await sleep(6000);
 const got = await page.locator("#loc").inputValue();
 console.log("=== async search-box combobox ===");
-const ok = got.startsWith("Bristol");
-console.log(`${ok ? "PASS" : "FAIL"}  #loc: expected a Bristol option chosen, got ${JSON.stringify(got)}`);
+const ok = got.includes("United Kingdom");
+console.log(`${ok ? "PASS" : "FAIL"}  #loc: expected a full option like Bristol, United Kingdom, got ${JSON.stringify(got)}`);
 await browser.close();
 if (!ok) process.exit(1);
 console.log("Async combobox: typed the city, waited for options, picked the match.");

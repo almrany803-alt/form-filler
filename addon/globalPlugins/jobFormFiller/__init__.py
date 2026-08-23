@@ -1474,7 +1474,25 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 break
             time.sleep(0.1)
         if not labels:
-            log.info("JFF async: no options loaded")
+            log.info("JFF async: no options loaded; dumping tree around combobox")
+            try:
+                par = obj.parent
+                for c in (par.children or []):
+                    try:
+                        cr = getattr(c.role, "name", "?")
+                        cn = (c.name or "")[:40]
+                        gc = len(list(c.children or []))
+                        log.info("JFF async tree: role=%s name=%r kids=%d"
+                                 % (cr, cn, gc))
+                        if cr in ("list", "listBox"):
+                            for gcc in (c.children or []):
+                                log.info("JFF async tree:   opt role=%s name=%r"
+                                         % (getattr(gcc.role, "name", "?"),
+                                            (gcc.name or "")[:40]))
+                    except Exception:
+                        pass
+            except Exception:
+                pass
             return "unknown", None
         pick = controls.choose_option(value, labels)
         log.info("JFF async: value=%r -> idx=%r label=%r"
