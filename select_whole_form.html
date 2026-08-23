@@ -1,0 +1,20 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Whole form with select</title></head>
+<body>
+<h1>Application</h1>
+<form>
+  <p><label for="fn">First name</label><input id="fn" name="given-name"></p>
+  <p><label for="ln">Last name</label><input id="ln" name="family-name"></p>
+  <p><label for="em">Email</label><input id="em" name="email" type="email"></p>
+  <p><label for="country">Country</label>
+    <select id="country" name="country">
+      <option value="">Choose...</option>
+      <option>France</option><option>Germany</option>
+      <option>United Kingdom</option><option>United States</option>
+    </select></p>
+  <!-- already on a real choice: must be LEFT as Germany, not overwritten -->
+  <p><label for="country2">Country</label>
+    <select id="country2" name="country2">
+      <option>France</option><option selected>Germany</option><option>United Kingdom</option>
+    </select></p>
+</form>
+</body></html>

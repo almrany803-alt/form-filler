@@ -50,11 +50,17 @@ jobs:
           Start-Process -FilePath "C:\Program Files\NVDA\nvda.exe" -ArgumentList "-c `"$cfg`" -f `"$cfg\nvda.log`" -l 10 -m"
           Start-Sleep -Seconds 20
 
-      - name: Fill the native select
+      - name: Fill the native select (single field: exact, locale, decline)
         shell: pwsh
         run: |
           cd betatest
           node fill_select.mjs
+
+      - name: Whole-form fill over text + select
+        shell: pwsh
+        run: |
+          cd betatest
+          node fill_select_form.mjs
 
       - name: Upload the NVDA log
         if: always()

@@ -48,6 +48,24 @@ def _obj_from_item(item):
             pass
     return getattr(item, "obj", None)
 
+
+def _is_placeholder_value(v):
+    """True when a choice control's current value is a 'nothing chosen yet'
+    placeholder rather than a real selection, so a whole-form fill may set it.
+    Covers the supported languages and punctuation-only defaults."""
+    if not v:
+        return True
+    t = " ".join(str(v).lower().replace("-", " ").split())
+    if not t or all(not c.isalnum() for c in t):      # "", "--", "...", "/"
+        return True
+    for p in ("choose", "select", "please", "pick one", "not selected",
+              "choisir", "selectionner", "seleccione", "auswahlen", "auswahl",
+              "bitte", "seleziona", "wybierz", "selecteer", "kies", "اختر",
+              "select one", "any"):
+        if t.startswith(p):
+            return True
+    return False
+
 try:
     addonHandler.initTranslation()
 except Exception:
@@ -637,10 +655,39 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
             kind = controls.classify_control(controls.ControlDescriptor(
                 role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
+
+            if kind in (controls.NATIVE_SELECT, controls.ARIA_COMBOBOX):
+                # A dropdown always has a value, often a placeholder. Only fill
+                # when it is still on a placeholder; a real selection is left for
+                # the user to review, like a pre-filled text field.
+                try:
+                    existing = obj.value
+                except Exception:
+                    existing = None
+                if existing and not _is_placeholder_value(existing):
+                    log.info("JFF form field: %r dropdown already on %r, left "
+                             "as-is" % (result.key, existing))
+                    prefilled.append(fd.label or announce.human(result.key))
+                    continue
+                concept = result.key if result.key == "country" else ""
+                pick, verdict = self._fill_native_select(obj, value, concept)
+                if verdict == "confirmed":
+                    bucket = (guessed if (pick and pick.confidence == "guess")
+                              else filled)
+                    bucket.append(result.key)
+                    log.info("JFF form field: %r dropdown set to %r"
+                             % (result.key, pick.label if pick else value))
+                else:
+                    leftovers.append(fd.label or announce.human(result.key))
+                    log.info("JFF form field: %r dropdown not set (verdict=%s)"
+                             % (result.key, verdict))
+                continue
+
             if kind != controls.TEXT:
-                # dropdowns and other choice controls are not wired in yet.
+                # multi-select, date picker, async search box, radio, checkbox:
+                # these genuinely need the user for now.
                 leftovers.append(fd.label or announce.human(result.key))
-                log.info("JFF form field: %r is %s, skipped for now"
+                log.info("JFF form field: %r is %s, left for you"
                          % (result.key, kind))
                 continue
 
