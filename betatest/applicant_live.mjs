@@ -53,6 +53,11 @@ async function applicantActsOn(name, selector, key) {
   console.log(`\n=== APPLICANT ACTION: on ${name}, press NVDA+J then ${key} ===`);
   execFileSync("powershell", ["-File", path.join(here, "send_nvda_key.ps1"), "-Key", key], { stdio: "inherit" });
   await sleep(6000);
+  // Mimic the user: don't bail the instant the editor opens. If Fill opened a
+  // chooser, actually pick a value and confirm it, then let it commit.
+  try { execFileSync("powershell", ["-File", path.join(here, "send_pick.ps1")], { stdio: "inherit" }); } catch {}
+  await sleep(4000);
+  // only if something is still open, close it
   try { execFileSync("powershell", ["-File", path.join(here, "send_esc.ps1")], { stdio: "inherit" }); } catch {}
   await sleep(1500);
 }
