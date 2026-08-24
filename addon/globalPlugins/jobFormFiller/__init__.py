@@ -1411,6 +1411,44 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     node = node.parent
                 except Exception:
                     node = None
+            # Did the click actually open it? Log the combobox states, and
+            # search the whole document for option nodes (the menu may portal to
+            # the body, far outside the ancestor chain).
+            try:
+                st = ", ".join(sorted(getattr(s, "name", str(s)) for s in obj.states))
+                log.info("JFF dump: combobox states = %s" % st[:140])
+            except Exception:
+                log.info("JFF dump: states unavailable")
+            try:
+                root = None
+                ti = getattr(obj, "treeInterceptor", None)
+                if ti is not None:
+                    root = getattr(ti, "rootNVDAObject", None)
+                if root is None:
+                    root = api.getForegroundObject()
+                count = [0]
+                names = []
+
+                def _walk(n, d):
+                    if d > 12 or count[0] > 3000:
+                        return
+                    try:
+                        kids = list(n.children or [])
+                    except Exception:
+                        kids = []
+                    for c in kids:
+                        count[0] += 1
+                        try:
+                            if c.role == controlTypes.Role.LISTITEM and c.name:
+                                names.append(c.name)
+                        except Exception:
+                            pass
+                        _walk(c, d + 1)
+                _walk(root, 0)
+                log.info("JFF dump: document has %d option/listitem node(s); "
+                         "sample: %s" % (len(names), ", ".join(names[:15])))
+            except Exception:
+                log.error("JFF dump: doc option search failed", exc_info=True)
         except Exception:
             log.error("JFF dump failed", exc_info=True)
 
