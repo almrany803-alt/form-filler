@@ -23,7 +23,7 @@ from scriptHandler import script
 from keyboardHandler import KeyboardInputGesture
 import addonHandler
 
-from .core import matcher, controls, announce, profile
+from .core import matcher, controls, announce, profile, fingerprints
 from . import dialogs
 
 try:
@@ -614,10 +614,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             fd = _descriptor_from_object(obj)
             result = matcher.match_field(fd)
             key = result.key
-            cc = controls.classify_control(controls.ControlDescriptor(
-                role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-                placeholder=fd.placeholder, roledescription=fd.roledescription,
-                haspopup=getattr(fd, "haspopup", "")))
+            cc = self._classify(fd)
 
             # Date: one row, three dropdowns in the editor. A date-picker combobox
             # (calendar) counts too, so the user gets our picker, not the grid.
@@ -873,10 +870,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         fd = _descriptor_from_object(obj)
         plat = self._detect_platform(fd) or "-"
         result = matcher.match_field(fd)
-        cc = controls.classify_control(controls.ControlDescriptor(
-            role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-            placeholder=fd.placeholder, roledescription=fd.roledescription,
-                haspopup=getattr(fd, "haspopup", "")))
+        cc = self._classify(fd)
         seg = self._date_segment(fd)
         name = (announce.human(result.key) if result.key
                 else self._humanize_field(fd))
@@ -1142,6 +1136,39 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                         (fd.placeholder or "")]).lower()
         return any(w in hay for w in ("date", "birth", "dob", "calendar"))
 
+    def _fp_kind_to_addon(self, kind):
+        """Translate a fingerprint's kind string into the add-on's kind constant.
+        button_dropdown is identified as a dropdown for now; activating the button
+        to reach its list is Phase 2 work."""
+        return {
+            "text": controls.TEXT,
+            "async_combobox": controls.ASYNC_COMBOBOX,
+            "editable_combobox": controls.EDITABLE_COMBOBOX,
+            "native_select": controls.NATIVE_SELECT,
+            "button_dropdown": controls.ASYNC_COMBOBOX,
+            "checkbox": controls.CHECKBOX,
+            "radio": controls.RADIO,
+            "date": controls.DATEPICKER,
+        }.get((kind or "").strip().lower(), "")
+
+    def _classify(self, fd):
+        """Classify a field the layered way: the shared fingerprint database first
+        (exact known widgets, deterministic, per platform), then the heuristics.
+        A database hit is logged so a real-machine log shows which layer decided.
+        The result is still verified by behaviour downstream; the database only
+        picks which method to try, it doesn't assert the fill worked."""
+        fp = fingerprints.match_fingerprint(fd, self._detect_platform(fd))
+        if fp and fp.get("kind"):
+            mapped = self._fp_kind_to_addon(fp["kind"])
+            if mapped:
+                log.info("JFF fingerprint: %s -> %s (%s)"
+                         % (fp.get("id", ""), fp["kind"], fp.get("note", "")))
+                return mapped
+        return controls.classify_control(controls.ControlDescriptor(
+            role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
+            placeholder=fd.placeholder, roledescription=fd.roledescription,
+            haspopup=getattr(fd, "haspopup", "")))
+
     def _record_for_field(self, obj):
         """Build one review record for the focused field: classify it, choose the
         editor kind, and read its options if it is a chooser (or its sibling
@@ -1152,10 +1179,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if plat:
             log.info("JFF platform: %s" % plat)
         key = matcher.match_field(fd).key
-        cc = controls.classify_control(controls.ControlDescriptor(
-            role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-            placeholder=fd.placeholder, roledescription=fd.roledescription,
-                haspopup=getattr(fd, "haspopup", "")))
+        cc = self._classify(fd)
         kind = controls.editor_kind(cc, key or "", fd.input_type or "")
         # A date-picker combobox (opens a calendar) is a date, not a plain
         # chooser: offer our accessible day/month/year picker and type the result
@@ -1271,10 +1295,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # Radios are special: the object's own label is the option ("Yes"), not
         # the question, so match the group instead of the single radio. Handle it
         # before the normal match, which would bail on the option label.
-        early_kind = controls.classify_control(controls.ControlDescriptor(
-            role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-                placeholder=fd.placeholder, roledescription=fd.roledescription,
-                haspopup=getattr(fd, "haspopup", "")))
+        early_kind = self._classify(fd)
         if early_kind == controls.RADIO:
             key, pick, verdict = self._fill_radio_group(obj)
             if verdict == "confirmed":
@@ -1332,10 +1353,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             self._offer_editor(obj)
             return
 
-        kind = controls.classify_control(controls.ControlDescriptor(
-            role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-                placeholder=fd.placeholder, roledescription=fd.roledescription,
-                haspopup=getattr(fd, "haspopup", "")))
+        kind = self._classify(fd)
 
         if kind == controls.CHECKBOX:
             # A checkbox is a yes/no control. If the matched value is free text
@@ -1527,10 +1545,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
             # Radios first: the object's own label is the option, not the
             # question, so the standard match would bail. Handle the group once.
-            early_kind = controls.classify_control(controls.ControlDescriptor(
-                role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-                placeholder=fd.placeholder, roledescription=fd.roledescription,
-                haspopup=getattr(fd, "haspopup", "")))
+            early_kind = self._classify(fd)
             if early_kind == controls.RADIO:
                 group, radios = self._radio_group(obj)
                 gid = ""
@@ -1567,10 +1582,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 leftovers.append(announce.human(result.key))
                 continue
 
-            kind = controls.classify_control(controls.ControlDescriptor(
-                role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-                placeholder=fd.placeholder, roledescription=fd.roledescription,
-                haspopup=getattr(fd, "haspopup", "")))
+            kind = self._classify(fd)
 
             if kind == controls.CHECKBOX:
                 # A checkbox is yes/no. If the value is free text (a name), the

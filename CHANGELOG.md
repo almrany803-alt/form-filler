@@ -2,6 +2,19 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.27
+
+### Field fingerprint database, wired in (database-first classification)
+- Classification now consults a shared, offline field fingerprint database before
+  the heuristics: a known widget (keyed on platform plus its stable signals) is
+  classified deterministically, with no guessing and no AI. Seeded from real
+  Workday signals, so "How Did You Hear About Us?", the country button, the
+  country-code prompt, and the preferred-name checkbox are recognised from the
+  database. Logged as "JFF fingerprint: ..." so a log shows which layer decided.
+- The database is a plain JSON file (field_fingerprints.json) that can be updated
+  and shared on its own. Falls through to the existing heuristics when nothing
+  matches, so behaviour is unchanged for everything else. Still verified by
+  behaviour downstream; the database picks which method to try, nothing more.
 ## 0.9.26
 
 ### "How did you hear" combobox, and findable scans
