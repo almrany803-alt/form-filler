@@ -1107,6 +1107,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
         fd = _descriptor_from_object(obj)
         log.info("JFF read: %s" % _fd_summary(fd))
+        _plat = self._detect_platform(fd)
+        if _plat:
+            log.info("JFF platform: %s" % _plat)
 
         # Radios are special: the object's own label is the option ("Yes"), not
         # the question, so match the group instead of the single radio. Handle it

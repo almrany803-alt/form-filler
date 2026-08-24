@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Date Picker</title></head>
+<body>
+<h1>Application form</h1>
+<p><label for="dob">Date of birth</label>
+   <input id="dob" type="text" placeholder="MM/DD/YYYY" aria-label="Date of birth"></p>
+<!-- a date-picker combobox that opens a dialog (the pattern from the research) -->
+<p><span id="sd-label">Start date</span>
+   <input id="startdate" role="combobox" aria-haspopup="dialog" aria-expanded="false"
+          aria-labelledby="sd-label" placeholder="MM/DD/YYYY"></p>
+<div id="committed" data-dob="" data-start="">committed</div>
+<script>
+  function wire(id, key){
+    var el=document.getElementById(id);
+    el.addEventListener('input', function(){ document.getElementById('committed').setAttribute('data-'+key, el.value); });
+    el.addEventListener('change', function(){ document.getElementById('committed').setAttribute('data-'+key, el.value); });
+  }
+  wire('dob','dob'); wire('startdate','start');
+</script>
+</body></html>
