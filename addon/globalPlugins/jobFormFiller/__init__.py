@@ -1390,9 +1390,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return
 
         # Controls we deliberately do not automate yet: hand back clearly.
-        if kind == controls.ASYNC_COMBOBOX:
-            ui.message(announce.hand_back(label, kind, value))
-            return
         if kind == controls.DATEPICKER:
             verdict = self._fill_date(obj, fd, value)
             if verdict == "confirmed":
@@ -2037,25 +2034,29 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                  % (value, pick.index, pick.label))
         if pick.index is None or pick.index >= len(opts):
             return "none", None
-        target = opts[pick.index]
+        # Commit by pressing Enter on the combobox: react-select selects the
+        # highlighted first filtered result, and the typed value has already
+        # filtered the list to the match. doAction on the option node does NOT
+        # change the field (it leaves the typed search text, which react-select
+        # clears to blank on blur, the false confirm seen live on Monzo Country).
         try:
-            target.doAction()
+            obj.setFocus()
+            api.setFocusObject(obj)
+            time.sleep(0.05)
+            KeyboardInputGesture.fromName("enter").send()
+            time.sleep(0.35)
         except Exception:
-            try:
-                target.setFocus()
-                api.setFocusObject(target)
-                KeyboardInputGesture.fromName("enter").send()
-            except Exception:
-                log.error("JFF async: select failed", exc_info=True)
-        after = ""
-        for _k in range(10):
-            after = self._read_current_value(obj)
-            if after and (after == pick.label or pick.label in after
-                          or value.lower() in after.lower()):
-                log.info("JFF async: after=%r verdict=confirmed" % after)
-                return "confirmed", pick
-            time.sleep(0.06)
-        log.info("JFF async: after=%r verdict=mismatch" % after)
+            log.error("JFF async: enter-select failed", exc_info=True)
+        # Verify the selection STUCK: read after it settles and require a real
+        # committed value, NOT a placeholder and NOT merely the typed search text.
+        # (The old check confirmed on the typed text, so it reported success over
+        # a field that then reverted to blank.)
+        after = self._settled_value(obj)
+        if (after and not _is_placeholder_value(after)
+                and controls.verify_selection(pick.label, after) == "confirmed"):
+            log.info("JFF async: after=%r verdict=confirmed" % after)
+            return "confirmed", pick
+        log.info("JFF async: after=%r verdict=mismatch (did not commit)" % after)
         return "mismatch", pick
 
     def _date_segment_type(self, seg):
