@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "note": "Shared field fingerprints: stable signals -> true classification. Checked before the heuristics. Deterministic, offline, and safe to crowd-source, one Workday entry covers every Workday form.",
+  "fingerprints": [
+    {
+      "id": "workday-source-prompt",
+      "when": {"platform": "workday", "id_contains": "source--source"},
+      "kind": "async_combobox",
+      "note": "Workday 'How Did You Hear About Us?' search prompt"
+    },
+    {
+      "id": "workday-search-prompt",
+      "when": {"platform": "workday", "role": "editabletext", "placeholder": "search"},
+      "kind": "async_combobox",
+      "note": "Workday type-to-filter prompt (exposed as a plain text input)"
+    },
+    {
+      "id": "workday-country-button",
+      "when": {"platform": "workday", "id_contains": "country--country", "role": "button"},
+      "kind": "button_dropdown",
+      "note": "Workday country is a button that opens a listbox; activate then pick"
+    },
+    {
+      "id": "workday-preferred-name-check",
+      "when": {"platform": "workday", "id_contains": "preferredcheck"},
+      "kind": "checkbox",
+      "note": "Workday 'I have a preferred name' box; boolean, never fill with a name"
+    }
+  ]
+}
