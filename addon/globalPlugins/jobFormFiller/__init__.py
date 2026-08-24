@@ -867,7 +867,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             ui.message(_("I could not identify this field. Over to you."))
             return
 
-        value = self._profile.get(result.key)
+        value = self._value_for(result.key)
         if not value:
             ui.message(_("Nothing saved for {field}.").format(
                 field=announce.human(result.key)))
@@ -898,6 +898,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     @script(
         description=_("Fill the whole form from your saved details"),
     )
+    def _value_for(self, key):
+        """Profile value for a matched key. Synthesises full_name from
+        given_name and family_name when the profile stores the parts
+        separately, so a single 'Full name' field (Lever and many others use
+        one) still gets filled."""
+        if not key:
+            return None
+        v = self._profile.get(key)
+        if not v and key == "full_name":
+            given = (self._profile.get("given_name") or "").strip()
+            family = (self._profile.get("family_name") or "").strip()
+            v = (given + " " + family).strip() or None
+        return v
+
     def script_fillForm(self, gesture, focus=None):
         focus = focus or api.getFocusObject()
         if not self._profile:
@@ -1078,7 +1092,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if result.key is None:
                 leftovers.append(fd.label or _("an unlabelled field"))
                 continue
-            value = self._profile.get(result.key)
+            value = self._value_for(result.key)
             if not value:
                 leftovers.append(announce.human(result.key))
                 continue
@@ -1606,7 +1620,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                  % (result.key, result.confidence, result.source))
         if result.key is None:
             return None, None, "none"
-        value = self._profile.get(result.key)
+        value = self._value_for(result.key)
         if not value:
             return result.key, None, "novalue"
         pick = controls.choose_option(
