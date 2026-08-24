@@ -1360,6 +1360,59 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 continue
         return [], []
 
+    def _dump_open_tree(self, obj):
+        """One-run diagnostic: after opening a combobox, log the ancestor chain
+        from the focus and each node's children (role, name, states), so the
+        real open-menu structure is visible and the reader can be fixed against
+        it. Fires once per session to avoid flooding the log."""
+        if getattr(self, "_tree_dumped", False):
+            return
+        self._tree_dumped = True
+        try:
+            log.info("JFF dump: === open-combobox tree (foc up + controllerFor) ===")
+            try:
+                cf = obj.controllerFor or []
+                log.info("JFF dump: obj.controllerFor -> %d target(s)" % len(cf))
+                for t in cf[:2]:
+                    tr = getattr(t.role, "name", str(t.role))
+                    log.info("JFF dump:   controllerFor role=%s name=%r kids=%d"
+                             % (tr, (t.name or "")[:40], len(list(t.children or []))))
+            except Exception:
+                log.info("JFF dump: controllerFor unavailable")
+            node = api.getFocusObject()
+            for lvl in range(7):
+                if node is None:
+                    break
+                try:
+                    r = getattr(node.role, "name", str(node.role))
+                except Exception:
+                    r = "?"
+                try:
+                    nm = (node.name or "")[:40]
+                except Exception:
+                    nm = "?"
+                try:
+                    kids = list(node.children or [])
+                except Exception:
+                    kids = []
+                log.info("JFF dump L%d: role=%s name=%r kids=%d" % (lvl, r, nm, len(kids)))
+                for i, c in enumerate(kids[:14]):
+                    try:
+                        cr = getattr(c.role, "name", str(c.role))
+                    except Exception:
+                        cr = "?"
+                    try:
+                        cn = (c.name or "")[:28]
+                    except Exception:
+                        cn = "?"
+                    log.info("JFF dump   L%d.child[%d] role=%s name=%r" % (lvl, i, cr, cn))
+                try:
+                    node = node.parent
+                except Exception:
+                    node = None
+        except Exception:
+            log.error("JFF dump failed", exc_info=True)
+
     def _click_to_open(self, obj):
         """Open a custom combobox (React-Select) by left-clicking it. Research
         is clear: its menu only exists once open, it opens on click by default
@@ -1387,12 +1440,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             x = loc.left + loc.width // 2
             y = loc.top + loc.height // 2
             log.info("JFF review: click-to-open at (%d,%d) w=%d" % (x, y, loc.width))
-            winUser.setCursorPos(x, y)
-            time.sleep(0.05)
-            winUser.mouse_event(winUser.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-            time.sleep(0.05)
-            winUser.mouse_event(winUser.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
-            time.sleep(0.45)
+            # Use NVDA's own routing so a genuine mouseMove/hover fires first
+            # (react-select needs the full hover then mousedown then mouseup
+            # sequence), then left-click, passing None for extra-info exactly as
+            # NVDA's own left-click command does.
+            try:
+                api.moveMouseToNVDAObject(target)
+            except Exception:
+                winUser.setCursorPos(x, y)
+            time.sleep(0.1)
+            winUser.mouse_event(winUser.MOUSEEVENTF_LEFTDOWN, 0, 0, None, None)
+            time.sleep(0.08)
+            winUser.mouse_event(winUser.MOUSEEVENTF_LEFTUP, 0, 0, None, None)
+            time.sleep(0.5)
             return True
         except Exception:
             log.error("JFF review: click-to-open failed", exc_info=True)
@@ -1465,6 +1525,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # click, so click the control and read the menu that appears, via
             # aria-controls first, then a walk of the freshly-rendered subtree.
             if self._click_to_open(obj):
+                self._dump_open_tree(obj)
                 labels, _opts = self._options_via_controls(obj)
                 if not labels:
                     foc2 = api.getFocusObject()
