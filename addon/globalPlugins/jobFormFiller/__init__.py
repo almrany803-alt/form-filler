@@ -1360,6 +1360,30 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 continue
         return [], []
 
+    def _click_to_open(self, obj):
+        """Open a custom combobox (React-Select) by left-clicking it. Research
+        is clear: its menu only exists once open, it opens on click by default
+        (openMenuOnClick), and it opens on click even when that is off, while
+        browse mode swallows the keyboard. So a synthetic click on the control
+        is the reliable, framework-independent opener. Returns True if clicked."""
+        try:
+            import winUser
+            loc = obj.location
+            if not loc or loc.width <= 0 or loc.height <= 0:
+                return False
+            x = loc.left + loc.width // 2
+            y = loc.top + loc.height // 2
+            winUser.setCursorPos(x, y)
+            time.sleep(0.05)
+            winUser.mouse_event(winUser.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+            time.sleep(0.05)
+            winUser.mouse_event(winUser.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+            time.sleep(0.45)
+            return True
+        except Exception:
+            log.error("JFF review: click-to-open failed", exc_info=True)
+            return False
+
     def _read_select_options(self, obj, arrow_open=False):
         """Read a dropdown's option labels by briefly opening it, because a
         closed dropdown exposes no options to NVDA's cached tree. Closes the
@@ -1422,6 +1446,28 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 labels, _opts = self._options_via_controls(obj)  # menu now open
             if labels:
                 break
+        if not labels and arrow_open:
+            # Keyboard did not open it (browse mode). React-Select opens on a
+            # click, so click the control and read the menu that appears, via
+            # aria-controls first, then a walk of the freshly-rendered subtree.
+            if self._click_to_open(obj):
+                labels, _opts = self._options_via_controls(obj)
+                if not labels:
+                    foc2 = api.getFocusObject()
+                    roots2 = []
+                    if foc2 is not None:
+                        try:
+                            p2 = foc2.parent
+                        except Exception:
+                            p2 = None
+                        if p2 is not None:
+                            roots2.append(p2)
+                        roots2.append(foc2)
+                    for root in roots2:
+                        labels, _o = self._read_option_children(root, "review-click")
+                        if labels:
+                            break
+                log.info("JFF review: click-to-open read %d option(s)" % len(labels))
         try:
             KeyboardInputGesture.fromName("escape").send()
             time.sleep(0.1)
