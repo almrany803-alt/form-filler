@@ -812,6 +812,66 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             pass
         super().terminate()
 
+    def _record_for_field(self, obj):
+        """Build one review record for the focused field: classify it, choose the
+        editor kind, and read its options if it is a chooser (or its sibling
+        radios for a radio group). Used by 'Fill this field' so the same editor
+        the review offers is available on the single field the user is on."""
+        fd = _descriptor_from_object(obj)
+        key = matcher.match_field(fd).key
+        cc = controls.classify_control(controls.ControlDescriptor(
+            role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
+            placeholder=fd.placeholder, roledescription=fd.roledescription))
+        kind = controls.editor_kind(cc, key or "", fd.input_type or "")
+        group, options = None, []
+        if cc == controls.RADIO:
+            group, radios = self._radio_group(obj)
+            options = [r.name for r in radios if (r.name or "").strip()]
+            kind = controls.EDITOR_SINGLE
+        elif kind in (controls.EDITOR_SINGLE, controls.EDITOR_EDITABLE):
+            labels, _o = self._read_option_children(obj, "fill-choice")
+            if not labels and cc in (controls.NATIVE_SELECT,
+                                     controls.ARIA_COMBOBOX,
+                                     controls.EDITABLE_COMBOBOX,
+                                     controls.ASYNC_COMBOBOX):
+                labels = self._read_select_options(
+                    obj, arrow_open=(cc != controls.NATIVE_SELECT))
+            options = labels
+            if not labels and kind == controls.EDITOR_SINGLE:
+                kind = controls.EDITOR_TEXT
+        return self._review_record(obj, fd, key, kind, options, group)
+
+    def _offer_editor(self, obj):
+        """The user pressed Fill on a field the add-on can't fill from the
+        profile. Open the accessible editor for it (yes/no, chooser, date, or
+        type box) so they can set it here, instead of just handing it back.
+        Covers every field kind, and writes the choice back. Announces the
+        outcome. Returns True if a value was set."""
+        try:
+            rec = self._record_for_field(obj)
+        except Exception:
+            log.error("JFF fill: could not build a field record", exc_info=True)
+            rec = None
+        if rec is None:
+            ui.message(_("Over to you."))
+            return False
+        gui.mainFrame.prePopup()
+        try:
+            newval = dialogs.edit_field(gui.mainFrame, rec["name"], rec["kind"],
+                                        rec.get("options"), rec["value"])
+        finally:
+            gui.mainFrame.postPopup()
+        if newval is None:
+            ui.message(_("Left {name} for you.").format(name=rec["name"]))
+            return False
+        ok = self._apply_review_change(rec, newval)
+        if ok:
+            ui.message(_("{name} set.").format(name=rec["name"]))
+        else:
+            ui.message(_("Could not set {name}. Over to you.").format(
+                name=rec["name"]))
+        return ok
+
     @script(
         description=_("Fill the current field from your saved details"),
     )
@@ -855,13 +915,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 ui.message(_("{q} set to {a}.").format(
                     q=announce.human(key or _("this")),
                     a=(pick.label if pick else "")))
-            elif verdict == "novalue":
-                ui.message(_("Nothing saved for {field}.").format(
-                    field=announce.human(key)))
-            elif verdict == "none" and key is None:
-                ui.message(_("I could not identify this question. Over to you."))
             else:
-                ui.message(_("Could not set this one. Over to you."))
+                # Not filled from the profile: offer the radio choices here.
+                self._offer_editor(obj)
             return
 
         # Native date input: focus may land on a day/month/year spin button whose
@@ -872,14 +928,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if verdict == "confirmed":
                 ui.message(_("Date of birth set."))
                 return
-            if verdict in ("none", "novalue"):
-                # fall through to normal handling / decline below
-                if verdict == "novalue":
-                    ui.message(_("Nothing saved for date of birth."))
-                    return
+            if verdict == "none":
+                pass                 # not actually a date; fall through to match
             else:
-                ui.message(announce.hand_back(
-                    _("the date"), controls.DATEPICKER, ""))
+                # Recognised as a date but not filled from the profile: offer the
+                # date picker here instead of handing it back.
+                self._offer_editor(obj)
                 return
 
         result = matcher.match_field(fd)
@@ -887,16 +941,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                  % (result.key, result.confidence, result.source, result.lang))
 
         if result.key is None:
-            # Nothing usable: tell the user rather than guessing. The fallback
-            # rungs (positional, remembered labels, OCR, AI) hook in here later.
-            log.info("JFF action: declined, no confident match")
-            ui.message(_("I could not identify this field. Over to you."))
+            # Not identified from the profile, but still let the user set it here
+            # with the accessible editor instead of just handing it back.
+            log.info("JFF action: no confident match, offering the editor")
+            self._offer_editor(obj)
             return
 
         value = self._value_for(result.key)
         if not value:
-            ui.message(_("Nothing saved for {field}.").format(
-                field=announce.human(result.key)))
+            # Identified, but nothing saved for it: offer the editor to set it.
+            self._offer_editor(obj)
             return
 
         kind = controls.classify_control(controls.ControlDescriptor(
