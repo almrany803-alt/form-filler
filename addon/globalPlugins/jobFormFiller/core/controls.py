@@ -31,6 +31,7 @@ class ControlDescriptor:
     option_count: int = 0         # options readable up front (0 = none yet loaded)
     placeholder: str = ""         # e.g. "MM/DD/YYYY" marks a date input
     roledescription: str = ""     # e.g. "Date Input" (SAP UI5) marks a date input
+    haspopup: str = ""            # "dialog"/"grid"/"listbox"/"menu" popup type
 
 
 # Control kinds we dispatch on.

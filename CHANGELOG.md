@@ -2,6 +2,20 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.19
+
+### Calendar date pickers and platform awareness
+- A date-picker combobox (one that opens a calendar dialog or grid) is now
+  recognised and routed to our own accessible day/month/year picker; the chosen
+  date is typed back into the field in its own format, so the user never has to
+  navigate a grid of day cells.
+- The review recognises an open calendar's day cells and skips them quietly,
+  instead of reading out dozens of "Monday, June 29th" buttons, and treats the
+  date-picker field itself as a single date row.
+- Platform detection: the add-on identifies the ATS (Greenhouse, SuccessFactors,
+  Workday, select2, Taleo, iCIMS) from markup signatures, logged for now and used
+  to route dates and dropdowns the way each platform builds them.
+
 ## 0.9.18
 
 ### More fields fill themselves; unlabelled fields get real names

@@ -79,6 +79,26 @@ def _format_date(y, m, d, order, sep):
     return sep.join(part[o] for o in order)
 
 
+_WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday",
+             "saturday", "sunday")
+_MONTHS = ("january", "february", "march", "april", "may", "june", "july",
+           "august", "september", "october", "november", "december")
+
+
+def _looks_like_calendar_day(name):
+    """True when a control's name is a calendar day cell like 'Monday, June 29th,
+    2026' or 'June 29, 2026', so the review can skip an open calendar's day grid
+    instead of reading dozens of day buttons."""
+    t = (name or "").strip().lower()
+    if not t or len(t) > 40:
+        return False
+    has_month = any(m in t for m in _MONTHS)
+    has_year = bool(re.search(r"\b(19|20)\d\d\b", t))
+    has_weekday = any(w in t for w in _WEEKDAYS)
+    # a day cell reads as month + a day number, usually with a year or weekday
+    return has_month and (has_year or has_weekday) and bool(re.search(r"\d", t))
+
+
 def _is_placeholder_value(v):
     """True when a choice control's current value is a 'nothing chosen yet'
     placeholder rather than a real selection, so a whole-form fill may set it.
@@ -183,6 +203,7 @@ def _descriptor_from_object(obj):
         roledescription=(ia2.get("roledescription", "")
                          or getattr(obj, "roleText", "") or ""),
         dom_class=ia2.get("class", "") or "",
+        haspopup=(ia2.get("haspopup", "") or "").lower(),
         states=_states_of(obj),
     )
 
@@ -584,11 +605,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
                 placeholder=fd.placeholder, roledescription=fd.roledescription))
 
-            # Date: one row, three dropdowns in the editor.
+            # Date: one row, three dropdowns in the editor. A date-picker combobox
+            # (calendar) counts too, so the user gets our picker, not the grid.
             if (key == "date_of_birth" or fd.input_type == "date"
-                    or cc == controls.DATEPICKER):
+                    or cc == controls.DATEPICKER or self._is_date_picker(fd)):
                 records.append(self._review_record(
                     obj, fd, key, controls.EDITOR_DATE, [], None))
+                continue
+
+            # A calendar day cell (gridcell, or a button named like a date) is not
+            # a form field; skip it quietly so an open calendar doesn't flood the
+            # review with dozens of day buttons.
+            if (obj.role == controlTypes.Role.TABLECELL
+                    or _looks_like_calendar_day(fd.label or fd.name or "")):
                 continue
 
             # Not a fillable review field (file upload, button, link): skip, so
@@ -924,17 +953,58 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 return True
         return False
 
+    def _detect_platform(self, fd):
+        """Identify the ATS platform from markup signatures, so dates and
+        dropdowns can be routed the way each platform builds them. Best-effort;
+        returns a short name or ''."""
+        cls = (getattr(fd, "dom_class", "") or "").lower()
+        idn = (fd.id or "").lower()
+        hay = cls + " " + idn
+        if "select__" in cls or "greenhouse" in hay:
+            return "greenhouse"
+        if "ui5" in cls or "sapm" in cls or "sf" == idn[:2] or "fbclc" in idn:
+            return "successfactors"
+        if "wd-" in cls or "data-automation" in hay or "workday" in hay:
+            return "workday"
+        if "select2" in cls:
+            return "select2"
+        if "taleo" in hay:
+            return "taleo"
+        if "icims" in hay:
+            return "icims"
+        return ""
+
+    def _is_date_picker(self, fd):
+        """A date-picker combobox opens a calendar (a dialog or grid popup) and is
+        labelled as a date. Recognise it so we offer our own accessible date
+        picker and type the result back, instead of leaving the user in a grid of
+        day cells."""
+        if getattr(fd, "haspopup", "") not in ("dialog", "grid"):
+            return False
+        hay = " ".join([(fd.label or ""), (fd.id or ""),
+                        (getattr(fd, "dom_class", "") or ""),
+                        (fd.placeholder or "")]).lower()
+        return any(w in hay for w in ("date", "birth", "dob", "calendar"))
+
     def _record_for_field(self, obj):
         """Build one review record for the focused field: classify it, choose the
         editor kind, and read its options if it is a chooser (or its sibling
         radios for a radio group). Used by 'Fill this field' so the same editor
         the review offers is available on the single field the user is on."""
         fd = _descriptor_from_object(obj)
+        plat = self._detect_platform(fd)
+        if plat:
+            log.info("JFF platform: %s" % plat)
         key = matcher.match_field(fd).key
         cc = controls.classify_control(controls.ControlDescriptor(
             role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
             placeholder=fd.placeholder, roledescription=fd.roledescription))
         kind = controls.editor_kind(cc, key or "", fd.input_type or "")
+        # A date-picker combobox (opens a calendar) is a date, not a plain
+        # chooser: offer our accessible day/month/year picker and type the result
+        # back, so the user never has to navigate the calendar grid.
+        if self._is_date_picker(fd):
+            kind = controls.EDITOR_DATE
         group, options = None, []
         if cc == controls.RADIO:
             group, radios = self._radio_group(obj)

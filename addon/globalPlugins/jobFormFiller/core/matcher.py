@@ -149,6 +149,7 @@ class FieldDescriptor:
     input_type: str = ""
     roledescription: str = ""
     dom_class: str = ""
+    haspopup: str = ""
     required: bool = False
     states: tuple = ()
 
