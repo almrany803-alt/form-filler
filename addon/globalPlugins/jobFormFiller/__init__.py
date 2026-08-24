@@ -665,10 +665,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if kind in (controls.EDITOR_SINGLE, controls.EDITOR_EDITABLE):
                 labels, _opts = self._read_option_children(obj, "review-choice")
                 if not labels and cc in (controls.NATIVE_SELECT,
-                                         controls.ARIA_COMBOBOX):
-                    # A closed native dropdown exposes no options to the cached
-                    # tree, so open it briefly to read them, as the fill does.
-                    labels = self._read_select_options(obj)
+                                         controls.ARIA_COMBOBOX,
+                                         controls.EDITABLE_COMBOBOX,
+                                         controls.ASYNC_COMBOBOX):
+                    # A closed dropdown exposes no options to the cached tree, so
+                    # open it briefly to read them, as the fill does. This is
+                    # what turns a React-Select (Country, demographics) from a
+                    # typed box into a real chooser: its menu renders on open.
+                    labels = self._read_select_options(
+                        obj, arrow_open=(cc != controls.NATIVE_SELECT))
                 if not labels and kind == controls.EDITOR_SINGLE:
                     kind = controls.EDITOR_TEXT
                 records.append(self._review_record(
@@ -1355,11 +1360,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 continue
         return [], []
 
-    def _read_select_options(self, obj):
-        """Read a native dropdown's option labels by briefly opening it, because
-        a closed <select> exposes no options to NVDA's cached tree. Closes the
-        popup afterwards with Escape, leaving the selection unchanged. Returns a
-        list of labels, or [] if it could not read them."""
+    def _read_select_options(self, obj, arrow_open=False):
+        """Read a dropdown's option labels by briefly opening it, because a
+        closed dropdown exposes no options to NVDA's cached tree. Closes the
+        popup with Escape afterwards, leaving the selection unchanged. Returns a
+        list of labels, or [] if it could not read them.
+
+        arrow_open: also try a plain downArrow to open. A React-Select or custom
+        combobox opens on downArrow, not alt+downArrow; a native <select> must
+        NOT get a plain downArrow (it would move the selection), so the caller
+        passes arrow_open=True only for custom comboboxes."""
         # Fast path: read the controlled listbox via aria-controls, without
         # opening. This also reaches a portal listbox the parent-walk misses.
         labels, _opts = self._options_via_controls(obj)
@@ -1369,35 +1379,43 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             obj.setFocus()
             api.setFocusObject(obj)
             time.sleep(0.1)
-            KeyboardInputGesture.fromName("alt+downArrow").send()
-            time.sleep(0.35)
         except Exception:
-            log.error("JFF review: could not open select to read options",
+            log.error("JFF review: could not focus select to read options",
                       exc_info=True)
             return []
-        foc = api.getFocusObject()
-        roots = []
-        if foc is not None:
-            try:
-                par = foc.parent
-            except Exception:
-                par = None
-            if par is not None:
-                roots.append(par)
-            roots.append(foc)
+        openers = ["alt+downArrow"] + (["downArrow"] if arrow_open else [])
         labels = []
-        for root in roots:
-            labels, _opts = self._read_option_children(root, "review-open")
+        for opener in openers:
+            try:
+                KeyboardInputGesture.fromName(opener).send()
+                time.sleep(0.35)
+            except Exception:
+                continue
+            foc = api.getFocusObject()
+            roots = []
+            if foc is not None:
+                try:
+                    par = foc.parent
+                except Exception:
+                    par = None
+                if par is not None:
+                    roots.append(par)
+                roots.append(foc)
+            for root in roots:
+                labels, _opts = self._read_option_children(root, "review-open")
+                if labels:
+                    break
+            if not labels:
+                labels, _opts = self._options_via_controls(obj)  # menu now open
             if labels:
                 break
-        if not labels:
-            labels, _opts = self._options_via_controls(obj)   # portal, now open
         try:
             KeyboardInputGesture.fromName("escape").send()
             time.sleep(0.1)
         except Exception:
             pass
-        log.info("JFF review: opened select, read %d option(s)" % len(labels))
+        log.info("JFF review: opened select (arrow=%s), read %d option(s)"
+                 % (arrow_open, len(labels)))
         return labels
 
     def _fill_native_select(self, obj, value, concept):
