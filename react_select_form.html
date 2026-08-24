@@ -4,35 +4,31 @@
 <h1>Application form</h1>
 <p><label id="country-label">Country</label></p>
 <div id="root" style="width:440px"></div>
-<!-- data-committed holds react-select's ACTUAL selected value (onChange), the
-     ground truth the test reads, not what the add-on claims -->
+<!-- data-committed holds react-select's ACTUAL selected value (its onChange),
+     the ground truth the test reads, not what the add-on claims. -->
 <div id="committed" data-committed="">committed: (none)</div>
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/react-select@5/dist/react-select.min.js"></script>
-<script>
-  var options = [
-    {value:'gb', label:'United Kingdom'},
-    {value:'sa', label:'Saudi Arabia'},
-    {value:'us', label:'United States'},
-    {value:'ca', label:'Canada'},
-    {value:'au', label:'Australia'},
-    {value:'de', label:'Germany'},
+<div id="err" style="color:red"></div>
+<script type="module">
+  window.onerror = (m) => { document.getElementById('err').textContent = 'ERR: ' + m; };
+  import React, { useState, useEffect, createElement as e } from 'https://esm.sh/react@18';
+  import { createRoot } from 'https://esm.sh/react-dom@18/client';
+  import Select from 'https://esm.sh/react-select@5?deps=react@18,react-dom@18';
+  const options = [
+    {value:'gb', label:'United Kingdom'}, {value:'sa', label:'Saudi Arabia'},
+    {value:'us', label:'United States'}, {value:'ca', label:'Canada'},
+    {value:'au', label:'Australia'}, {value:'de', label:'Germany'},
     {value:'fr', label:'France'}
   ];
-  var Select = (window.ReactSelect || window.Select).default;
-  var e = React.createElement;
   function App(){
-    var st = React.useState(null), val = st[0], setVal = st[1];
-    React.useEffect(function(){
-      var d = document.getElementById('committed');
+    const [val, setVal] = useState(null);
+    useEffect(() => {
+      const d = document.getElementById('committed');
       d.setAttribute('data-committed', val ? val.label : '');
       d.textContent = 'committed: ' + (val ? val.label : '(none)');
     }, [val]);
-    return e(Select, { options: options, value: val, onChange: setVal,
-      inputId: 'country', 'aria-labelledby': 'country-label',
-      placeholder: 'Select...' });
+    return e(Select, { options, value: val, onChange: setVal,
+      inputId: 'country', 'aria-labelledby': 'country-label', placeholder: 'Select...' });
   }
-  ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+  createRoot(document.getElementById('root')).render(e(App));
 </script>
 </body></html>
