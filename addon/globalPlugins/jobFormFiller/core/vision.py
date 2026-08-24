@@ -121,12 +121,21 @@ def disagrees(addon_kind, vision_kind):
 
 
 def _post_json(url, payload, headers, timeout):
-    """POST JSON and return the parsed JSON response. urllib only; the caller
-    handles URLError/timeout so failures fall back to today's behaviour."""
+    """POST JSON and return the parsed JSON response. urllib only; on an HTTP
+    error we read the response body (which explains WHY, e.g. 'vision not
+    supported on this tier') and surface it, instead of just the status."""
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", "replace")[:400]
+        except Exception:
+            pass
+        raise RuntimeError("HTTP %s: %s" % (e.code, body or e.reason))
 
 
 class BaseVisionProvider:

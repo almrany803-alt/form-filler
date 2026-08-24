@@ -2,6 +2,14 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.31
+
+### Vision errors now explain themselves
+- When a vision call fails, the add-on now captures the provider's actual response
+  body (which says why, for example a tier that doesn't allow image input) instead
+  of only the HTTP status, and it speaks a short "check your key and backend"
+  message instead of failing silently. This is diagnostic only; nothing about the
+  fill path or the deterministic layer changes.
 ## 0.9.30
 
 ### Two privacy-first free vision backends: Mistral and Groq

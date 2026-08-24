@@ -1252,6 +1252,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return provider.identify(png)
         except Exception as e:
             log.info("JFF vision: call failed (%s)" % e)
+            try:
+                ui.message(_("Vision couldn't reach the service. Check your API "
+                             "key and backend in Vision settings."))
+            except Exception:
+                pass
             return None
 
     def _speak_vision_reading(self, fd, reading):
