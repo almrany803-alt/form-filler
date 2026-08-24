@@ -1550,6 +1550,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 ui.message(announce.hand_back(label, kind, value))
             return
 
+        # Platform routing: Workday's comboboxes are type-to-filter (you type,
+        # then press Enter), so the typing path is the reliable fill even when the
+        # markup doesn't flag the field editable. Route Workday select comboboxes
+        # there. Country/nationality keep the option-reading path, which our data
+        # set drives across languages.
+        if (self._detect_platform(fd) == "workday"
+                and kind in (controls.ARIA_COMBOBOX, controls.EDITABLE_COMBOBOX)
+                and result.key not in ("country", "nationality")):
+            log.info("JFF platform: workday combobox -> type-and-Enter")
+            kind = controls.ASYNC_COMBOBOX
+
         if kind == controls.ASYNC_COMBOBOX:
             verdict, pick = self._fill_async_combobox(obj, value)
             if verdict == "confirmed":
