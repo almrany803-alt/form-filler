@@ -11,12 +11,22 @@ and what it left for you. It never submits a form.
   Fill this field, Fill all fields, Review fields, Profile (switch, create,
   delete versions), Import from CV, Enter your details.
 - Fills text fields, native dropdowns, radio groups, checkboxes, multi-selects,
-  and dates, verifying each against the live accessibility state, and hands back
-  on async search boxes. The custom single-select combobox is in progress.
+  and dates, verifying each against the live accessibility state. Custom
+  comboboxes (react-select and similar) are opened by keyboard, the way you do
+  it by hand, and their options read from the live page. Date fields that a site
+  builds as a plain text box (SAP UI5 / SuccessFactors) are recognised by their
+  format and aria-roledescription.
+- Fill this field (NVDA+J then F) always gives you a way to complete the field.
+  When the add-on knows the answer it fills it; when it does not, it opens the
+  right accessible editor on the spot instead of handing it back: Yes/No for a
+  checkbox, an options chooser for a dropdown, the choices for a radio group, a
+  picker for a date, or a type box for text. So the review is no longer the only
+  way to set a field.
 - Review fields: an accessible list over the current form where you can set and
   fix any field through the right accessible control, a chooser you arrow
   through for a dropdown or radio group, Yes/No for a checkbox, a multi-check
   list, or three dropdowns for a date, even on controls the site built badly.
+  The review and Fill share one editor, so both behave identically.
 - Multilingual field recognition (English, Spanish, French, German, Italian,
   Portuguese, Polish, Dutch, Arabic), by label, HTML name, and aria-label, then
   a keyword lexicon you can extend.

@@ -103,8 +103,22 @@ user hit on first use live here.
 ## Feature: single-field fill (NVDA+J then F) + tabbing
 
 - [done] Landmark: tab from field to field, fill each individually.
-- [done] Guidebook: fill the focused field; decline a bespoke question box.
+- [done] Guidebook: fill the focused field.
+- [done] No dead ends: on a field it cannot fill from the profile, Fill opens the
+  right accessible editor instead of "over to you", Yes/No for a checkbox, an
+  options chooser for a dropdown, radio choices, a date picker, a type box for
+  text, and writes the choice back. Proven by speech on the live Monzo consent
+  checkbox (Fill opens a Yes/No chooser). Judge by what NVDA speaks, not the DOM.
 - [todo] Wrong-turn: fill a field, tab backwards, fill it again; no duplication.
+
+## Feature: applicant-style live testing (judge by speech)
+
+- [done] The live harness inspects the page source first, lands on each field
+  type the way a user tabs onto it, presses the add-on command, and asserts only
+  on what NVDA speaks. It never reads the DOM as proof and never submits.
+- Rule of thumb baked in: if a blind applicant could not perceive it, it is not
+  proof. The add-on never moves or clicks the mouse; every control is opened by
+  keyboard after confirming focus.
 
 ## Feature: field identification (multilingual + messy)
 

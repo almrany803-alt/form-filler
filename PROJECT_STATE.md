@@ -40,6 +40,12 @@ Working and proven on real hardware (see section 3):
   end to end on real NVDA on an accessible form AND an inaccessible one (text,
   chooser, yes/no); the date and multi editors are built and logic-proven, not
   yet driven by the NVDA journey.
+- Fill this field (NVDA+J, F) always completes the field. When the add-on knows
+  the answer it fills it; otherwise it opens the same accessible editor the
+  review uses, right on the field, instead of handing it back. Review and Fill
+  share one editor (dialogs.edit_field), so both behave identically. Proven by
+  speech on the live Monzo consent checkbox: Fill opens a Yes/No chooser where it
+  used to say "over to you".
 - Encrypted profile stored on the user's own machine (Windows DPAPI).
 - A "My details" form in the NVDA Tools menu to enter and edit your details.
 - Multilingual field identification (9 languages: Arabic, Dutch, English,
@@ -53,9 +59,12 @@ Working and proven on real hardware (see section 3):
   profile dialog and the review editor, sharing one date helper set.
 - Fills native dropdowns (dataset-aware across 24 languages), radio groups,
   checkboxes, multi-selects, and dates (native segmented, UK/US text, custom
-  picker), and hands back on async search boxes; verifies each against the live
-  accessibility state. The custom single-select combobox (button + listbox) is
-  the main remaining control.
+  picker, and SAP UI5 date inputs recognised by placeholder + roledescription);
+  verifies each against the live accessibility state and never confirms a
+  placeholder value (the STC Country false-confirm fix). Custom comboboxes
+  (react-select) are opened by keyboard Down on the focused field and their
+  options read from the live page; the write commits with Enter and verifies.
+  NO mouse is ever used: every control is opened by keyboard, focus-verified.
 - Correctly declines fields it cannot identify; declines the controls not yet
   built rather than guessing.
 - Handles multi-section applications: fill a section, press Next, fill the next.
