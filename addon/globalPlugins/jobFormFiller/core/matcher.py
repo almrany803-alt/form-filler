@@ -148,6 +148,7 @@ class FieldDescriptor:
     autocomplete: str = ""
     input_type: str = ""
     roledescription: str = ""
+    dom_class: str = ""
     required: bool = False
     states: tuple = ()
 

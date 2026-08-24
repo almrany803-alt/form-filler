@@ -182,6 +182,7 @@ def _descriptor_from_object(obj):
         input_type=input_type,
         roledescription=(ia2.get("roledescription", "")
                          or getattr(obj, "roleText", "") or ""),
+        dom_class=ia2.get("class", "") or "",
         states=_states_of(obj),
     )
 
@@ -542,7 +543,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if sel:
                 value = sel
         name = (announce.human(key) if key
-                else (fd.label or _("an unlabelled field")))
+                else self._humanize_field(fd))
         if group is not None:
             try:
                 gname = group.name or ""
@@ -861,18 +862,42 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             pass
         super().terminate()
 
-    def _dob_segment(self, fd):
-        """If this field is one segment of a segmented date-of-birth control
-        (three day/month/year dropdowns, as many ATS forms use), return
-        'day'/'month'/'year', else None. These segments carry no usable label,
-        so recognise them by id (e.g. id-birthdate_day)."""
-        hay = (fd.id or "").lower()
-        if not any(w in hay for w in ("birth", "dob", "bday")):
+    def _date_segment(self, fd):
+        """If this field is one segment of a segmented date control (day/month/
+        year dropdowns, common on ATS forms and not just for birth dates), return
+        'day'/'month'/'year', else None. Recognised by class ('date day'/'date
+        month'/'date year') or id, since these segments carry no label."""
+        hay = " ".join([(fd.id or ""),
+                        (getattr(fd, "dom_class", "") or "")]).lower()
+        if "date" not in hay and not any(w in hay
+                                         for w in ("birth", "dob", "bday")):
             return None
         for seg in ("day", "month", "year"):
             if seg in hay:
                 return seg
         return None
+
+    def _is_dob_field(self, fd):
+        """True when a date field is specifically a date of birth, so we fill it
+        from the profile rather than just offering the picker."""
+        hay = " ".join([(fd.id or ""),
+                        (getattr(fd, "dom_class", "") or "")]).lower()
+        return any(w in hay for w in ("birth", "dob", "bday"))
+
+    def _humanize_field(self, fd):
+        """Best human name for a field with no accessible label, so the review and
+        the editor say 'Birthdate day', not 'an unlabelled field'. Derives from a
+        recognised date segment, else from the id or html name."""
+        seg = self._date_segment(fd)
+        if seg:
+            what = _("Date of birth") if self._is_dob_field(fd) else _("Date")
+            return "%s, %s" % (what, seg)
+        raw = (fd.id or fd.name or "").strip()
+        raw = re.sub(r"^(id[-_]|field[-_]|input[-_])", "", raw, flags=re.I)
+        raw = re.sub(r"[-_]+", " ", raw).strip()
+        if raw and not raw.isdigit():
+            return raw[:1].upper() + raw[1:]
+        return _("an unlabelled field")
 
     def _fill_dob_segment(self, obj, fd, seg):
         """Fill one day/month/year segment of a date of birth from the profile.
@@ -928,6 +953,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 kind = controls.EDITOR_TEXT
         return self._review_record(obj, fd, key, kind, options, group)
 
+    def _looks_like_country_list(self, options):
+        """True if a dropdown's options are a list of countries, so we can fill it
+        from the profile even when the field has no 'Country' label (select2 and
+        similar show only the current value as their label)."""
+        if not options or len(options) < 50:
+            return False
+        opts = set((o or "").strip().lower() for o in options)
+        common = ["united kingdom", "united states", "canada", "australia",
+                  "germany", "france", "india", "china", "saudi arabia",
+                  "brazil", "japan", "italy", "spain"]
+        return sum(1 for c in common if c in opts) >= 3
+
     def _offer_editor(self, obj):
         """The user pressed Fill on a field the add-on can't fill from the
         profile. Open the accessible editor for it (yes/no, chooser, date, or
@@ -942,6 +979,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if rec is None:
             ui.message(_("Over to you."))
             return False
+        # If it's clearly a country dropdown (recognised by its options) and we
+        # have a country saved, fill it instead of making the user pick from 200.
+        country = self._profile.get("country")
+        if (country and rec.get("kind") in ("single", "editable")
+                and self._looks_like_country_list(rec.get("options"))):
+            rec2 = dict(rec)
+            rec2["kind"] = "single"
+            if self._apply_review_change(rec2, country):
+                ui.message(_("Country set to {c}.").format(c=country))
+                return True
+            # could not set it: fall through to the chooser
         gui.mainFrame.prePopup()
         try:
             newval = dialogs.edit_field(gui.mainFrame, rec["name"], rec["kind"],
@@ -1027,15 +1075,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         log.info("JFF match: key=%r conf=%r src=%r lang=%r"
                  % (result.key, result.confidence, result.source, result.lang))
 
-        # A segmented date of birth (day/month/year dropdowns) has no label, so
-        # the matcher can't see it; recognise it by id and fill from the profile
-        # before falling through to the editor.
-        seg = self._dob_segment(fd)
-        if result.key is None and seg and self._profile.get("date_of_birth"):
-            if self._fill_dob_segment(obj, fd, seg):
-                ui.message(_("Date of birth {seg} set.").format(seg=seg))
-                return
-            # could not set it: fall through and offer the chooser instead
+        # A segmented date (day/month/year dropdowns) has no label, so the matcher
+        # can't see it. Recognise it: fill a date of birth from the profile, and
+        # for any other date offer the chooser (with a real name) instead of a
+        # dead "unlabelled field".
+        seg = self._date_segment(fd)
+        if result.key is None and seg:
+            if self._is_dob_field(fd) and self._profile.get("date_of_birth"):
+                if self._fill_dob_segment(obj, fd, seg):
+                    ui.message(_("Date of birth {seg} set.").format(seg=seg))
+                    return
+            self._offer_editor(obj)
+            return
 
         if result.key is None:
             # Not identified from the profile, but still let the user set it here

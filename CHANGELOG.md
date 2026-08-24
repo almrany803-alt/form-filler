@@ -2,6 +2,19 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.18
+
+### More fields fill themselves; unlabelled fields get real names
+- Segmented dates (day/month/year dropdowns) are recognised in general, not just
+  for birth dates. A date of birth fills straight from the profile; any other
+  segmented date offers the picker with a proper name.
+- Country dropdowns with no label (select2 and similar show only their current
+  value) are recognised by their options and filled from the profile, instead of
+  making you pick from ~200 countries.
+- Fields with no accessible label now get a real name derived from their id or
+  class (e.g. "Birthdate day"), so the review and Fill no longer say "an
+  unlabelled field" everywhere.
+
 ## 0.9.17
 
 ### React-select fill now actually commits (Country, Location, demographics)
