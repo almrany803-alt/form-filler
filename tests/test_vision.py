@@ -56,10 +56,23 @@ class TestParseReading(unittest.TestCase):
 
 
 class TestProviders(unittest.TestCase):
-    def test_pollinations_is_free_and_available(self):
-        p = vision.get_provider("pollinations")
-        self.assertFalse(p.needs_api_key)
+    def test_gemini_needs_key_and_builds_url(self):
+        p = vision.get_provider("gemini", api_key="AIza-test")
+        self.assertTrue(p.needs_api_key)
         self.assertTrue(p.is_available())
+        self.assertIn("generativelanguage.googleapis.com", p._url())
+        self.assertIn("key=AIza-test", p._url())
+
+    def test_gemini_payload_has_inline_image(self):
+        p = vision.get_provider("gemini", api_key="k")
+        payload = p._payload("B64", vision.IDENTIFY_PROMPT)
+        parts = payload["contents"][0]["parts"]
+        self.assertEqual(parts[1]["inline_data"]["mime_type"], "image/png")
+
+    def test_pollinations_now_needs_a_token(self):
+        p = vision.get_provider("pollinations")
+        self.assertTrue(p.needs_api_key)
+        self.assertFalse(p.is_available())
 
     def test_pollinations_payload_shape(self):
         p = vision.PollinationsProvider()
@@ -88,12 +101,12 @@ class TestProviders(unittest.TestCase):
         self.assertTrue(p2.is_available())
         self.assertIn("Authorization", p2._headers())
 
-    def test_unknown_provider_defaults_to_pollinations(self):
+    def test_unknown_provider_defaults_to_gemini(self):
         p = vision.get_provider("nonesuch")
-        self.assertEqual(p.name, "pollinations")
+        self.assertEqual(p.name, "gemini")
 
     def test_payloads_are_json_serialisable(self):
-        for name in ("pollinations", "ollama", "openai_compatible"):
+        for name in ("gemini", "pollinations", "ollama", "openai_compatible"):
             p = vision.get_provider(name, api_key="k")
             json.dumps(p._payload("B64", "prompt"))  # must not raise
 

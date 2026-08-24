@@ -1186,7 +1186,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def _vision_settings(self):
         """Vision settings, OFF by default. A plain JSON file so it's easy to
         inspect. Vision does nothing at all unless the user set enabled true."""
-        s = {"enabled": False, "backend": "pollinations", "api_key": "",
+        s = {"enabled": False, "backend": "gemini", "api_key": "",
              "base_url": "", "model": ""}
         try:
             path = os.path.join(self._data_dir(), "vision_settings.json")
@@ -1301,8 +1301,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         the local disagreement log with the developer. This is the only new UI the
         vision feature adds; the fill commands are unchanged."""
         s = self._vision_settings()
-        backends = [("pollinations", _("Pollinations (free, no key)")),
-                    ("ollama", _("Ollama (local, private)")),
+        backends = [("gemini", _("Google Gemini (free key, recommended)")),
+                    ("ollama", _("Ollama (local, private; needs setup)")),
+                    ("pollinations", _("Pollinations (needs a token)")),
                     ("openai_compatible", _("Own key (OpenAI-compatible)"))]
         gui.mainFrame.prePopup()
         try:
@@ -1319,7 +1320,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             choice.SetSelection(cur[0] if cur else 0)
             root.Add(choice, 0, wx.ALL, 8)
             root.Add(wx.StaticText(dlg, label=_(
-                "API key (only for the own-key backend):")), 0, wx.LEFT, 8)
+                "API key (Gemini: get a free one at aistudio.google.com/apikey, "
+                "no card needed). Not needed for Ollama:")), 0, wx.LEFT, 8)
             key = wx.TextCtrl(dlg, value=s.get("api_key", ""),
                               style=wx.TE_PASSWORD)
             root.Add(key, 0, wx.EXPAND | wx.ALL, 8)

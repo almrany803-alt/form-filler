@@ -2,6 +2,17 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.29
+
+### Vision backend fix: Gemini (free key) replaces the now-paywalled Pollinations
+- Pollinations began requiring authentication in April 2026, so its no-key
+  endpoint returned 403. Google Gemini is now the recommended free backend: a free
+  key from aistudio.google.com (no credit card), generous limits, vision-capable.
+  Ollama (local) and an own-key OpenAI-compatible option remain; Pollinations stays
+  as a token-based choice.
+- The deterministic layer is confirmed working on live Workday: the fingerprint
+  database classifies "How did you hear" and the phone country-code prompt, and the
+  country-code prompt fills and commits, with no AI involved.
 ## 0.9.28
 
 ### Phase 1: optional AI vision fallback (opt-in, read-only, off by default)

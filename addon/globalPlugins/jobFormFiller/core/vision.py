@@ -170,16 +170,47 @@ class BaseVisionProvider:
         return parse_reading(self._extract(response))
 
 
+class GoogleGemini(BaseVisionProvider):
+    """Google Gemini. The recommended free backend now: a free key from
+    aistudio.google.com (no credit card), generous limits, vision-capable. Uses
+    Gemini's own contents/parts request shape, not the OpenAI one."""
+
+    name = "gemini"
+    needs_api_key = True
+    default_model = "gemini-2.0-flash"
+
+    def _url(self):
+        base = self.base_url or "https://generativelanguage.googleapis.com"
+        return ("%s/v1beta/models/%s:generateContent?key=%s"
+                % (base.rstrip("/"), self.model, self.api_key))
+
+    def _payload(self, image_b64, prompt):
+        return {"contents": [{"parts": [
+            {"text": prompt},
+            {"inline_data": {"mime_type": "image/png", "data": image_b64}},
+        ]}]}
+
+    def _extract(self, response):
+        return response["candidates"][0]["content"]["parts"][0]["text"]
+
+
 class PollinationsProvider(BaseVisionProvider):
-    """Free, no API key, OpenAI-compatible. The default backend, so vision works
-    the instant it's enabled with no signup and no cost."""
+    """Pollinations, OpenAI-compatible. Since April 2026 it requires a token
+    (register at auth.pollinations.ai), so it now needs a key like the others.
+    Kept as an option, no longer the zero-setup default."""
 
     name = "pollinations"
-    needs_api_key = False
+    needs_api_key = True
     default_model = "openai"
 
     def _url(self):
-        return "https://text.pollinations.ai/openai"
+        return (self.base_url or "https://text.pollinations.ai") + "/openai"
+
+    def _headers(self):
+        h = {"Content-Type": "application/json"}
+        if self.api_key:
+            h["Authorization"] = "Bearer " + self.api_key
+        return h
 
     def _payload(self, image_b64, prompt):
         return {
@@ -250,11 +281,12 @@ class OpenAICompatibleProvider(BaseVisionProvider):
 
 
 PROVIDERS = {cls.name: cls for cls in (
-    PollinationsProvider, OllamaProvider, OpenAICompatibleProvider)}
+    GoogleGemini, OllamaProvider, PollinationsProvider,
+    OpenAICompatibleProvider)}
 
 
 def get_provider(name, api_key="", base_url="", model=""):
     """Build a provider by name, defaulting to the free Pollinations backend when
     the name is unknown or empty."""
-    cls = PROVIDERS.get(name, PollinationsProvider)
+    cls = PROVIDERS.get(name, GoogleGemini)
     return cls(api_key=api_key, base_url=base_url, model=model)
