@@ -1,9 +1,20 @@
 # Changelog
 
-All notable changes to Job Form Filler. Newest first. Every item below was
-found and fixed by testing against real, live application forms (Greenhouse,
-Lever) and against real SuccessFactors (STC) page markup, judged by what NVDA
-actually speaks, not by reading the DOM.
+All notable changes to Job Form Filler. Newest first.
+
+## 0.9.17
+
+### React-select fill now actually commits (Country, Location, demographics)
+- The live Monzo log showed Country announcing "set to Saudi Arabia +966" while
+  the field stayed blank: the fill typed the search text, "confirmed" on that
+  typed text, and never selected. Fixed: the async-combobox fill presses Enter to
+  select react-select's highlighted filtered match, and verifies the commit by
+  the menu collapsing (react-select does not expose the chosen value to the
+  accessibility tree at all, so a value read-back is impossible; the menu-collapse
+  signal is the reliable one). A dead duplicate async branch was removed.
+- Proven on a REAL react-select fixture whose own onChange value is read as the
+  ground truth, so "typed but never selected" fails the test loudly. The add-on
+  now speaks "Country set to United Kingdom" and the selection genuinely commits.
 
 ## 0.9.16
 
