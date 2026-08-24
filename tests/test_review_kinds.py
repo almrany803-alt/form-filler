@@ -31,11 +31,13 @@ class EditorKindMapping(unittest.TestCase):
         self.assertEqual(controls.editor_kind(controls.MULTISELECT),
                          controls.EDITOR_MULTI)
 
-    def test_async_is_a_typed_box(self):
-        # Its options load over the network and NVDA reports them empty to us,
-        # so we cannot mirror them: type and hand back to the live list.
+    def test_async_probes_via_editable_editor(self):
+        # Async and editable comboboxes are indistinguishable when closed; many
+        # are react-select dropdowns that open on Down. Route async through the
+        # editable editor so the NVDA layer opens them by keyboard and reads the
+        # options, rather than assuming a dead text box.
         self.assertEqual(controls.editor_kind(controls.ASYNC_COMBOBOX),
-                         controls.EDITOR_TEXT)
+                         controls.EDITOR_EDITABLE)
 
     def test_plain_text_is_a_typed_box(self):
         self.assertEqual(controls.editor_kind(controls.TEXT),

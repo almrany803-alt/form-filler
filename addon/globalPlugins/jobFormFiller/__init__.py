@@ -665,10 +665,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if kind in (controls.EDITOR_SINGLE, controls.EDITOR_EDITABLE):
                 labels, _opts = self._read_option_children(obj, "review-choice")
                 if not labels and cc in (controls.NATIVE_SELECT,
-                                         controls.ARIA_COMBOBOX):
-                    # A closed native dropdown exposes no options to the cached
-                    # tree, so open it briefly to read them, as the fill does.
-                    labels = self._read_select_options(obj)
+                                         controls.ARIA_COMBOBOX,
+                                         controls.EDITABLE_COMBOBOX,
+                                         controls.ASYNC_COMBOBOX):
+                    # Closed dropdown: open it by keyboard to read the options.
+                    # arrow_open (plain Down) for custom/react-select comboboxes,
+                    # which open on Down exactly as the user does by hand; native
+                    # <select> stays on alt+Down only (a plain Down would move
+                    # its selection). No mouse is involved either way.
+                    labels = self._read_select_options(
+                        obj, arrow_open=(cc != controls.NATIVE_SELECT))
                 if not labels and kind == controls.EDITOR_SINGLE:
                     kind = controls.EDITOR_TEXT
                 records.append(self._review_record(
@@ -1355,50 +1361,128 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 continue
         return [], []
 
-    def _read_select_options(self, obj):
-        """Read a native dropdown's option labels by briefly opening it, because
-        a closed <select> exposes no options to NVDA's cached tree. Closes the
-        popup afterwards with Escape, leaving the selection unchanged. Returns a
-        list of labels, or [] if it could not read them."""
-        # Fast path: read the controlled listbox via aria-controls, without
-        # opening. This also reaches a portal listbox the parent-walk misses.
+    def _read_select_options(self, obj, arrow_open=False):
+        """Read a dropdown's option labels by briefly opening it, then Escape to
+        close, leaving the selection unchanged. Returns labels, or [].
+
+        SAFETY: this never touches the mouse. It only sends keys, and only after
+        confirming the field actually holds focus, so a key can never land
+        anywhere but the field. alt+downArrow opens a native <select>; a plain
+        downArrow opens a react-select / custom combobox (this is exactly what a
+        user does by hand). arrow_open enables the plain-Down path; it is off for
+        native selects, where a plain Down would move the selection."""
+        # Fast path: read the controlled listbox via aria-controls, no opening.
         labels, _opts = self._options_via_controls(obj)
         if labels:
             return labels
+        # Focus the field, and CONFIRM focus landed on it before sending any key.
         try:
             obj.setFocus()
             api.setFocusObject(obj)
-            time.sleep(0.1)
-            KeyboardInputGesture.fromName("alt+downArrow").send()
-            time.sleep(0.35)
+            time.sleep(0.12)
         except Exception:
-            log.error("JFF review: could not open select to read options",
-                      exc_info=True)
+            log.error("JFF review: could not focus select", exc_info=True)
             return []
         foc = api.getFocusObject()
-        roots = []
-        if foc is not None:
+        same = False
+        try:
+            fid = (getattr(foc, "IA2Attributes", {}) or {}).get("id", "")
+            oid = (getattr(obj, "IA2Attributes", {}) or {}).get("id", "")
+            same = (foc is obj) or (bool(fid) and fid == oid)
+        except Exception:
+            same = (foc is obj)
+        if not same:
+            log.info("JFF review: focus did not land on the dropdown; not "
+                     "sending any key (staying safe)")
+            return []
+        # Focus mode, so the key reaches the control and not browse navigation.
+        ti = getattr(obj, "treeInterceptor", None)
+        prev_pt = None
+        if ti is not None and hasattr(ti, "passThrough"):
             try:
-                par = foc.parent
+                prev_pt = ti.passThrough
+                ti.passThrough = True
+                time.sleep(0.05)
             except Exception:
-                par = None
-            if par is not None:
-                roots.append(par)
-            roots.append(foc)
+                prev_pt = None
+        openers = ["alt+downArrow"] + (["downArrow"] if arrow_open else [])
         labels = []
-        for root in roots:
-            labels, _opts = self._read_option_children(root, "review-open")
+        for opener in openers:
+            try:
+                KeyboardInputGesture.fromName(opener).send()
+                time.sleep(0.4)
+            except Exception:
+                continue
+            labels = self._read_open_menu(obj)
             if labels:
+                log.info("JFF review: %s opened the menu, read %d option(s)"
+                         % (opener, len(labels)))
                 break
-        if not labels:
-            labels, _opts = self._options_via_controls(obj)   # portal, now open
         try:
             KeyboardInputGesture.fromName("escape").send()
             time.sleep(0.1)
         except Exception:
             pass
-        log.info("JFF review: opened select, read %d option(s)" % len(labels))
+        if prev_pt is not None:
+            try:
+                ti.passThrough = prev_pt
+            except Exception:
+                pass
+        if not labels:
+            log.info("JFF review: opened select, read 0 option(s)")
         return labels
+
+    def _read_open_menu(self, obj):
+        """After a dropdown is open, read its option labels wherever the menu
+        rendered: via aria-controls, via a walk from the focus, or by a bounded
+        search of the document (react-select portals the menu to the body)."""
+        labels, _opts = self._options_via_controls(obj)  # menu now exists
+        if labels:
+            return labels
+        foc = api.getFocusObject()
+        for root in ([foc.parent, foc] if foc is not None else []):
+            if root is None:
+                continue
+            try:
+                labels, _o = self._read_option_children(root, "menu-open")
+            except Exception:
+                labels = []
+            if labels:
+                return labels
+        # Bounded document-wide search: the option nodes exist somewhere now.
+        try:
+            root = None
+            ti = getattr(obj, "treeInterceptor", None)
+            if ti is not None:
+                root = getattr(ti, "rootNVDAObject", None)
+            if root is None:
+                root = api.getForegroundObject()
+            found = []
+            count = [0]
+
+            def _walk(n, d):
+                if d > 12 or count[0] > 2500 or len(found) > 300:
+                    return
+                try:
+                    kids = list(n.children or [])
+                except Exception:
+                    kids = []
+                for c in kids:
+                    count[0] += 1
+                    try:
+                        if c.role == controlTypes.Role.LISTITEM and c.name:
+                            found.append(c.name)
+                    except Exception:
+                        pass
+                    _walk(c, d + 1)
+            _walk(root, 0)
+            if found:
+                log.info("JFF review: read %d option(s) via document search"
+                         % len(found))
+            return found
+        except Exception:
+            log.error("JFF review: document menu search failed", exc_info=True)
+            return []
 
     def _fill_native_select(self, obj, value, concept):
         """Open a native <select>, read its options from the popup, choose the

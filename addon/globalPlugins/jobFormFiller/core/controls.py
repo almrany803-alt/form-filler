@@ -119,7 +119,11 @@ def editor_kind(control_kind: str, key: str = "", input_type: str = "") -> str:
         return EDITOR_SINGLE
     if control_kind == MULTISELECT:
         return EDITOR_MULTI
-    if control_kind == EDITABLE_COMBOBOX:
+    if control_kind in (EDITABLE_COMBOBOX, ASYNC_COMBOBOX):
+        # Editable and async look identical when closed. Many are react-select
+        # dropdowns whose menu renders when you press Down on the focused field
+        # (Country, demographics). Route both through the editable editor so the
+        # NVDA layer opens them by keyboard and reads the options.
         return EDITOR_EDITABLE
     return EDITOR_TEXT
 
