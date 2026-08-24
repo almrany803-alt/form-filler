@@ -2,6 +2,16 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.26
+
+### "How did you hear" combobox, and findable scans
+- Workday search prompts expose neither aria-haspopup nor a collapsed state to
+  NVDA, but their placeholder is "Search". An editable field with a Search
+  placeholder is now recognised as a type-to-filter combobox, so "How Did You
+  Hear About Us?" opens a chooser you can pick from instead of a text box.
+- The scan now saves a timestamped file to Documents\jobFormFiller (falling back
+  to the NVDA config folder), keeps the last 20, and announces the full folder in
+  the message, so it's findable and holds more than one.
 ## 0.9.25
 
 ### "How Did You Hear About Us?" and similar prompts now open as choosers

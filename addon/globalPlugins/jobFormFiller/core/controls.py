@@ -107,7 +107,12 @@ def classify_control(c: ControlDescriptor) -> str:
     # hides aria-haspopup, e.g. Workday's "Minimized" search prompts (How did you
     # hear, country code). An editable field that can expand is a combobox.
     expandable = "collapsed" in states or "expanded" in states
-    if editable_input and (has_popup_value or expandable):
+    # Workday's search prompts (How did you hear, country code) expose neither
+    # aria-haspopup nor a collapsed state to NVDA, but their placeholder is
+    # "Search" and they are editable: that's a type-to-filter prompt, not a free
+    # text box.
+    search_prompt = (c.placeholder or "").strip().lower() == "search"
+    if editable_input and (has_popup_value or expandable or search_prompt):
         return ASYNC_COMBOBOX
     return TEXT
 

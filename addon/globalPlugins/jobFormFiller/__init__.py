@@ -924,22 +924,55 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         header = "Job Form Filler scan: %d field(s)" % len(lines)
         for ln in [header] + lines:
             log.info("JFF scan: %s" % ln)
+        # Write a timestamped file so scans accumulate (you asked for more than
+        # one), to a findable place: Documents\jobFormFiller if we can, else the
+        # NVDA config folder. Announce the full folder so it's never a guess.
+        import datetime
+        stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        folder = ""
+        for base in (os.path.join(os.path.expanduser("~"), "Documents"),
+                     os.path.expanduser("~"),
+                     globalVars.appArgs.configPath):
+            try:
+                cand = os.path.join(base, "jobFormFiller")
+                os.makedirs(cand, exist_ok=True)
+                folder = cand
+                break
+            except Exception:
+                continue
         path = ""
-        try:
-            folder = os.path.join(globalVars.appArgs.configPath, "jobFormFiller")
-            os.makedirs(folder, exist_ok=True)
-            path = os.path.join(folder, "scan.txt")
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(header + "\n\n" + "\n".join(lines) + "\n")
-        except Exception:
-            log.error("JFF scan: could not write the report", exc_info=True)
-            path = ""
+        if folder:
+            try:
+                path = os.path.join(folder, "scan-%s.txt" % stamp)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(header + "\n\n" + "\n".join(lines) + "\n")
+                self._prune_scans(folder, keep=20)
+            except Exception:
+                log.error("JFF scan: could not write the report", exc_info=True)
+                path = ""
         if path:
-            ui.message(_("Scanned {n} fields. Report saved; it is also in the "
-                         "NVDA log.").format(n=len(lines)))
+            ui.message(_("Scanned {n} fields. Saved to the jobFormFiller folder "
+                         "in {where}. It is also in the NVDA log.").format(
+                         n=len(lines), where=folder))
         else:
             ui.message(_("Scanned {n} fields. The report is in the NVDA log."
                          ).format(n=len(lines)))
+
+    def _prune_scans(self, folder, keep=20):
+        """Keep only the most recent scan files so the folder doesn't grow without
+        bound, while still holding a history (you asked for more than one)."""
+        try:
+            files = sorted(
+                (os.path.join(folder, f) for f in os.listdir(folder)
+                 if f.startswith("scan-") and f.endswith(".txt")),
+                key=os.path.getmtime, reverse=True)
+            for old in files[keep:]:
+                try:
+                    os.remove(old)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _openReview(self, focus):
         records = self._collect_review(focus)
