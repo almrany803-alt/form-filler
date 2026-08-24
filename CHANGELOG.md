@@ -2,6 +2,14 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.25
+
+### "How Did You Hear About Us?" and similar prompts now open as choosers
+- Workday's search prompts hide aria-haspopup from NVDA, so the add-on saw them
+  as plain text and offered a type box. But NVDA still reports the field as
+  collapsed ("Minimized"), so the add-on now recognises an editable field that can
+  expand as a type-to-filter combobox, reads its options, and lets you pick.
+  Plain text fields and dropdown-trigger buttons are unaffected.
 ## 0.9.24
 
 ### Real labels, no more button mis-classification (found via a live Workday scan)

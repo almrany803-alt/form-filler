@@ -99,9 +99,15 @@ def classify_control(c: ControlDescriptor) -> str:
     # inputs). Treat it as one. Restricted to editable text roles: a button that
     # opens a dropdown (Workday's country button, or page menu buttons) is NOT a
     # typable field and must not be treated as one.
-    if ((getattr(c, "haspopup", "") or "").lower() in ("listbox", "grid", "tree")
-            and role in ("editabletext", "text", "combobox",
-                         "editablecombobox")):
+    editable_input = role in ("editabletext", "text", "combobox",
+                              "editablecombobox")
+    has_popup_value = (getattr(c, "haspopup", "") or "").lower() in (
+        "listbox", "grid", "tree")
+    # NVDA reports a collapsed/expanded state for a dropdown even when the markup
+    # hides aria-haspopup, e.g. Workday's "Minimized" search prompts (How did you
+    # hear, country code). An editable field that can expand is a combobox.
+    expandable = "collapsed" in states or "expanded" in states
+    if editable_input and (has_popup_value or expandable):
         return ASYNC_COMBOBOX
     return TEXT
 

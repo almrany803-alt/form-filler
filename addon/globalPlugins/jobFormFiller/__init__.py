@@ -143,7 +143,8 @@ def _states_of(obj):
     S = controlTypes.State
     for st, tag in ((S.EDITABLE, "editable"), (S.MULTILINE, "multiline"),
                     (S.FOCUSED, "focused"), (S.CHECKABLE, "checkable"),
-                    (S.HASPOPUP, "haspopup"), (S.MULTISELECTABLE, "multiselectable")):
+                    (S.HASPOPUP, "haspopup"), (S.MULTISELECTABLE, "multiselectable"),
+                    (S.COLLAPSED, "collapsed"), (S.EXPANDED, "expanded")):
         try:
             if st in obj.states:
                 names.add(tag)
