@@ -665,15 +665,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if kind in (controls.EDITOR_SINGLE, controls.EDITOR_EDITABLE):
                 labels, _opts = self._read_option_children(obj, "review-choice")
                 if not labels and cc in (controls.NATIVE_SELECT,
-                                         controls.ARIA_COMBOBOX,
-                                         controls.EDITABLE_COMBOBOX,
-                                         controls.ASYNC_COMBOBOX):
-                    # A closed dropdown exposes no options to the cached tree, so
-                    # open it briefly to read them, as the fill does. This is
-                    # what turns a React-Select (Country, demographics) from a
-                    # typed box into a real chooser: its menu renders on open.
-                    labels = self._read_select_options(
-                        obj, arrow_open=(cc != controls.NATIVE_SELECT))
+                                         controls.ARIA_COMBOBOX):
+                    # A closed native dropdown exposes no options to the cached
+                    # tree, so open it briefly to read them, as the fill does.
+                    labels = self._read_select_options(obj)
                 if not labels and kind == controls.EDITOR_SINGLE:
                     kind = controls.EDITOR_TEXT
                 records.append(self._review_record(
@@ -1360,159 +1355,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 continue
         return [], []
 
-    def _dump_open_tree(self, obj):
-        """One-run diagnostic: after opening a combobox, log the ancestor chain
-        from the focus and each node's children (role, name, states), so the
-        real open-menu structure is visible and the reader can be fixed against
-        it. Fires once per session to avoid flooding the log."""
-        if getattr(self, "_tree_dumped", False):
-            return
-        self._tree_dumped = True
-        log.info("JFF dump: ENTERED tree dump")
-        try:
-            log.info("JFF dump: === open-combobox tree (foc up + controllerFor) ===")
-            try:
-                cf = obj.controllerFor or []
-                log.info("JFF dump: obj.controllerFor -> %d target(s)" % len(cf))
-                for t in cf[:2]:
-                    tr = getattr(t.role, "name", str(t.role))
-                    log.info("JFF dump:   controllerFor role=%s name=%r kids=%d"
-                             % (tr, (t.name or "")[:40], len(list(t.children or []))))
-            except Exception:
-                log.info("JFF dump: controllerFor unavailable")
-            node = api.getFocusObject()
-            for lvl in range(7):
-                if node is None:
-                    break
-                try:
-                    r = getattr(node.role, "name", str(node.role))
-                except Exception:
-                    r = "?"
-                try:
-                    nm = (node.name or "")[:40]
-                except Exception:
-                    nm = "?"
-                try:
-                    kids = list(node.children or [])
-                except Exception:
-                    kids = []
-                log.info("JFF dump L%d: role=%s name=%r kids=%d" % (lvl, r, nm, len(kids)))
-                for i, c in enumerate(kids[:14]):
-                    try:
-                        cr = getattr(c.role, "name", str(c.role))
-                    except Exception:
-                        cr = "?"
-                    try:
-                        cn = (c.name or "")[:28]
-                    except Exception:
-                        cn = "?"
-                    log.info("JFF dump   L%d.child[%d] role=%s name=%r" % (lvl, i, cr, cn))
-                try:
-                    node = node.parent
-                except Exception:
-                    node = None
-            # Did the click actually open it? Log the combobox states, and
-            # search the whole document for option nodes (the menu may portal to
-            # the body, far outside the ancestor chain).
-            try:
-                st = ", ".join(sorted(getattr(s, "name", str(s)) for s in obj.states))
-                log.info("JFF dump: combobox states = %s" % st[:140])
-            except Exception:
-                log.info("JFF dump: states unavailable")
-            try:
-                root = None
-                ti = getattr(obj, "treeInterceptor", None)
-                if ti is not None:
-                    root = getattr(ti, "rootNVDAObject", None)
-                if root is None:
-                    root = api.getForegroundObject()
-                count = [0]
-                names = []
-
-                def _walk(n, d):
-                    if d > 12 or count[0] > 3000:
-                        return
-                    try:
-                        kids = list(n.children or [])
-                    except Exception:
-                        kids = []
-                    for c in kids:
-                        count[0] += 1
-                        try:
-                            if c.role == controlTypes.Role.LISTITEM and c.name:
-                                names.append(c.name)
-                        except Exception:
-                            pass
-                        _walk(c, d + 1)
-                _walk(root, 0)
-                log.info("JFF dump: document has %d option/listitem node(s); "
-                         "sample: %s" % (len(names), ", ".join(names[:15])))
-            except Exception:
-                log.error("JFF dump: doc option search failed", exc_info=True)
-        except Exception:
-            log.error("JFF dump failed", exc_info=True)
-
-    def _click_to_open(self, obj):
-        """Open a custom combobox (React-Select) by left-clicking it. Research
-        is clear: its menu only exists once open, it opens on click by default
-        (openMenuOnClick), and it opens on click even when that is off, while
-        browse mode swallows the keyboard. So a synthetic click on the control
-        is the reliable, framework-independent opener. Returns True if clicked."""
-        try:
-            import winUser
-            target = obj
-            loc = target.location
-            # react-select's <input> is ~2px wide; clicking its centre misses.
-            # Walk up to a wide-enough ancestor (the select control container).
-            for _ in range(3):
-                if loc and loc.width >= 40:
-                    break
-                try:
-                    par = target.parent
-                except Exception:
-                    par = None
-                if par is None:
-                    break
-                target, loc = par, par.location
-            if not loc or loc.width <= 0 or loc.height <= 0:
-                return False
-            x = loc.left + loc.width // 2
-            y = loc.top + loc.height // 2
-            log.info("JFF review: click-to-open at (%d,%d) w=%d" % (x, y, loc.width))
-            # NVDA's own object-click sequence (see the azardi app module):
-            # route the mouse to the control, tell NVDA the mouse is over it,
-            # then do a primary (left) click. This fires a genuine hover then
-            # mousedown then mouseup, which react-select needs, and is more
-            # reliable than raw coordinates. Fall back to raw events if needed.
-            try:
-                import mouseHandler
-                api.moveMouseToNVDAObject(target)
-                api.setMouseObject(target)
-                time.sleep(0.1)
-                mouseHandler.doPrimaryClick()
-            except Exception:
-                log.info("JFF review: doPrimaryClick unavailable, raw click")
-                winUser.setCursorPos(x, y)
-                time.sleep(0.1)
-                winUser.mouse_event(winUser.MOUSEEVENTF_LEFTDOWN, 0, 0, None, None)
-                time.sleep(0.08)
-                winUser.mouse_event(winUser.MOUSEEVENTF_LEFTUP, 0, 0, None, None)
-            time.sleep(0.5)
-            return True
-        except Exception:
-            log.error("JFF review: click-to-open failed", exc_info=True)
-            return False
-
-    def _read_select_options(self, obj, arrow_open=False):
-        """Read a dropdown's option labels by briefly opening it, because a
-        closed dropdown exposes no options to NVDA's cached tree. Closes the
-        popup with Escape afterwards, leaving the selection unchanged. Returns a
-        list of labels, or [] if it could not read them.
-
-        arrow_open: also try a plain downArrow to open. A React-Select or custom
-        combobox opens on downArrow, not alt+downArrow; a native <select> must
-        NOT get a plain downArrow (it would move the selection), so the caller
-        passes arrow_open=True only for custom comboboxes."""
+    def _read_select_options(self, obj):
+        """Read a native dropdown's option labels by briefly opening it, because
+        a closed <select> exposes no options to NVDA's cached tree. Closes the
+        popup afterwards with Escape, leaving the selection unchanged. Returns a
+        list of labels, or [] if it could not read them."""
         # Fast path: read the controlled listbox via aria-controls, without
         # opening. This also reaches a portal listbox the parent-walk misses.
         labels, _opts = self._options_via_controls(obj)
@@ -1522,84 +1369,35 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             obj.setFocus()
             api.setFocusObject(obj)
             time.sleep(0.1)
+            KeyboardInputGesture.fromName("alt+downArrow").send()
+            time.sleep(0.35)
         except Exception:
-            log.error("JFF review: could not focus select to read options",
+            log.error("JFF review: could not open select to read options",
                       exc_info=True)
             return []
-        # A React-Select opens on a plain downArrow, but in browse mode NVDA
-        # eats that as cursor navigation, so the key never reaches the control.
-        # Switch the document to focus mode (passThrough) for the open, then
-        # restore it, so the arrow actually opens the menu.
-        ti = getattr(obj, "treeInterceptor", None)
-        prev_pt = None
-        if arrow_open and ti is not None and hasattr(ti, "passThrough"):
+        foc = api.getFocusObject()
+        roots = []
+        if foc is not None:
             try:
-                prev_pt = ti.passThrough
-                ti.passThrough = True
-                time.sleep(0.05)
+                par = foc.parent
             except Exception:
-                prev_pt = None
-        openers = ["alt+downArrow"] + (["downArrow"] if arrow_open else [])
+                par = None
+            if par is not None:
+                roots.append(par)
+            roots.append(foc)
         labels = []
-        for opener in openers:
-            try:
-                KeyboardInputGesture.fromName(opener).send()
-                time.sleep(0.35)
-            except Exception:
-                continue
-            foc = api.getFocusObject()
-            roots = []
-            if foc is not None:
-                try:
-                    par = foc.parent
-                except Exception:
-                    par = None
-                if par is not None:
-                    roots.append(par)
-                roots.append(foc)
-            for root in roots:
-                labels, _opts = self._read_option_children(root, "review-open")
-                if labels:
-                    break
-            if not labels:
-                labels, _opts = self._options_via_controls(obj)  # menu now open
+        for root in roots:
+            labels, _opts = self._read_option_children(root, "review-open")
             if labels:
                 break
-        if not labels and arrow_open:
-            # Keyboard did not open it (browse mode). React-Select opens on a
-            # click, so click the control and read the menu that appears, via
-            # aria-controls first, then a walk of the freshly-rendered subtree.
-            if self._click_to_open(obj):
-                self._dump_open_tree(obj)
-                labels, _opts = self._options_via_controls(obj)
-                if not labels:
-                    foc2 = api.getFocusObject()
-                    roots2 = []
-                    if foc2 is not None:
-                        try:
-                            p2 = foc2.parent
-                        except Exception:
-                            p2 = None
-                        if p2 is not None:
-                            roots2.append(p2)
-                        roots2.append(foc2)
-                    for root in roots2:
-                        labels, _o = self._read_option_children(root, "review-click")
-                        if labels:
-                            break
-                log.info("JFF review: click-to-open read %d option(s)" % len(labels))
+        if not labels:
+            labels, _opts = self._options_via_controls(obj)   # portal, now open
         try:
             KeyboardInputGesture.fromName("escape").send()
             time.sleep(0.1)
         except Exception:
             pass
-        if prev_pt is not None:
-            try:
-                ti.passThrough = prev_pt  # back to browse mode
-            except Exception:
-                pass
-        log.info("JFF review: opened select (arrow=%s), read %d option(s)"
-                 % (arrow_open, len(labels)))
+        log.info("JFF review: opened select, read %d option(s)" % len(labels))
         return labels
 
     def _fill_native_select(self, obj, value, concept):

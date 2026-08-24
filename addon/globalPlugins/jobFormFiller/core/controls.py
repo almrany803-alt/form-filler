@@ -119,13 +119,7 @@ def editor_kind(control_kind: str, key: str = "", input_type: str = "") -> str:
         return EDITOR_SINGLE
     if control_kind == MULTISELECT:
         return EDITOR_MULTI
-    if control_kind in (EDITABLE_COMBOBOX, ASYNC_COMBOBOX):
-        # Editable and "async" look identical when closed (editable, filter
-        # list, no options loaded yet), but many are fixed-option React-Select
-        # dropdowns whose menu renders on open (Country, demographics). Route
-        # both through the editable editor: the NVDA layer opens and reads the
-        # options, offering a chooser when they load and a plain type box when
-        # they truly do not (a genuine server-fetched async box).
+    if control_kind == EDITABLE_COMBOBOX:
         return EDITOR_EDITABLE
     return EDITOR_TEXT
 
