@@ -16,8 +16,12 @@ def human(k: str) -> str:
     return _HUMAN.get(k, k)
 
 
-def build_summary(filled, guessed, leftovers):
-    """filled/guessed: profile keys. leftovers: human labels we could not fill."""
+def build_summary(filled, guessed, leftovers, cap=6):
+    """filled/guessed: profile keys. leftovers: human labels we could not fill.
+    Non-fillable controls (buttons, toggles) are filtered out before this, so
+    leftovers should be real fields. We dedupe and cap the spoken list so a busy
+    form does not read a wall of names; the review list holds the full set."""
+    leftovers = list(dict.fromkeys(leftovers))
     total = len(filled) + len(guessed) + len(leftovers)
     done = len(filled) + len(guessed)
     parts = [f"Filled {done} of {total}."]
@@ -26,8 +30,10 @@ def build_summary(filled, guessed, leftovers):
         word = "guess" if len(guessed) == 1 else "guesses"
         parts.append(f"Check {len(guessed)} {word}: {names}.")
     if leftovers:
-        names = ", ".join(human(x) for x in leftovers)
-        parts.append(f"{len(leftovers)} need you: {names}.")
+        shown = [human(x) for x in leftovers[:cap]]
+        extra = len(leftovers) - len(shown)
+        tail = f", and {extra} more" if extra > 0 else ""
+        parts.append(f"{len(leftovers)} need you: {', '.join(shown)}{tail}.")
     else:
         parts.append("Nothing left for you.")
     return " ".join(parts)

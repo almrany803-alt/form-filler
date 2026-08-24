@@ -934,6 +934,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         processed_multi = set()
         processed_date = set()
         native_date_left = False
+        # Only these roles are fillable fields. Everything else NVDA enumerates
+        # as a "form field" (buttons, links, the React-Select dropdown toggles,
+        # upload widgets) is not a field the user must fill, so it must never
+        # land in the summary as "needs you".
+        fillable_roles = (
+            controlTypes.Role.EDITABLETEXT, controlTypes.Role.COMBOBOX,
+            controlTypes.Role.LIST, controlTypes.Role.LISTITEM,
+            controlTypes.Role.CHECKBOX, controlTypes.Role.RADIOBUTTON,
+            controlTypes.Role.SPINBUTTON,
+        )
 
         for obj in objs:
             fd = _descriptor_from_object(obj)
@@ -993,6 +1003,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     else:
                         leftovers.append(announce.human("date_of_birth"))
                     continue
+
+            # Skip controls that are not fillable fields (buttons, links, the
+            # dropdown toggles, upload widgets). Date buttons were handled above.
+            # Without this, NVDA's form-field enumeration floods the summary with
+            # "Apply, Submit, Toggle flyout, Dropbox, ..." that are not fields.
+            if obj.role not in fillable_roles:
+                log.info("JFF form field: skip non-fillable %s %r"
+                         % (obj.role, fd.label or fd.name or ""))
+                continue
 
             # Multi-select: browse mode enumerates the option listitems, not the
             # listbox, so handle the parent listbox once from any of its options.
