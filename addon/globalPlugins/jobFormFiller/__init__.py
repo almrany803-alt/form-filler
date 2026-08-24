@@ -615,7 +615,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             key = result.key
             cc = controls.classify_control(controls.ControlDescriptor(
                 role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-                placeholder=fd.placeholder, roledescription=fd.roledescription))
+                placeholder=fd.placeholder, roledescription=fd.roledescription,
+                haspopup=getattr(fd, "haspopup", "")))
 
             # Date: one row, three dropdowns in the editor. A date-picker combobox
             # (calendar) counts too, so the user gets our picker, not the grid.
@@ -873,7 +874,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         result = matcher.match_field(fd)
         cc = controls.classify_control(controls.ControlDescriptor(
             role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-            placeholder=fd.placeholder, roledescription=fd.roledescription))
+            placeholder=fd.placeholder, roledescription=fd.roledescription,
+                haspopup=getattr(fd, "haspopup", "")))
         seg = self._date_segment(fd)
         name = (announce.human(result.key) if result.key
                 else self._humanize_field(fd))
@@ -1112,7 +1114,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         key = matcher.match_field(fd).key
         cc = controls.classify_control(controls.ControlDescriptor(
             role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-            placeholder=fd.placeholder, roledescription=fd.roledescription))
+            placeholder=fd.placeholder, roledescription=fd.roledescription,
+                haspopup=getattr(fd, "haspopup", "")))
         kind = controls.editor_kind(cc, key or "", fd.input_type or "")
         # A date-picker combobox (opens a calendar) is a date, not a plain
         # chooser: offer our accessible day/month/year picker and type the result
@@ -1230,7 +1233,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # before the normal match, which would bail on the option label.
         early_kind = controls.classify_control(controls.ControlDescriptor(
             role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-                placeholder=fd.placeholder, roledescription=fd.roledescription))
+                placeholder=fd.placeholder, roledescription=fd.roledescription,
+                haspopup=getattr(fd, "haspopup", "")))
         if early_kind == controls.RADIO:
             key, pick, verdict = self._fill_radio_group(obj)
             if verdict == "confirmed":
@@ -1290,7 +1294,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
         kind = controls.classify_control(controls.ControlDescriptor(
             role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-                placeholder=fd.placeholder, roledescription=fd.roledescription))
+                placeholder=fd.placeholder, roledescription=fd.roledescription,
+                haspopup=getattr(fd, "haspopup", "")))
 
         if kind == controls.CHECKBOX:
             # A checkbox is a yes/no control. If the matched value is free text
@@ -1484,7 +1489,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # question, so the standard match would bail. Handle the group once.
             early_kind = controls.classify_control(controls.ControlDescriptor(
                 role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-                placeholder=fd.placeholder, roledescription=fd.roledescription))
+                placeholder=fd.placeholder, roledescription=fd.roledescription,
+                haspopup=getattr(fd, "haspopup", "")))
             if early_kind == controls.RADIO:
                 group, radios = self._radio_group(obj)
                 gid = ""
@@ -1523,7 +1529,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
             kind = controls.classify_control(controls.ControlDescriptor(
                 role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
-                placeholder=fd.placeholder, roledescription=fd.roledescription))
+                placeholder=fd.placeholder, roledescription=fd.roledescription,
+                haspopup=getattr(fd, "haspopup", "")))
 
             if kind == controls.CHECKBOX:
                 # A checkbox is yes/no. If the value is free text (a name), the

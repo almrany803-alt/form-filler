@@ -2,6 +2,18 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.23
+
+### Workday "prompt" dropdowns recognised (country, How did you hear, and more)
+- Workday builds its dropdowns as "prompts" that NVDA exposes as plain text
+  inputs, so the add-on was about to type values like "Saudi Arabia" into the
+  country field as dead text that never commits, and it left the "How Did You
+  Hear About Us?" box as an unfillable type box. Any field that declares a popup
+  (aria-haspopup = listbox / menu / grid / tree) is now treated as a
+  type-to-filter combobox: it types, presses Enter, verifies the commit, and
+  offers the options chooser when there's nothing saved. This repairs country,
+  source, and the other Workday prompts together.
+
 ## 0.9.22
 
 ### Real Workday form fixes (found via a live scan)
