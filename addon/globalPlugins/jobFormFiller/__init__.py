@@ -713,11 +713,59 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 return verdict == "confirmed"
             if kind == "date":
                 return self._fill_date(obj, fd, newval) == "confirmed"
+            if kind == "editable":
+                return self._fill_editable_combobox(obj, fd, newval)
             return self._write_field(obj, fd, newval)
         except Exception:
             log.error("JFF review: writeback failed kind=%r" % kind,
                       exc_info=True)
             return False
+
+    def _fill_editable_combobox(self, obj, fd, value):
+        """Commit a value into an editable combobox (react-select and similar):
+        type the value to open and filter the menu, then Enter to select the
+        highlighted match, the way a user does. A plain paste filters but never
+        selects, so the choice reverts on blur (the write-side twin of the
+        Country false-confirm). Keyboard only, focus-verified; verifies the value
+        stuck (not a placeholder). No mouse."""
+        if not value:
+            return self._write_field(obj, fd, value)
+        ti = getattr(obj, "treeInterceptor", None)
+        prev_pt = None
+        try:
+            obj.setFocus()
+            api.setFocusObject(obj)
+            time.sleep(0.12)
+            # Safety: only type if focus actually landed on this field.
+            foc = api.getFocusObject()
+            fid = (getattr(foc, "IA2Attributes", {}) or {}).get("id", "")
+            oid = (getattr(obj, "IA2Attributes", {}) or {}).get("id", "")
+            if not (foc is obj or (fid and fid == oid)):
+                log.info("JFF combo: focus did not land; plain write instead")
+                return self._write_field(obj, fd, value)
+            if ti is not None and hasattr(ti, "passThrough"):
+                prev_pt = ti.passThrough
+                ti.passThrough = True
+                time.sleep(0.05)
+            KeyboardInputGesture.fromName("control+a").send()
+            time.sleep(0.05)
+            _paste_into_focused(obj, value)          # fires the menu filter
+            time.sleep(0.45)
+            KeyboardInputGesture.fromName("enter").send()   # select the match
+            time.sleep(0.25)
+        except Exception:
+            log.error("JFF combo: editable writeback failed", exc_info=True)
+            return False
+        finally:
+            if prev_pt is not None:
+                try:
+                    ti.passThrough = prev_pt
+                except Exception:
+                    pass
+        after = self._settled_value(obj)
+        stuck = bool(after) and not _is_placeholder_value(after)
+        log.info("JFF combo: after=%r stuck=%s" % (after, stuck))
+        return stuck
 
     def _select_radio_by_label(self, group, label):
         """Select the radio in a group whose label matches the chosen text.
