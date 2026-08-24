@@ -564,6 +564,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         records = []
         processed_radio = set()
         processed_multi = set()
+        # Fillable review fields only: exclude file uploads and buttons/links,
+        # the same rule as the whole-form summary. Without it the review listed
+        # the Resume/CV attach as an editable row, misaligning every row.
+        review_fillable = (
+            controlTypes.Role.EDITABLETEXT, controlTypes.Role.COMBOBOX,
+            controlTypes.Role.LIST, controlTypes.Role.LISTITEM,
+            controlTypes.Role.CHECKBOX, controlTypes.Role.RADIOBUTTON,
+            controlTypes.Role.SPINBUTTON)
         for obj in objs:
             fd = _descriptor_from_object(obj)
             result = matcher.match_field(fd)
@@ -576,6 +584,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     or cc == controls.DATEPICKER):
                 records.append(self._review_record(
                     obj, fd, key, controls.EDITOR_DATE, [], None))
+                continue
+
+            # Not a fillable review field (file upload, button, link): skip, so
+            # the review never offers a text editor for a file and its rows line
+            # up with the real fields.
+            if obj.role not in review_fillable or (fd.input_type or "").lower() == "file":
+                log.info("JFF review: skip non-fillable %s %r"
+                         % (obj.role, fd.label or fd.name or ""))
                 continue
 
             # Multi-select: browse mode enumerates the option listitems, not the
