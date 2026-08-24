@@ -2,6 +2,14 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.21
+
+### Scan this form (read-only diagnostic and overview)
+- New "Scan this form" command in the NVDA+J menu. It walks every field and
+  writes a report, its name, detected control kind, the ATS platform, and what
+  the add-on would do for each, to a file you can send and to the NVDA log. It
+  never fills or submits. Proven on a live 41-field form.
+
 ## 0.9.20
 
 ### Calendar flow proven; platform behaviour and logging
