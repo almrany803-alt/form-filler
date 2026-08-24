@@ -2,6 +2,18 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.20
+
+### Calendar flow proven; platform behaviour and logging
+- The date write-back and date-picker opening are verified on a real date field:
+  a date of birth types back into the field in its own format (confirmed by the
+  field's own value), and a date-picker combobox opens our day/month/year picker
+  instead of a calendar grid.
+- The detected ATS platform is now logged on every fill ("JFF platform: ..."),
+  not only when the editor is offered.
+- Workday comboboxes are routed to the type-and-Enter fill, since Workday's
+  dropdowns are type-to-filter.
+
 ## 0.9.19
 
 ### Calendar date pickers and platform awareness
