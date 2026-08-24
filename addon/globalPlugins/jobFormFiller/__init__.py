@@ -1383,6 +1383,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.error("JFF review: could not focus select to read options",
                       exc_info=True)
             return []
+        # A React-Select opens on a plain downArrow, but in browse mode NVDA
+        # eats that as cursor navigation, so the key never reaches the control.
+        # Switch the document to focus mode (passThrough) for the open, then
+        # restore it, so the arrow actually opens the menu.
+        ti = getattr(obj, "treeInterceptor", None)
+        prev_pt = None
+        if arrow_open and ti is not None and hasattr(ti, "passThrough"):
+            try:
+                prev_pt = ti.passThrough
+                ti.passThrough = True
+                time.sleep(0.05)
+            except Exception:
+                prev_pt = None
         openers = ["alt+downArrow"] + (["downArrow"] if arrow_open else [])
         labels = []
         for opener in openers:
@@ -1414,6 +1427,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             time.sleep(0.1)
         except Exception:
             pass
+        if prev_pt is not None:
+            try:
+                ti.passThrough = prev_pt  # back to browse mode
+            except Exception:
+                pass
         log.info("JFF review: opened select (arrow=%s), read %d option(s)"
                  % (arrow_open, len(labels)))
         return labels
