@@ -2053,28 +2053,29 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # a field that then reverted to blank.)
         # DIAGNOSTIC: react-select clears the input on commit and shows the choice
         # elsewhere; find where, so the verify reads the right place.
-        for _d in range(6):
-            time.sleep(0.2)
+        for _d in range(4):
+            time.sleep(0.25)
             try:
                 dv = self._read_current_value(obj)
             except Exception:
                 dv = "?"
             try:
-                dn = obj.name or ""
+                desc = obj.description or ""
             except Exception:
-                dn = "?"
-            par_txt = []
+                desc = "?"
+            gtext = []
             try:
-                for c in (obj.parent.children or [])[:6]:
+                gp = obj.parent.parent
+                for c in (gp.children or [])[:8]:
                     try:
-                        par_txt.append((getattr(c.role, "name", "?"),
-                                        (c.name or "")[:24]))
+                        gtext.append((getattr(c.role, "name", "?"),
+                                      (c.name or "")[:24]))
                     except Exception:
                         pass
             except Exception:
                 pass
-            log.info("JFF async-diag[%d]: value=%r name=%r parent-kids=%r"
-                     % (_d, dv, dn, par_txt))
+            log.info("JFF async-diag[%d]: value=%r desc=%r grandkids=%r"
+                     % (_d, dv, desc[:60], gtext))
         after = self._settled_value(obj)
         if (after and not _is_placeholder_value(after)
                 and controls.verify_selection(pick.label, after) == "confirmed"):
