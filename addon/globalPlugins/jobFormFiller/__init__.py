@@ -9,6 +9,7 @@
 
 import os
 import re
+import json
 import time
 import globalPluginHandler
 import wx
@@ -24,6 +25,7 @@ from keyboardHandler import KeyboardInputGesture
 import addonHandler
 
 from .core import matcher, controls, announce, profile, fingerprints
+from .core import vision, capture
 from . import dialogs
 
 try:
@@ -301,6 +303,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         mForm = menu.Append(wx.ID_ANY, _("Fill &all fields"))
         mReview = menu.Append(wx.ID_ANY, _("&Review fields"))
         mScan = menu.Append(wx.ID_ANY, _("&Scan this form (report)"))
+        mVision = menu.Append(wx.ID_ANY, _("&Vision (AI) settings..."))
         menu.AppendSeparator()
 
         # Profile submenu, always shown. Your details ARE a profile, so switch,
@@ -339,6 +342,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("form"), mForm)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("review"), mReview)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("scan"), mScan)
+        frame.Bind(wx.EVT_MENU, lambda e: wx.CallAfter(self._openVisionSettings), mVision)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("new"), mNew)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("editp"), mEditP)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("del"), mDel)
@@ -1169,6 +1173,190 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             placeholder=fd.placeholder, roledescription=fd.roledescription,
             haspopup=getattr(fd, "haspopup", "")))
 
+    def _data_dir(self):
+        """The add-on's data folder, created if needed. Used for vision settings
+        and the local disagreement log."""
+        d = os.path.join(globalVars.appArgs.configPath, "jobFormFiller")
+        try:
+            os.makedirs(d, exist_ok=True)
+        except Exception:
+            pass
+        return d
+
+    def _vision_settings(self):
+        """Vision settings, OFF by default. A plain JSON file so it's easy to
+        inspect. Vision does nothing at all unless the user set enabled true."""
+        s = {"enabled": False, "backend": "pollinations", "api_key": "",
+             "base_url": "", "model": ""}
+        try:
+            path = os.path.join(self._data_dir(), "vision_settings.json")
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as f:
+                    loaded = json.load(f)
+                for k in s:
+                    if k in loaded:
+                        s[k] = loaded[k]
+        except Exception:
+            pass
+        return s
+
+    def _save_vision_settings(self, s):
+        try:
+            path = os.path.join(self._data_dir(), "vision_settings.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(s, f)
+        except Exception:
+            log.error("JFF vision: could not save settings", exc_info=True)
+
+    def _vision_provider(self):
+        """Build the configured vision provider, or None if vision is off or not
+        usable. Never raises."""
+        s = self._vision_settings()
+        if not s.get("enabled"):
+            return None
+        try:
+            p = vision.get_provider(s.get("backend") or "pollinations",
+                                    api_key=s.get("api_key", ""),
+                                    base_url=s.get("base_url", ""),
+                                    model=s.get("model", ""))
+            return p if p.is_available() else None
+        except Exception:
+            return None
+
+    def _vision_identify(self, obj):
+        """Capture just this one control and ask the vision model what it is.
+        Returns a reading dict or None. Opt-in and read-only: it changes nothing,
+        sends only that control's pixels, and fails silently to None so the fill
+        always falls back to today's behaviour."""
+        provider = self._vision_provider()
+        if provider is None:
+            return None
+        loc = getattr(obj, "location", None)
+        if not loc:
+            return None
+        try:
+            left, top, width, height = loc.left, loc.top, loc.width, loc.height
+        except Exception:
+            try:
+                left, top, width, height = loc
+            except Exception:
+                return None
+        if not width or not height:
+            return None
+        margin = 6
+        png = capture.capture_rect_png(max(0, left - margin), max(0, top - margin),
+                                       width + 2 * margin, height + 2 * margin)
+        if not png:
+            return None
+        try:
+            return provider.identify(png)
+        except Exception as e:
+            log.info("JFF vision: call failed (%s)" % e)
+            return None
+
+    def _speak_vision_reading(self, fd, reading):
+        """Tell the user what vision saw, and if it read a different KIND than our
+        classification, record the structural disagreement locally (never the
+        user's data) as raw material for improving the free heuristics."""
+        kind = reading.get("kind") or _("a field")
+        value = reading.get("current_value")
+        label = reading.get("label")
+        if label and not (fd.label or ""):
+            ui.message(_("Vision: this looks like {k}, {l}.").format(
+                k=kind, l=label))
+        elif value:
+            ui.message(_("Vision: this looks like {k}, showing {v}.").format(
+                k=kind, v=value))
+        else:
+            ui.message(_("Vision: this looks like {k}.").format(k=kind))
+        our_kind = self._classify(fd)
+        if vision.disagrees(our_kind, reading.get("kind", "")):
+            self._log_disagreement(fd, our_kind, reading)
+
+    def _log_disagreement(self, fd, our_kind, reading):
+        """Append one disagreement to the local log: the field's STRUCTURAL
+        signals plus what each side said. Never the current value or anything the
+        user typed. Nothing leaves the machine unless the user presses Share."""
+        try:
+            entry = {
+                "platform": self._detect_platform(fd),
+                "id": fd.id, "role": fd.role, "placeholder": fd.placeholder,
+                "dom_class": getattr(fd, "dom_class", ""),
+                "haspopup": getattr(fd, "haspopup", ""),
+                "states": list(getattr(fd, "states", ()) or ()),
+                "we_said": our_kind,
+                "vision_said": reading.get("kind", ""),
+                "vision_label": reading.get("label", ""),
+            }
+            path = os.path.join(self._data_dir(), "vision_disagreements.jsonl")
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            log.info("JFF vision: logged a disagreement (%s vs %s)"
+                     % (our_kind, reading.get("kind", "")))
+        except Exception:
+            log.error("JFF vision: could not log disagreement", exc_info=True)
+
+    def _openVisionSettings(self):
+        """A small dialog to turn vision on or off, choose a backend, and share
+        the local disagreement log with the developer. This is the only new UI the
+        vision feature adds; the fill commands are unchanged."""
+        s = self._vision_settings()
+        backends = [("pollinations", _("Pollinations (free, no key)")),
+                    ("ollama", _("Ollama (local, private)")),
+                    ("openai_compatible", _("Own key (OpenAI-compatible)"))]
+        gui.mainFrame.prePopup()
+        try:
+            dlg = wx.Dialog(gui.mainFrame, title=_("Job Form Filler: Vision (AI)"))
+            root = wx.BoxSizer(wx.VERTICAL)
+            enable = wx.CheckBox(dlg, label=_(
+                "Use AI vision as a fallback when a field can't be identified "
+                "(off by default; sends only the one field's image)"))
+            enable.SetValue(bool(s.get("enabled")))
+            root.Add(enable, 0, wx.ALL, 8)
+            root.Add(wx.StaticText(dlg, label=_("Backend:")), 0, wx.LEFT, 8)
+            choice = wx.Choice(dlg, choices=[b[1] for b in backends])
+            cur = [i for i, b in enumerate(backends) if b[0] == s.get("backend")]
+            choice.SetSelection(cur[0] if cur else 0)
+            root.Add(choice, 0, wx.ALL, 8)
+            root.Add(wx.StaticText(dlg, label=_(
+                "API key (only for the own-key backend):")), 0, wx.LEFT, 8)
+            key = wx.TextCtrl(dlg, value=s.get("api_key", ""),
+                              style=wx.TE_PASSWORD)
+            root.Add(key, 0, wx.EXPAND | wx.ALL, 8)
+            share = wx.Button(dlg, label=_("Share disagreement log with "
+                                           "developer..."))
+            share.Bind(wx.EVT_BUTTON, lambda e: self._shareDisagreements())
+            root.Add(share, 0, wx.ALL, 8)
+            btns = dlg.CreateButtonSizer(wx.OK | wx.CANCEL)
+            root.Add(btns, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
+            dlg.SetSizerAndFit(root)
+            if dlg.ShowModal() == wx.ID_OK:
+                s["enabled"] = enable.GetValue()
+                s["backend"] = backends[choice.GetSelection()][0]
+                s["api_key"] = key.GetValue()
+                self._save_vision_settings(s)
+                ui.message(_("Vision {state}.").format(
+                    state=_("on") if s["enabled"] else _("off")))
+            dlg.Destroy()
+        finally:
+            gui.mainFrame.postPopup()
+
+    def _shareDisagreements(self):
+        """Open the local disagreement log so the user can send it to the
+        developer. Nothing is uploaded; sharing is entirely the user's choice and
+        the file holds only field structure, never their data."""
+        path = os.path.join(self._data_dir(), "vision_disagreements.jsonl")
+        if not os.path.exists(path):
+            ui.message(_("No disagreements recorded yet."))
+            return
+        try:
+            os.startfile(path)  # opens in the default editor for the user to send
+            ui.message(_("Opened the disagreement log. It holds only field "
+                         "structure, no personal data. Send it to the developer "
+                         "if you'd like to contribute."))
+        except Exception:
+            ui.message(_("The disagreement log is at: {p}").format(p=path))
+
     def _record_for_field(self, obj):
         """Build one review record for the focused field: classify it, choose the
         editor kind, and read its options if it is a chooser (or its sibling
@@ -1241,6 +1429,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 ui.message(_("Country set to {c}.").format(c=country))
                 return True
             # could not set it: fall through to the chooser
+        # Vision fallback (opt-in, read-only): we're about to hand this field back
+        # because we can't fill it from the profile. If vision is on, look at just
+        # this one control and say what it is, logging any disagreement. It runs
+        # only here, at the genuine dead-end, so it never delays a successful fill.
+        reading = self._vision_identify(obj)
+        if reading:
+            try:
+                self._speak_vision_reading(_descriptor_from_object(obj), reading)
+            except Exception:
+                log.error("JFF vision: reading failed", exc_info=True)
         gui.mainFrame.prePopup()
         try:
             newval = dialogs.edit_field(gui.mainFrame, rec["name"], rec["kind"],

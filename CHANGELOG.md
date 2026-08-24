@@ -2,6 +2,25 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.28
+
+### Phase 1: optional AI vision fallback (opt-in, read-only, off by default)
+- When a field can't be identified or filled from the profile, and only if the
+  user turns vision on, the add-on now looks at just that one control's pixels and
+  says what it is ("this looks like a dropdown showing United Kingdom"). It folds
+  into the existing Fill path as a last-resort fallback, no new fill command: it
+  runs only at a genuine dead-end, never before a successful fill, and only when
+  enabled.
+- It advises and records; it never fills or clicks. Where vision reads a different
+  KIND than our own classification, the structural signals (never any personal
+  data or field value) are written to a local disagreement log, the raw material
+  for improving the free heuristics and the fingerprint database.
+- Backends: Pollinations (free, no key, default), Ollama (local, private), or your
+  own OpenAI-compatible key. One "Vision (AI) settings..." menu item toggles it,
+  picks the backend, and offers a "share with developer" button, nothing is ever
+  sent without that deliberate press.
+- Dependency-free: a pure-Python PNG encoder and a GDI capture, no bundled
+  imaging library; the provider layer is modelled on AI Content Describer.
 ## 0.9.27
 
 ### Field fingerprint database, wired in (database-first classification)
