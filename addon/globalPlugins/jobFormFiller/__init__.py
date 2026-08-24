@@ -79,6 +79,14 @@ def _format_date(y, m, d, order, sep):
     return sep.join(part[o] for o in order)
 
 
+def _is_boolean_value(v):
+    """True when a value is a yes/no answer, so a checkbox is only ever toggled
+    from a real boolean, never from free text like a name or a country."""
+    return str(v).strip().lower() in (
+        "yes", "no", "true", "false", "1", "0", "on", "off", "checked",
+        "unchecked", "y", "n", "نعم", "لا", "si", "sí", "oui", "non", "ja", "nein")
+
+
 _WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday",
              "saturday", "sunday")
 _MONTHS = ("january", "february", "march", "april", "may", "june", "july",
@@ -876,6 +884,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         elif (self._is_date_picker(fd) or cc == controls.DATEPICKER
               or fd.input_type == "date"):
             action = "open the date picker"
+        elif cc == controls.CHECKBOX and result.key and not _is_boolean_value(
+                self._value_for(result.key) or ""):
+            action = "leave for you (checkbox, not a yes/no value)"
         elif result.key and self._value_for(result.key):
             action = "fill from profile: %s" % self._value_for(result.key)
         elif result.key:
@@ -1028,10 +1039,38 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 return True
         return False
 
+    def _page_url(self):
+        """The current document's URL, lower-cased, for platform detection.
+        Workday and Taleo don't expose their markup markers to NVDA, but the URL
+        is reliable. Best effort; '' if unavailable."""
+        try:
+            obj = api.getFocusObject()
+            ti = getattr(obj, "treeInterceptor", None)
+            root = getattr(ti, "rootNVDAObject", None) if ti else None
+            u = getattr(root, "documentConstantIdentifier", "") or ""
+            return u.lower() if isinstance(u, str) else ""
+        except Exception:
+            return ""
+
     def _detect_platform(self, fd):
-        """Identify the ATS platform from markup signatures, so dates and
-        dropdowns can be routed the way each platform builds them. Best-effort;
-        returns a short name or ''."""
+        """Identify the ATS platform so dates and dropdowns can be routed the way
+        each platform builds them. Detects by page URL first (Workday and Taleo
+        hide their markup markers from NVDA), then by markup. Returns a short name
+        or ''."""
+        url = self._page_url()
+        if url:
+            if "myworkdayjobs" in url or ".workday." in url:
+                return "workday"
+            if "taleo.net" in url:
+                return "taleo"
+            if "successfactors" in url or "sapsf." in url:
+                return "successfactors"
+            if "icims.com" in url:
+                return "icims"
+            if "greenhouse.io" in url or "boards.greenhouse" in url:
+                return "greenhouse"
+            if "lever.co" in url:
+                return "lever"
         cls = (getattr(fd, "dom_class", "") or "").lower()
         idn = (fd.id or "").lower()
         hay = cls + " " + idn
@@ -1039,7 +1078,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return "greenhouse"
         if "ui5" in cls or "sapm" in cls or "sf" == idn[:2] or "fbclc" in idn:
             return "successfactors"
-        if "wd-" in cls or "data-automation" in hay or "workday" in hay:
+        if "wd-" in cls or "workday" in hay:
             return "workday"
         if "select2" in cls:
             return "select2"
@@ -1254,6 +1293,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 placeholder=fd.placeholder, roledescription=fd.roledescription))
 
         if kind == controls.CHECKBOX:
+            # A checkbox is a yes/no control. If the matched value is free text
+            # (a name, a country), the match is wrong (e.g. Workday's
+            # "I have a preferred name" box, id name--preferredCheck, matching
+            # full_name). Never toggle it from that; offer Yes/No instead.
+            if not _is_boolean_value(value):
+                self._offer_editor(obj)
+                return
             verdict = self._fill_checkbox(obj, fd, value)
             ui.message(announce.choice_set(
                 fd.label or announce.human(result.key), value, verdict))
@@ -1480,6 +1526,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 placeholder=fd.placeholder, roledescription=fd.roledescription))
 
             if kind == controls.CHECKBOX:
+                # A checkbox is yes/no. If the value is free text (a name), the
+                # match is wrong (Workday's preferred-name box matching full_name):
+                # leave it for the user rather than toggling it.
+                if not _is_boolean_value(value):
+                    leftovers.append(fd.label or announce.human(result.key))
+                    continue
                 # Only auto-toggle when the state is wrong; a checkbox already in
                 # the wanted state is left alone (and counts as done).
                 verdict = self._fill_checkbox(obj, fd, value)

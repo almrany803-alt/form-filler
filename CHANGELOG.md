@@ -2,6 +2,18 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.22
+
+### Real Workday form fixes (found via a live scan)
+- Platform detection now uses the page URL first (myworkdayjobs.com, taleo.net,
+  and so on). Workday hides its markup markers (data-automation-id) from NVDA and
+  uses hashed CSS classes, so markup detection failed on real Workday forms; the
+  URL is reliable.
+- A checkbox is never auto-filled from a non-boolean value. Workday's
+  "I have a preferred name" checkbox (id name--preferredCheck) was matching the
+  full-name field and getting toggled; now free text like a name leaves a checkbox
+  untouched, and the scan reports it honestly.
+
 ## 0.9.21
 
 ### Scan this form (read-only diagnostic and overview)
