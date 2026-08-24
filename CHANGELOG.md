@@ -2,6 +2,14 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.30
+
+### Two privacy-first free vision backends: Mistral and Groq
+- Added Mistral (Pixtral) and Groq as free, no-card vision backends alongside
+  Gemini. Both are OpenAI-compatible and, unlike Gemini's free tier, do not train
+  on your inputs, which matters when the image is a form field. Gemini stays the
+  quality option; Mistral is the cleanest privacy story; Groq is fast and private.
+  Pick per how sensitive the form is in Vision (AI) settings.
 ## 0.9.29
 
 ### Vision backend fix: Gemini (free key) replaces the now-paywalled Pollinations

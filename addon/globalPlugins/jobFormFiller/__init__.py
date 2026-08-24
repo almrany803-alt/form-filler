@@ -1301,7 +1301,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         the local disagreement log with the developer. This is the only new UI the
         vision feature adds; the fill commands are unchanged."""
         s = self._vision_settings()
-        backends = [("gemini", _("Google Gemini (free key, recommended)")),
+        backends = [("gemini", _("Google Gemini (free key; best quality)")),
+                    ("mistral", _("Mistral (free key; best privacy)")),
+                    ("groq", _("Groq (free key; fast, private)")),
                     ("ollama", _("Ollama (local, private; needs setup)")),
                     ("pollinations", _("Pollinations (needs a token)")),
                     ("openai_compatible", _("Own key (OpenAI-compatible)"))]

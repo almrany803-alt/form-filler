@@ -280,9 +280,35 @@ class OpenAICompatibleProvider(BaseVisionProvider):
         return response["choices"][0]["message"]["content"]
 
 
+class GroqProvider(OpenAICompatibleProvider):
+    """Groq: free (no card), fast, and does not train on your inputs, better
+    privacy than Gemini's free tier. Free key from console.groq.com. Runs
+    open-weight vision models."""
+    name = "groq"
+    needs_api_key = True
+    default_model = "meta-llama/llama-4-scout-17b-16e-instruct"
+
+    def __init__(self, api_key="", base_url="", model=""):
+        super().__init__(api_key, base_url or "https://api.groq.com/openai/v1",
+                         model)
+
+
+class MistralProvider(OpenAICompatibleProvider):
+    """Mistral: free mode (no card) and its docs say API data is not used for
+    training, the cleanest privacy story of the free options, which matters for
+    form-field images. Free key from console.mistral.ai. Pixtral is its vision
+    model."""
+    name = "mistral"
+    needs_api_key = True
+    default_model = "pixtral-12b-2409"
+
+    def __init__(self, api_key="", base_url="", model=""):
+        super().__init__(api_key, base_url or "https://api.mistral.ai/v1", model)
+
+
 PROVIDERS = {cls.name: cls for cls in (
-    GoogleGemini, OllamaProvider, PollinationsProvider,
-    OpenAICompatibleProvider)}
+    GoogleGemini, MistralProvider, GroqProvider, OllamaProvider,
+    PollinationsProvider, OpenAICompatibleProvider)}
 
 
 def get_provider(name, api_key="", base_url="", model=""):

@@ -140,3 +140,23 @@ class TestKindMappingAndDisagreement(unittest.TestCase):
     def test_no_disagreement_when_vision_has_no_clear_kind(self):
         self.assertFalse(vision.disagrees("text", "slider"))
         self.assertFalse(vision.disagrees("text", ""))
+
+
+class TestMistralGroqPresets(unittest.TestCase):
+    def test_mistral_preset(self):
+        p = vision.get_provider("mistral", api_key="k")
+        self.assertTrue(p.needs_api_key)
+        self.assertIn("api.mistral.ai", p._url())
+        self.assertIn("Authorization", p._headers())
+
+    def test_groq_preset(self):
+        p = vision.get_provider("groq", api_key="k")
+        self.assertTrue(p.needs_api_key)
+        self.assertIn("api.groq.com", p._url())
+
+    def test_both_send_openai_image_payload(self):
+        for name in ("mistral", "groq"):
+            p = vision.get_provider(name, api_key="k")
+            content = p._payload("B64", "prompt")["messages"][0]["content"]
+            kinds = [c["type"] for c in content]
+            self.assertIn("image_url", kinds)
