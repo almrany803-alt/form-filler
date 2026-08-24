@@ -1368,6 +1368,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if getattr(self, "_tree_dumped", False):
             return
         self._tree_dumped = True
+        log.info("JFF dump: ENTERED tree dump")
         try:
             log.info("JFF dump: === open-combobox tree (foc up + controllerFor) ===")
             try:
@@ -1440,18 +1441,24 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             x = loc.left + loc.width // 2
             y = loc.top + loc.height // 2
             log.info("JFF review: click-to-open at (%d,%d) w=%d" % (x, y, loc.width))
-            # Use NVDA's own routing so a genuine mouseMove/hover fires first
-            # (react-select needs the full hover then mousedown then mouseup
-            # sequence), then left-click, passing None for extra-info exactly as
-            # NVDA's own left-click command does.
+            # NVDA's own object-click sequence (see the azardi app module):
+            # route the mouse to the control, tell NVDA the mouse is over it,
+            # then do a primary (left) click. This fires a genuine hover then
+            # mousedown then mouseup, which react-select needs, and is more
+            # reliable than raw coordinates. Fall back to raw events if needed.
             try:
+                import mouseHandler
                 api.moveMouseToNVDAObject(target)
+                api.setMouseObject(target)
+                time.sleep(0.1)
+                mouseHandler.doPrimaryClick()
             except Exception:
+                log.info("JFF review: doPrimaryClick unavailable, raw click")
                 winUser.setCursorPos(x, y)
-            time.sleep(0.1)
-            winUser.mouse_event(winUser.MOUSEEVENTF_LEFTDOWN, 0, 0, None, None)
-            time.sleep(0.08)
-            winUser.mouse_event(winUser.MOUSEEVENTF_LEFTUP, 0, 0, None, None)
+                time.sleep(0.1)
+                winUser.mouse_event(winUser.MOUSEEVENTF_LEFTDOWN, 0, 0, None, None)
+                time.sleep(0.08)
+                winUser.mouse_event(winUser.MOUSEEVENTF_LEFTUP, 0, 0, None, None)
             time.sleep(0.5)
             return True
         except Exception:
