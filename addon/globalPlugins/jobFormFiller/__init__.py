@@ -291,6 +291,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         mField = menu.Append(wx.ID_ANY, _("Fill this &field"))
         mForm = menu.Append(wx.ID_ANY, _("Fill &all fields"))
         mReview = menu.Append(wx.ID_ANY, _("&Review fields"))
+        mScan = menu.Append(wx.ID_ANY, _("&Scan this form (report)"))
         menu.AppendSeparator()
 
         # Profile submenu, always shown. Your details ARE a profile, so switch,
@@ -328,6 +329,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("field"), mField)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("form"), mForm)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("review"), mReview)
+        frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("scan"), mScan)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("new"), mNew)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("editp"), mEditP)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("del"), mDel)
@@ -350,7 +352,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return
         log.info("JFF menu: chose %r" % (act,))
         kind = act[0]
-        if kind in ("field", "form", "review"):
+        if kind in ("field", "form", "review", "scan"):
             def runFill():
                 if savedForeground:
                     try:
@@ -362,6 +364,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     self.script_fillField(None, focus=savedFocus)
                 elif kind == "form":
                     self.script_fillForm(None, focus=savedFocus)
+                elif kind == "scan":
+                    self._scanForm(savedFocus)
                 else:
                     self._openReview(savedFocus)
             wx.CallAfter(runFill)
@@ -851,6 +855,77 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         else:
             KeyboardInputGesture.fromName("delete").send()
         return True
+
+    def _scan_line(self, obj, idx):
+        """One report line for a field: its name, detected control kind, the ATS
+        platform, and what the add-on WOULD do, computed with the same helpers the
+        fill uses. Reads nothing into the field and changes nothing."""
+        fd = _descriptor_from_object(obj)
+        plat = self._detect_platform(fd) or "-"
+        result = matcher.match_field(fd)
+        cc = controls.classify_control(controls.ControlDescriptor(
+            role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
+            placeholder=fd.placeholder, roledescription=fd.roledescription))
+        seg = self._date_segment(fd)
+        name = (announce.human(result.key) if result.key
+                else self._humanize_field(fd))
+        if seg and self._is_dob_field(fd):
+            action = "fill date of birth %s from profile" % seg
+        elif seg:
+            action = "offer the date picker (date %s)" % seg
+        elif (self._is_date_picker(fd) or cc == controls.DATEPICKER
+              or fd.input_type == "date"):
+            action = "open the date picker"
+        elif result.key and self._value_for(result.key):
+            action = "fill from profile: %s" % self._value_for(result.key)
+        elif result.key:
+            action = "identified as %s, nothing saved, offer editor" % result.key
+        elif cc == controls.CHECKBOX:
+            action = "offer Yes/No"
+        elif cc == controls.RADIO:
+            action = "offer the radio choices"
+        elif cc in (controls.NATIVE_SELECT, controls.ARIA_COMBOBOX,
+                    controls.EDITABLE_COMBOBOX, controls.ASYNC_COMBOBOX,
+                    controls.MULTISELECT):
+            action = "offer the options chooser"
+        else:
+            action = "offer a type box"
+        return ("Field %2d: %r  [kind=%s, platform=%s]  -> %s"
+                % (idx, name, cc, plat, action))
+
+    def _scanForm(self, focus):
+        """Walk the whole form and write a report of what the add-on sees and
+        would do for every field, to a file the user can send and to the NVDA
+        log. A read-only diagnostic and form overview: it never fills or submits."""
+        objs = self._form_field_objs(focus)
+        if not objs:
+            ui.message(_("No form fields found here."))
+            return
+        lines = []
+        for i, obj in enumerate(objs, 1):
+            try:
+                lines.append(self._scan_line(obj, i))
+            except Exception:
+                log.error("JFF scan: field %d failed" % i, exc_info=True)
+        header = "Job Form Filler scan: %d field(s)" % len(lines)
+        for ln in [header] + lines:
+            log.info("JFF scan: %s" % ln)
+        path = ""
+        try:
+            folder = os.path.join(globalVars.appArgs.configPath, "jobFormFiller")
+            os.makedirs(folder, exist_ok=True)
+            path = os.path.join(folder, "scan.txt")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(header + "\n\n" + "\n".join(lines) + "\n")
+        except Exception:
+            log.error("JFF scan: could not write the report", exc_info=True)
+            path = ""
+        if path:
+            ui.message(_("Scanned {n} fields. Report saved; it is also in the "
+                         "NVDA log.").format(n=len(lines)))
+        else:
+            ui.message(_("Scanned {n} fields. The report is in the NVDA log."
+                         ).format(n=len(lines)))
 
     def _openReview(self, focus):
         records = self._collect_review(focus)
