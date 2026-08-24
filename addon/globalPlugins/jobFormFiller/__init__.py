@@ -1002,9 +1002,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         return any(w in hay for w in ("birth", "dob", "bday"))
 
     def _humanize_field(self, fd):
-        """Best human name for a field with no accessible label, so the review and
-        the editor say 'Birthdate day', not 'an unlabelled field'. Derives from a
-        recognised date segment, else from the id or html name."""
+        """Best human name for a field, so the review and the editor say the real
+        label the page gives ('How Did You Hear About Us?'), a recognised date
+        segment, or, only as a last resort, a name derived from the id."""
+        if (fd.label or "").strip():
+            return fd.label.strip()
         seg = self._date_segment(fd)
         if seg:
             what = _("Date of birth") if self._is_dob_field(fd) else _("Date")
@@ -1080,7 +1082,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return "greenhouse"
         if "ui5" in cls or "sapm" in cls or "sf" == idn[:2] or "fbclc" in idn:
             return "successfactors"
-        if "wd-" in cls or "workday" in hay:
+        # Workday's markup markers aren't exposed to NVDA and its classes are
+        # hashed, but its field ids use a distinctive name--name pattern
+        # (source--source, country--country, phoneNumber--countryPhoneCode). Use
+        # that so a saved Workday page is still recognised without the live URL.
+        if "--" in idn or "wd-" in cls or "workday" in hay:
             return "workday"
         if "select2" in cls:
             return "select2"

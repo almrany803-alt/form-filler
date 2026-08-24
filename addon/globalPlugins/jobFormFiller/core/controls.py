@@ -94,13 +94,14 @@ def classify_control(c: ControlDescriptor) -> str:
         # A native select exposes its options up front.
         return NATIVE_SELECT if c.option_count > 0 else ARIA_COMBOBOX
 
-    # A text-role field that declares a popup (aria-haspopup=listbox/menu/grid) is
-    # really a type-to-filter combobox that NVDA exposes as a plain text input,
-    # e.g. Workday's "prompt" dropdowns (country, source). Treat it as one so we
-    # type, commit with Enter, and verify, instead of typing dead text that never
-    # selects.
-    if (getattr(c, "haspopup", "") or "").lower() in (
-            "listbox", "menu", "grid", "tree"):
+    # A text INPUT that declares a listbox/grid/tree popup is a type-to-filter
+    # combobox that NVDA exposes as a plain text input (e.g. some ATS search
+    # inputs). Treat it as one. Restricted to editable text roles: a button that
+    # opens a dropdown (Workday's country button, or page menu buttons) is NOT a
+    # typable field and must not be treated as one.
+    if ((getattr(c, "haspopup", "") or "").lower() in ("listbox", "grid", "tree")
+            and role in ("editabletext", "text", "combobox",
+                         "editablecombobox")):
         return ASYNC_COMBOBOX
     return TEXT
 

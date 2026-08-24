@@ -2,6 +2,23 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.24
+
+### Real labels, no more button mis-classification (found via a live Workday scan)
+- Fields now show their real accessible label ("How Did You Hear About Us?") in
+  the review and scan, instead of a name derived from the id ("Source source").
+  _humanize_field was ignoring the label the descriptor already captured.
+- Buttons are no longer treated as type-to-filter comboboxes. The previous change
+  over-reached and turned page buttons and Workday's country button (a button that
+  opens a dropdown) into "comboboxes"; only real text inputs with a popup are now
+  routed that way.
+- Workday is detected from its name--name field id pattern (source--source,
+  country--country) when the URL isn't decisive, so the scan reports the platform
+  on the live page.
+
+### Known, not yet fixed
+- Workday's country is a button that opens a list, so it can't be filled by typing
+  yet; it needs the button activated first. Next up.
 ## 0.9.23
 
 ### Workday "prompt" dropdowns recognised (country, How did you hear, and more)
