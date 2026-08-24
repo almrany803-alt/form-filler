@@ -10,7 +10,7 @@ addon_info = {
         "languages, with spoken and braille review. Identify-and-fill by "
         "default; you stay in control and submit yourself."
     ),
-    "addon_version": "0.9.13-stable",
+    "addon_version": "0.9.14-kbd-test",
     "addon_author": "Mohammed <email@example.com>",
     "addon_url": "",
     "addon_sourceURL": "",
