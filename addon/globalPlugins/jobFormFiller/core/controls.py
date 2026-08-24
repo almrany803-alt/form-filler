@@ -7,6 +7,7 @@
 #   - whether a selection actually stuck (verify-back)
 # All pure Python, all testable.
 
+import re
 from dataclasses import dataclass, field
 
 # The country dataset lives beside this module. Import it robustly: the add-on
@@ -28,6 +29,8 @@ class ControlDescriptor:
     states: tuple = ()            # e.g. ("editable", "haspopup", "multiselectable")
     autocomplete: str = ""        # "list"/"both" hint an editable/async combobox
     option_count: int = 0         # options readable up front (0 = none yet loaded)
+    placeholder: str = ""         # e.g. "MM/DD/YYYY" marks a date input
+    roledescription: str = ""     # e.g. "Date Input" (SAP UI5) marks a date input
 
 
 # Control kinds we dispatch on.
@@ -42,6 +45,26 @@ DATEPICKER = "datepicker"
 TEXT = "text"
 
 
+def _looks_like_date(c) -> bool:
+    """Recognise a date field that is NOT marked type=date or role=datepicker.
+    SAP UI5 (SuccessFactors) renders its date field as a plain text input whose
+    only date signals are aria-roledescription="Date Input", aria-haspopup=grid,
+    and a format placeholder like MM/DD/YYYY. Key off those. Locale placeholders
+    vary (MM/DD/YYYY, DD/MM/YYYY, JJ/MM/AAAA, TT.MM.JJJJ, YYYY-MM-DD), so match a
+    group-separator-group-separator-group shape of date letters."""
+    rd = (getattr(c, "roledescription", "") or "").strip().lower()
+    if rd in ("date input", "date picker", "datepicker", "date"):
+        return True
+    ph = (getattr(c, "placeholder", "") or "").strip().lower()
+    if ph:
+        # tokens: m month, d day, y/a year, j day/year (fr/de), t day (de), g year
+        tok = r"[mdyajt]{1,4}"
+        sep = r"\s*[/.\-]\s*"
+        if re.fullmatch(tok + sep + tok + sep + tok, ph):
+            return True
+    return False
+
+
 def classify_control(c: ControlDescriptor) -> str:
     """Work out which kind of control we are facing, so the NVDA layer can pick
     a method. Deliberately conservative: when unsure, return the safer kind that
@@ -53,7 +76,7 @@ def classify_control(c: ControlDescriptor) -> str:
         return CHECKBOX
     if role in ("radiobutton", "radio"):
         return RADIO
-    if "datepicker" in role or "date" == role:
+    if "datepicker" in role or "date" == role or _looks_like_date(c):
         return DATEPICKER
     if "multiselectable" in states:
         return MULTISELECT

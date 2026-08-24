@@ -179,6 +179,8 @@ def _descriptor_from_object(obj):
         placeholder=placeholder,
         autocomplete=autocomplete,
         input_type=input_type,
+        roledescription=(ia2.get("roledescription", "")
+                         or getattr(obj, "roleText", "") or ""),
         states=_states_of(obj),
     )
 
@@ -577,7 +579,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             result = matcher.match_field(fd)
             key = result.key
             cc = controls.classify_control(controls.ControlDescriptor(
-                role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
+                role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
+                placeholder=fd.placeholder, roledescription=fd.roledescription))
 
             # Date: one row, three dropdowns in the editor.
             if (key == "date_of_birth" or fd.input_type == "date"
@@ -844,7 +847,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # the question, so match the group instead of the single radio. Handle it
         # before the normal match, which would bail on the option label.
         early_kind = controls.classify_control(controls.ControlDescriptor(
-            role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
+            role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
+                placeholder=fd.placeholder, roledescription=fd.roledescription))
         if early_kind == controls.RADIO:
             key, pick, verdict = self._fill_radio_group(obj)
             if verdict == "confirmed":
@@ -896,7 +900,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return
 
         kind = controls.classify_control(controls.ControlDescriptor(
-            role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
+            role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
+                placeholder=fd.placeholder, roledescription=fd.roledescription))
 
         if kind == controls.CHECKBOX:
             verdict = self._fill_checkbox(obj, fd, value)
@@ -917,9 +922,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         else:
             self._fill_choice(obj, fd, kind, result, value)
 
-    @script(
-        description=_("Fill the whole form from your saved details"),
-    )
     def _value_for(self, key):
         """Profile value for a matched key. Synthesises full_name from
         given_name and family_name when the profile stores the parts
@@ -934,6 +936,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             v = (given + " " + family).strip() or None
         return v
 
+    @script(
+        description=_("Fill the whole form from your saved details"),
+    )
     def script_fillForm(self, gesture, focus=None):
         focus = focus or api.getFocusObject()
         if not self._profile:
@@ -1082,7 +1087,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # Radios first: the object's own label is the option, not the
             # question, so the standard match would bail. Handle the group once.
             early_kind = controls.classify_control(controls.ControlDescriptor(
-                role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
+                role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
+                placeholder=fd.placeholder, roledescription=fd.roledescription))
             if early_kind == controls.RADIO:
                 group, radios = self._radio_group(obj)
                 gid = ""
@@ -1120,7 +1126,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 continue
 
             kind = controls.classify_control(controls.ControlDescriptor(
-                role=fd.role, states=fd.states, autocomplete=fd.autocomplete))
+                role=fd.role, states=fd.states, autocomplete=fd.autocomplete,
+                placeholder=fd.placeholder, roledescription=fd.roledescription))
 
             if kind == controls.CHECKBOX:
                 # Only auto-toggle when the state is wrong; a checkbox already in
@@ -1570,38 +1577,54 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             except Exception:
                 log.error("JFF nsel: doAction failed", exc_info=True)
         if not selected:
-            # Fallback: focus mode, then arrow to the index. Works for a single
-            # field; unreliable mid-form (kept only as a last resort).
-            try:
-                ti = getattr(obj, "treeInterceptor", None)
-                if ti is not None:
-                    ti.passThrough = True
-                obj.setFocus()
-                api.setFocusObject(obj)
-                time.sleep(0.08)
-                KeyboardInputGesture.fromName("escape").send()
-                time.sleep(0.05)
-                KeyboardInputGesture.fromName("home").send()
-                time.sleep(0.05)
-                for _k in range(pick.index):
-                    KeyboardInputGesture.fromName("downArrow").send()
-                    time.sleep(0.03)
-            except Exception:
-                log.error("JFF nsel: arrow fallback failed", exc_info=True)
+            self._arrow_select(obj, pick.index)
 
-        # Read back with a few retries: the select's exposed value can lag the
-        # keystrokes, and a single early read gives a false mismatch (seen in the
-        # whole-form path, where it wrongly marked a filled dropdown "needs you").
-        after = ""
-        verdict = "unknown"
-        for _k in range(8):
-            after = self._read_current_value(obj)
-            verdict = controls.verify_selection(pick.label, after)
-            if verdict == "confirmed":
-                break
-            time.sleep(0.08)
+        # Verify it actually STUCK. A SAP/SuccessFactors <select> can read the
+        # chosen option back transiently after doAction, then leave the native
+        # field on its "- Select -" placeholder, which the old check confirmed as
+        # success: the false confirm seen live on STC Country ("set to Saudi
+        # Arabia" while the field stayed "- Select -, required"). So let it
+        # settle, read the live committed value, and NEVER confirm a placeholder.
+        after = self._settled_value(obj)
+        verdict = ("mismatch" if _is_placeholder_value(after)
+                   else controls.verify_selection(pick.label, after))
+        if verdict != "confirmed":
+            # Did not commit. Re-select by keyboard, which changes the native
+            # select's value and fires its onchange the way a user does.
+            self._arrow_select(obj, pick.index)
+            after = self._settled_value(obj)
+            verdict = ("mismatch" if _is_placeholder_value(after)
+                       else controls.verify_selection(pick.label, after))
         log.info("JFF nsel: after=%r verdict=%r" % (after, verdict))
         return pick, verdict
+
+    def _settled_value(self, obj):
+        """Read a choice control's committed value AFTER the page's onchange and
+        validation have settled, so a transient post-doAction value can't be
+        mistaken for a real, stuck selection."""
+        time.sleep(0.4)
+        return self._read_current_value(obj)
+
+    def _arrow_select(self, obj, index):
+        """Commit a native <select> by keyboard: focus it, go Home, then Down to
+        the target option. This changes the field's value and fires its native
+        change/onchange the way a user does, and never touches the mouse."""
+        try:
+            ti = getattr(obj, "treeInterceptor", None)
+            if ti is not None and hasattr(ti, "passThrough"):
+                ti.passThrough = True
+            obj.setFocus()
+            api.setFocusObject(obj)
+            time.sleep(0.08)
+            KeyboardInputGesture.fromName("escape").send()
+            time.sleep(0.05)
+            KeyboardInputGesture.fromName("home").send()
+            time.sleep(0.05)
+            for _k in range(index):
+                KeyboardInputGesture.fromName("downArrow").send()
+                time.sleep(0.03)
+        except Exception:
+            log.error("JFF nsel: keyboard select failed", exc_info=True)
 
     def _read_current_value(self, obj):        # Read the LIVE value via a raw IA2 call; NVDA caches obj.value on the
         # object instance, so repeated polls would re-read a stale cached value.

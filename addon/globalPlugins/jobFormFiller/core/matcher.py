@@ -147,6 +147,7 @@ class FieldDescriptor:
     placeholder: str = ""
     autocomplete: str = ""
     input_type: str = ""
+    roledescription: str = ""
     required: bool = False
     states: tuple = ()
 
