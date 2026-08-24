@@ -1368,11 +1368,25 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         is the reliable, framework-independent opener. Returns True if clicked."""
         try:
             import winUser
-            loc = obj.location
+            target = obj
+            loc = target.location
+            # react-select's <input> is ~2px wide; clicking its centre misses.
+            # Walk up to a wide-enough ancestor (the select control container).
+            for _ in range(3):
+                if loc and loc.width >= 40:
+                    break
+                try:
+                    par = target.parent
+                except Exception:
+                    par = None
+                if par is None:
+                    break
+                target, loc = par, par.location
             if not loc or loc.width <= 0 or loc.height <= 0:
                 return False
             x = loc.left + loc.width // 2
             y = loc.top + loc.height // 2
+            log.info("JFF review: click-to-open at (%d,%d) w=%d" % (x, y, loc.width))
             winUser.setCursorPos(x, y)
             time.sleep(0.05)
             winUser.mouse_event(winUser.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
