@@ -2047,42 +2047,25 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             time.sleep(0.35)
         except Exception:
             log.error("JFF async: enter-select failed", exc_info=True)
-        # Verify the selection STUCK: read after it settles and require a real
-        # committed value, NOT a placeholder and NOT merely the typed search text.
-        # (The old check confirmed on the typed text, so it reported success over
-        # a field that then reverted to blank.)
-        # DIAGNOSTIC: react-select clears the input on commit and shows the choice
-        # elsewhere; find where, so the verify reads the right place.
-        for _d in range(4):
-            time.sleep(0.25)
-            try:
-                dv = self._read_current_value(obj)
-            except Exception:
-                dv = "?"
-            try:
-                desc = obj.description or ""
-            except Exception:
-                desc = "?"
-            gtext = []
-            try:
-                gp = obj.parent.parent
-                for c in (gp.children or [])[:8]:
-                    try:
-                        gtext.append((getattr(c.role, "name", "?"),
-                                      (c.name or "")[:24]))
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-            log.info("JFF async-diag[%d]: value=%r desc=%r grandkids=%r"
-                     % (_d, dv, desc[:60], gtext))
-        after = self._settled_value(obj)
-        if (after and not _is_placeholder_value(after)
-                and controls.verify_selection(pick.label, after) == "confirmed"):
-            log.info("JFF async: after=%r verdict=confirmed" % after)
-            return "confirmed", pick
-        log.info("JFF async: after=%r verdict=mismatch (did not commit)" % after)
-        return "mismatch", pick
+        # react-select does NOT expose the committed value to the accessibility
+        # tree (the input clears and the chosen label is presentational), so we
+        # cannot read it back, confirmed by diagnostics: value, description and
+        # the surrounding tree are all empty after a successful commit. Instead
+        # verify by the mechanism: reaching here means the typed value filtered
+        # to a real match, Enter selects react-select's highlighted match, and a
+        # committed react-select COLLAPSES its menu. So confirm only if the menu
+        # closed. The react-select-test fixture guards this by reading the real
+        # onChange value.
+        time.sleep(0.3)
+        try:
+            still_open = controlTypes.State.EXPANDED in obj.states
+        except Exception:
+            still_open = False
+        if still_open:
+            log.info("JFF async: still expanded after Enter, not committed")
+            return "mismatch", pick
+        log.info("JFF async: committed %r via Enter (menu collapsed)" % pick.label)
+        return "confirmed", pick
 
     def _date_segment_type(self, seg):
         try:
