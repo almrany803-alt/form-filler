@@ -8,6 +8,7 @@
 # settings panel lifecycle). It needs verification on real Windows + NVDA.
 
 import os
+import re
 import time
 import globalPluginHandler
 import wx
@@ -860,6 +861,44 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             pass
         super().terminate()
 
+    def _dob_segment(self, fd):
+        """If this field is one segment of a segmented date-of-birth control
+        (three day/month/year dropdowns, as many ATS forms use), return
+        'day'/'month'/'year', else None. These segments carry no usable label,
+        so recognise them by id (e.g. id-birthdate_day)."""
+        hay = (fd.id or "").lower()
+        if not any(w in hay for w in ("birth", "dob", "bday")):
+            return None
+        for seg in ("day", "month", "year"):
+            if seg in hay:
+                return seg
+        return None
+
+    def _fill_dob_segment(self, obj, fd, seg):
+        """Fill one day/month/year segment of a date of birth from the profile.
+        The month dropdown may use a name or a number, so try both. Returns True
+        if the segment took."""
+        dob = (self._profile.get("date_of_birth") or "").strip()
+        m = re.match(r"(\d{4})-(\d{1,2})-(\d{1,2})", dob)
+        if not m:
+            return False
+        year, month, day = m.group(1), int(m.group(2)), int(m.group(3))
+        months = ["January", "February", "March", "April", "May", "June",
+                  "July", "August", "September", "October", "November",
+                  "December"]
+        if seg == "day":
+            cands = [str(day), "%02d" % day]
+        elif seg == "year":
+            cands = [year]
+        else:
+            cands = [months[month - 1], str(month), "%02d" % month,
+                     months[month - 1][:3]]
+        for val in cands:
+            pick, verdict = self._fill_native_select(obj, val, "")
+            if verdict == "confirmed":
+                return True
+        return False
+
     def _record_for_field(self, obj):
         """Build one review record for the focused field: classify it, choose the
         editor kind, and read its options if it is a chooser (or its sibling
@@ -987,6 +1026,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         result = matcher.match_field(fd)
         log.info("JFF match: key=%r conf=%r src=%r lang=%r"
                  % (result.key, result.confidence, result.source, result.lang))
+
+        # A segmented date of birth (day/month/year dropdowns) has no label, so
+        # the matcher can't see it; recognise it by id and fill from the profile
+        # before falling through to the editor.
+        seg = self._dob_segment(fd)
+        if result.key is None and seg and self._profile.get("date_of_birth"):
+            if self._fill_dob_segment(obj, fd, seg):
+                ui.message(_("Date of birth {seg} set.").format(seg=seg))
+                return
+            # could not set it: fall through and offer the chooser instead
 
         if result.key is None:
             # Not identified from the profile, but still let the user set it here
