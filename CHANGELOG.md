@@ -2,6 +2,12 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.55
+
+### Section date buttons say which date they are
+- The month/year picker button now reads as "Start date: Sep 2023" (or "Start
+  date: Set date" when empty), so you always know which date you are on. Before,
+  it read only the value, leaving start and end dates indistinguishable.
 ## 0.9.54
 
 ### Fix: sections became unreachable after opening one

@@ -700,9 +700,9 @@ class EntryFormDialog(wx.Dialog):
         for f in self._fields:
             if _is_date_field(f):
                 self._date_vals[f] = str((row or {}).get(f, ""))
-                btn = helper.addLabeledControl(
-                    _entry_label(f) + ":", wx.Button, label=self._date_label(f))
+                btn = wx.Button(self, label=self._date_label(f))
                 btn.Bind(wx.EVT_BUTTON, lambda e, fld=f: self._pick_date(fld))
+                helper.addItem(btn)
                 self._date_btns[f] = btn
             else:
                 style = wx.TE_MULTILINE if f == "description" else 0
@@ -718,7 +718,8 @@ class EntryFormDialog(wx.Dialog):
             (self._ctrls.get(first) or self._date_btns.get(first)).SetFocus()
 
     def _date_label(self, f):
-        return self._date_vals.get(f, "") or _("Set date")
+        v = self._date_vals.get(f, "")
+        return "%s: %s" % (_entry_label(f), v or _("Set date"))
 
     def _pick_date(self, f):
         with _MonthYearDialog(
@@ -726,6 +727,7 @@ class EntryFormDialog(wx.Dialog):
             if dlg.ShowModal() == wx.ID_OK:
                 self._date_vals[f] = dlg.GetValue()
                 self._date_btns[f].SetLabel(self._date_label(f))
+                self.Layout()
         self._date_btns[f].SetFocus()
 
     def values(self):

@@ -29,8 +29,10 @@ K("{ESC}"); Start-Sleep -Seconds 2
 K("{HOME}"); Start-Sleep -Milliseconds 400
 K("{DOWN}{DOWN}"); Start-Sleep -Milliseconds 500
 K("%(o)"); Start-Sleep -Seconds 3
-# check the date picker: Edit the first entry, read its Start date control, cancel
-K("%(e)"); Start-Sleep -Seconds 3
+# check the date picker: Edit the first entry, tab to the Start date button
+# (Job title, Employer, then Start date), let NVDA read it, then cancel
+K("%(e)"); Start-Sleep -Seconds 2
+K("{TAB}{TAB}"); Start-Sleep -Seconds 2
 K("{ESC}"); Start-Sleep -Seconds 2
 K("{ESC}"); Start-Sleep -Seconds 2
 
