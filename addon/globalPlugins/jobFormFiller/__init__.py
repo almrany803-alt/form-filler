@@ -576,8 +576,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             sel = self._selected_radio_label(group)
             if sel:
                 value = sel
-        name = (announce.human(key) if key
-                else self._humanize_field(fd))
+        # Always show the real field label the page gives, never the internal
+        # concept name. The matched concept decides what we FILL, shown separately
+        # as 'fill', so a row reads "Arabic Father's Name: will fill Mohammed",
+        # letting you see both which field it is and what would go into it.
+        name = self._humanize_field(fd)
         if group is not None:
             try:
                 gname = group.name or ""
@@ -585,9 +588,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 gname = ""
             if gname:
                 name = gname
+        fill = self._value_for(key) if key else None
         return {"obj": obj, "fd": fd, "key": key, "name": name,
-                "value": value, "kind": kind, "options": options,
-                "group": group}
+                "value": value, "fill": fill, "kind": kind,
+                "options": options, "group": group}
 
     def _collect_review(self, focus):
         """Enumerate the form's fields and attach, to each, the accessible
@@ -872,8 +876,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         result = matcher.match_field(fd)
         cc = self._classify(fd)
         seg = self._date_segment(fd)
-        name = (announce.human(result.key) if result.key
-                else self._humanize_field(fd))
+        name = self._humanize_field(fd)
         if seg and self._is_dob_field(fd):
             action = "fill date of birth %s from profile" % seg
         elif seg:

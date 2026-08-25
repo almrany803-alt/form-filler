@@ -2,6 +2,18 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.38
+
+### Phase 2: the review shows the real field label and what it will fill
+- The Review fields list and the Scan report now show each field's real label
+  from the page (for example "Arabic Father's Name") instead of the add-on's
+  internal concept name (which was showing indistinguishable duplicates like
+  "full name, first name, last name"). The review also shows what it would put
+  in each field, e.g. "Arabic Father's Name: will fill Mohammed", or
+  "empty, needs you" when it has nothing to fill. So you can now hear both which
+  field a row is and what it is about to do, and catch a wrong fill before it
+  happens. Label reading and matching were already correct; only the review's
+  presentation of them changed.
 ## 0.9.37
 
 ### Phase 1: remove the AI/vision feature (deterministic-only from here)

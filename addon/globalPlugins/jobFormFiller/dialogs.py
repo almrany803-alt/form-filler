@@ -458,7 +458,13 @@ class ReviewDialog(wx.Dialog):
             if isinstance(v, list):
                 return ", ".join(v) if v else _("empty")
             return v or _("empty")
-        return self._records[i]["value"] or _("empty, needs you")
+        rec = self._records[i]
+        if rec["value"]:
+            return rec["value"]
+        fill = rec.get("fill")
+        if fill:
+            return _("will fill {v}").format(v=fill)
+        return _("empty, needs you")
 
     def _lines(self):
         return ["{name}: {val}".format(name=r["name"], val=self._shownValue(i))
