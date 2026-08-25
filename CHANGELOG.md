@@ -9,6 +9,14 @@ All notable changes to Job Form Filler. Newest first.
   is what lets you run a specific local model: set the backend to Ollama and the
   model to llava or qwen2.5vl:3b, no key, fully offline. It also lets cloud users
   pin a specific model. Blank means the backend's default.
+## 0.9.32
+
+### Choose the vision model (so local Ollama models can be tested)
+- Vision settings now has a Model field and an Ollama host field. For local Ollama
+  you can set the model (for example llava or qwen2.5vl:3b) instead of being stuck
+  on the default, and point at a non-default host if needed. Blank means the
+  backend's own default and localhost:11434. This is what lets you compare local
+  open-source vision models, which need no API key, entirely on your machine.
 ## 0.9.31
 
 ### Vision errors now explain themselves
