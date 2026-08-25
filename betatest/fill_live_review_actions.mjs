@@ -1,6 +1,6 @@
 // fill_live_review_actions.mjs - prove the REVIEW editor's per-field actions
 // (edit, clear) work on a REAL, LIVE Lever form. Fill all, open the review,
-// EDIT row 1 (Full name) to "Edited Name", CLEAR row 2 (Email), close to apply,
+// EDIT the Full name field to "Edited Name", CLEAR the Email field, close to apply,
 // then read the live DOM to confirm both actually took. Never submits.
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
@@ -62,7 +62,7 @@ console.log(`  still on form (NOT submitted): ${stillOnForm}`);
 
 let ok = stillOnForm;
 const check = (l, cond, detail) => { ok = ok && cond; console.log(`${cond ? "PASS" : "FAIL"}  ${l}${detail ? ": " + detail : ""}`); };
-check("EDIT applied on the live form (row 1 Full name now 'Edited Name')", nameAfter === "Edited Name", JSON.stringify(nameAfter));
-check("CLEAR applied on the live form (row 2 Email now empty)", emailAfter === "", JSON.stringify(emailAfter));
+check("EDIT applied on the live form (Full name field now 'Edited Name')", nameAfter === "Edited Name", JSON.stringify(nameAfter));
+check("CLEAR applied on the live form (Email field now empty)", emailAfter === "", JSON.stringify(emailAfter));
 if (!ok) process.exit(1);
 console.log("Review edit + clear both took on the LIVE form, no submit.");
