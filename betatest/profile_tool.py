@@ -57,6 +57,16 @@ English: Fluent
     store.save()
     print("seeded", n, "section entries across", store.section_names("Mohammed"))
 
+elif cmd == "check_sections":
+    store.load()
+    names = store.section_names("Mohammed")
+    exp = store.section_rows("Experience", "Mohammed")
+    print("sections:", names, "| Experience entries:", len(exp))
+    if "Awards" not in names or len(exp) != 1:
+        print("MISMATCH: expected Awards present and Experience to have 1 entry")
+        sys.exit(1)
+    print("PASS crud store state")
+
 elif cmd == "check":
     mode = sys.argv[2]
     store.load()

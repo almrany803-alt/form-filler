@@ -1,0 +1,13 @@
+Beta Tester
+beta@example.com
+EDUCATION
+Bachelor of Science in Computing, Test University, London (Sep 2019 to Jun 2022)
+EXPERIENCE
+Acme Corporation, Software Engineer (Jan 2022 to present)
+Built and shipped features for the platform team.
+Globex, Junior Developer (Jun 2020 to Dec 2021)
+Maintained the company website.
+SKILLS
+Python
+LANGUAGES
+English: Native
