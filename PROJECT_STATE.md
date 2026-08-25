@@ -457,6 +457,16 @@ Still to do:
 8. Publish to the NVDA add-on store (VirusTotal, CodeQL, note the ~18MB size
    from PyMuPDF), once out of -dev.
 9. Housekeeping: revoke the repo access token when the build phase ends.
+10. Grow the field fingerprint database by hand from real logs. The database
+    (fingerprints.py + field_fingerprints.json) is still wired in and checked
+    first in _classify, but its old growth engine was the AI vision layer,
+    removed in 0.9.37, so it no longer grows itself. It holds only a few
+    Workday entries now. Adding entries by hand from real forms (the accessible
+    date picker, the big Almarai nationality and salary dropdowns) would make
+    those hostile widgets classified instantly rather than re-derived by the
+    heuristics each time. Deterministic, offline, crowd-sourceable; no AI
+    needed to add entries, only to have discovered them, which we now do from
+    logs instead.
 
 ### Phase 4 status (0.9.41 to 0.9.46), and what is left of it
 
