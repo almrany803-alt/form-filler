@@ -494,6 +494,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             from .core import cvparse, countries
             text = cvparse.extract_text(path)
             fields = cvparse.cv_to_fields(cvparse.parse_cv_text(text))
+            sections = cvparse.parse_cv_sections(text)
             # If the CV states a country, detect it (in any supported language,
             # or from the phone's calling code) and pre-fill it, so the country
             # dropdown starts on the right answer for you to confirm.
@@ -531,6 +532,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         name = self._uniqueProfileName(name)
         self._store.add_profile(name, dict(fields))
         self._store.set_active(name)
+        # Seed the profile's sections (Experience, Education, Skills, and so on)
+        # from the CV, as a starting point to review and correct. Best effort:
+        # the dates are reliable, the title/organisation split is a guess.
+        seeded_entries = 0
+        for _sec_name, _rows in sections.items():
+            for _row in _rows:
+                self._store.add_row(_sec_name, _row, profile=name)
+                seeded_entries += 1
         try:
             self._store.save()
         except Exception:
@@ -542,6 +551,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                  % (name, len(fields)))
         # 5. Open the dialog to review and adjust; it is already saved.
         dialogs.edit_details(self._store)
+        # If the CV seeded any sections, take you straight to review them too.
+        if seeded_entries:
+            ui.message(_("Added {n} entries across your sections from the CV. "
+                         "Review them here.").format(n=seeded_entries))
+            dialogs.manage_sections(self._store)
         self._profile = self._store.get_active() or {}
 
     # --- review list ---------------------------------------------------------

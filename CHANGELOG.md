@@ -2,6 +2,19 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.52
+
+### Phase 7 (part 4): seed sections from your CV on import
+- Importing a CV now also fills your Experience, Education, Skills,
+  Certifications and Languages sections, not just the personal fields, so you
+  start with entries to review instead of a blank slate. Dates are pulled
+  reliably; the title/organisation split is a sensible guess you review and
+  correct in the sections manager, which opens straight after import. The CV
+  reader learned to recognise more section headings (Experience even when it
+  reads "Teaching and Volunteer Experience", plus Certifications, Languages, and
+  Projects/Interests/References as boundaries) so sections no longer bleed into
+  each other. Tested end to end against a real CV; the live NVDA speech check
+  follows.
 ## 0.9.51
 
 ### Phase 7 (part 2): the sections UI (drill-down)

@@ -53,6 +53,34 @@ _HEADINGS = {
         "es": ["habilidades", "competencias"],
         "ar": ["المهارات"],
     },
+    "certifications": {
+        "en": ["certifications", "certificates", "certification",
+               "professional development", "licenses", "accreditations"],
+        "fr": ["certifications"],
+        "de": ["zertifikate", "zertifizierungen"],
+        "es": ["certificaciones"],
+        "ar": ["الشهادات"],
+    },
+    "languages": {
+        "en": ["languages"],
+        "it": ["lingue"],
+        "pt": ["idiomas"],
+        "nl": ["talen"],
+        "fr": ["langues"],
+        "de": ["sprachen"],
+        "es": ["idiomas"],
+        "ar": ["اللغات"],
+    },
+    # These are recognised as headings so they end the previous section cleanly,
+    # even though they are not seeded into profile sections themselves.
+    "projects": {"en": ["projects", "project", "portfolio"], "fr": ["projets"],
+                 "de": ["projekte"], "es": ["proyectos"], "ar": ["المشاريع"]},
+    "interests": {"en": ["interests", "hobbies", "activities"],
+                  "fr": ["interets", "loisirs"], "de": ["interessen", "hobbys"],
+                  "es": ["intereses"], "ar": ["الاهتمامات", "الهوايات"]},
+    "references": {"en": ["references", "referees"], "fr": ["references"],
+                   "de": ["referenzen"], "es": ["referencias"],
+                   "ar": ["المراجع"]},
 }
 
 
@@ -67,15 +95,19 @@ def _fold(s: str) -> str:
 
 
 def _heading_key(line: str):
-    """Return the section key if this line is a recognised heading, else None."""
+    """Return the section key if this line is a recognised heading, else None.
+    A heading word may sit anywhere in a short heading line (as a whole word),
+    so 'Teaching and Volunteer Experience' is recognised as experience, not just
+    a line that begins with 'Experience'."""
     low = _fold(line.strip())
-    if not low or len(low) >= 40:
+    if not low or len(low) >= 55:
         return None
+    padded = " " + low + " "
     for key, langs in _HEADINGS.items():
         for words in langs.values():
             for w in words:
                 fw = _fold(w)
-                if low == fw or low.startswith(fw):
+                if low == fw or (" " + fw + " ") in padded:
                     return key
     return None
 
@@ -133,6 +165,124 @@ def parse_cv_text(text: str) -> dict:
             result[key] = body
 
     return result
+
+
+_SECTION_NAMES = {
+    "education": "Education", "experience": "Experience", "skills": "Skills",
+    "certifications": "Certifications", "languages": "Languages",
+}
+
+_YEARISH = re.compile(r"(?:19|20)\d\d|present|current|ongoing|now", re.I)
+
+
+def _dates(line):
+    """From an entry header, pull (start, end, span) where span marks where the
+    date range sits, so it can be stripped from the title text. Only a
+    parenthesised group that actually looks like a date range counts, so
+    '(Honours)' or '(2:1)' are left alone."""
+    for m in re.finditer(r"\(([^)]*)\)", line):
+        inner = m.group(1)
+        if not _YEARISH.search(inner):
+            continue
+        parts = re.split(r"\s*(?:\bto\b|\buntil\b|[-\u2013\u2014])\s*",
+                         inner, maxsplit=1, flags=re.I)
+        if len(parts) == 2:
+            return parts[0].strip(), parts[1].strip(), m.span()
+    return "", "", None
+
+
+def _split_header(header, key):
+    """Comma-split an entry header into fields. Best effort: for education the
+    first part is the qualification and the second the institution; for
+    experience the first is the employer and the second the job title. The user
+    reviews and corrects, so a school with no degree is fine to get slightly
+    wrong."""
+    parts = [p.strip() for p in header.split(",") if p.strip()]
+    row = {}
+    if not parts:
+        return row
+    if key == "education":
+        row["qualification"] = parts[0]
+        if len(parts) > 1:
+            row["institution"] = parts[1]
+    else:
+        row["employer"] = parts[0]
+        if len(parts) > 1:
+            row["job_title"] = parts[1]
+    return row
+
+
+def _dated_entries(body, key):
+    """Split a section body into entries at each dated header line; lines between
+    headers become that entry's description."""
+    rows = []
+    cur = None
+    for ln in body:
+        start, end, span = _dates(ln)
+        if span is not None:
+            header = (ln[:span[0]] + ln[span[1]:]).strip().strip(",").strip()
+            row = _split_header(header, key)
+            row["start_date"] = start
+            row["end_date"] = "" if re.search(
+                r"present|current|ongoing|now", end, re.I) else end
+            rows.append(row)
+            cur = row
+        elif cur is not None:
+            extra = cur.get("description", "")
+            cur["description"] = (extra + " " + ln).strip() if extra else ln
+    return rows
+
+
+def _pair_entries(body, left, right):
+    """Lines of the form 'Left: Right' (Skill: description, Language: level)."""
+    rows = []
+    for ln in body:
+        if ":" in ln:
+            a, b = ln.split(":", 1)
+            row = {left: a.strip()}
+            if b.strip():
+                row[right] = b.strip()
+            rows.append(row)
+        elif ln.strip():
+            rows.append({left: ln.strip()})
+    return rows
+
+
+def parse_cv_sections(text: str) -> dict:
+    """Turn a CV into section entries (rows) for the profile's sections, keyed by
+    the section name shown in the UI. Best effort: dates are pulled reliably; the
+    title/organisation split is a sensible guess the user reviews and corrects,
+    never committed silently. Returns {section_name: [row, ...]}."""
+    lines = [ln.rstrip() for ln in (text or "").splitlines()]
+    blocks = {}
+    current = None
+    for ln in lines:
+        k = _heading_key(ln)
+        if k:
+            current = k
+            blocks.setdefault(k, [])
+            continue
+        if current and ln.strip():
+            blocks[current].append(ln.strip())
+
+    out = {}
+    for key, body in blocks.items():
+        name = _SECTION_NAMES.get(key)
+        if not name or not body:
+            continue
+        if key in ("education", "experience"):
+            rows = _dated_entries(body, key)
+        elif key == "skills":
+            rows = _pair_entries(body, "skill", "description")
+        elif key == "languages":
+            rows = _pair_entries(body, "language", "proficiency")
+        elif key == "certifications":
+            rows = [{"name": ln} for ln in body if ln.strip()]
+        else:
+            rows = []
+        if rows:
+            out[name] = rows
+    return out
 
 
 def cv_to_fields(parsed: dict) -> dict:
