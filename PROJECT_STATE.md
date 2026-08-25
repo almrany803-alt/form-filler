@@ -2,7 +2,8 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.11-dev.
+points to. Last updated at version 0.9.46 (Phase 4: dictionary breadth and
+multilingual field matching).
 
 Repo: github.com/almrany803-alt/form-filler  (GPL v2, open source)
 
@@ -48,8 +49,10 @@ Working and proven on real hardware (see section 3):
   used to say "over to you".
 - Encrypted profile stored on the user's own machine (Windows DPAPI).
 - A "My details" form in the NVDA Tools menu to enter and edit your details.
-- Multilingual field identification (9 languages: Arabic, Dutch, English,
-  French, German, Italian, Polish, Portuguese, Spanish).
+- Multilingual field identification (13 languages: Arabic, Chinese, Dutch,
+  English, French, German, Italian, Japanese, Korean, Polish, Portuguese,
+  Russian, Spanish), matched on whole-word boundaries and script-aware for
+  Chinese and Japanese. Growing to match the 24-language country data.
 - Country and nationality match through a bundled dataset of all 250 countries
   in 24 languages plus demonyms and phone codes, so "Saudi" fills السعودية on an
   Arabic form and a French form's Royaume-Uni matches. Both are chosen from a
@@ -223,9 +226,12 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
   accessibility tree across all browsers and native apps, needs no web store,
   and works for non-Chrome users. (An earlier Chrome-extension idea was dropped.)
 
-- **Default ceiling is identify-and-fill.** The user stays in control and
-  submits themselves. AI (for hard/inaccessible fields) is explicit opt-in per
-  form, never the default.
+- **Identify-and-fill, fully deterministic.** The user stays in control and
+  submits themselves. The AI/vision rungs were removed entirely in 0.9.37: no
+  AI, no network, no API keys. Field matching is a dictionary-and-rules job (the
+  same approach browsers and the main job-autofill tools use); the only thing an
+  "AI autofill" tool uses a model for is writing open-ended custom answers, which
+  this tool leaves to the user.
 
 - **Read the field's real HTML attributes from the accessibility tree.** Chrome
   exposes, in its IA2 object attributes: `html-input-name` (the HTML name, e.g.
@@ -241,15 +247,18 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
   invalidates positions not yet used), then for each field confirms focus
   actually landed on it before pasting, and skips safely if not.
 
-- **Multilingual, 9 languages** (en, es, fr, de, it, pt, pl, nl, ar). The
-  autocomplete/HTML-name signal is language-independent; the keyword lexicon is
-  extensible per language; accent and stroke folding normalises diacritics
-  (including Polish's non-decomposing ł).
+- **Multilingual, 13 languages** (en, es, fr, de, it, pt, pl, nl, ar, zh, ja,
+  ko, ru), growing to the country data's 24. The autocomplete/HTML-name signal
+  is language-independent; the keyword lexicon is extensible per language; accent
+  and stroke folding normalises diacritics (including Polish's non-decomposing
+  ł); matching is whole-word (anchored), and script-aware for Chinese and
+  Japanese, which have no word spaces and so match by substring, the same trick
+  the country matcher uses.
 
 - **Store the profile as plain JSON.** It holds ordinary contact details, not
   secrets, and the CV they came from is already on the device in plain form, so
-  encryption buys little here. The pluggable crypto slot stays for later (the AI
-  feature, if it ever handles anything sensitive).
+  encryption buys little here. The pluggable crypto slot stays for later, if the
+  tool ever handles anything sensitive.
 
 - **Never guess.** Fields the matcher cannot confidently identify are declined
   and reported ("2 need you: ..."), never filled with a wrong value.
@@ -419,7 +428,8 @@ multi-select / dates, country and nationality via the bundled 24-language
 dataset (the nationality demonym fix), country/nationality type-ahead dropdowns
 and the three-dropdown date of birth, CV country detection, profiles as versions
 (create/switch/delete), CV import (text, Word via stdlib, PDF via bundled
-PyMuPDF) across all 9 field languages, the import-to-fill chain, real ATS field
+PyMuPDF) across its 9 CV section-heading languages (expanding with the CV
+multilingual work), the import-to-fill chain, real ATS field
 patterns (Greenhouse, Workday, Taleo, iCIMS) including the camelCase fix,
 multi-section applications (fill, Next, fill), and the do-not-clobber behaviour
 for a mangled ATS auto-parse.
@@ -441,10 +451,38 @@ Still to do:
    needs you".
 6. Duplicate-and-extras audit after a CV attach (the ATS-mangle consequence):
    flag likely duplicate or misplaced entries so the user can prune them.
-7. The AI opt-in rung, and OCR (Tesseract) for genuinely inaccessible fields.
+7. The recoverable "other fields" section in the review: demote uncertain
+   controls into an expandable group rather than dropping them, plus the
+   min-fields guard and region filtering.
 8. Publish to the NVDA add-on store (VirusTotal, CodeQL, note the ~18MB size
    from PyMuPDF), once out of -dev.
 9. Housekeeping: revoke the repo access token when the build phase ends.
+
+### Phase 4 status (0.9.41 to 0.9.46), and what is left of it
+
+Done and shipped, each version built, audited line by line, tested, and where
+possible confirmed against real Workday and Almarai forms: AI removed (0.9.37);
+review shows the real label plus fill intent (0.9.38); matching-core fixes for
+father's and preferred name and for the phone dial-code and extension
+(0.9.39-0.9.41); whole-word anchoring (0.9.42); imported name and address field
+types, multilingual (0.9.43); phone variants and organisation (0.9.44); Chinese,
+Japanese, Korean and Russian with script-aware matching (0.9.45); passport
+fields (0.9.46).
+
+Still to finish Phase 4, agreed to do last:
+1. The remaining 14 languages to reach the country data's 24: Turkish,
+   Indonesian, Persian, Urdu, Czech, Hungarian, Finnish, Swedish, Croatian,
+   Serbian, Slovak, Estonian, Welsh, Breton. All spaced scripts, so the
+   script-aware plumbing is already done; these are vetted word additions. Value
+   is concentrated in the first few; Breton especially is near-zero for real
+   forms and lowest confidence, included only for parity with the country set.
+2. The CV reader to the same language set: expand its section headings beyond 9,
+   and make its name check script-aware, so a name in Chinese, Japanese or
+   Arabic script is picked up too. (Its email, phone and country detection are
+   already language-independent or 24-language.)
+3. Passport given and family name sub-fields, only if a real form shows them,
+   since they need a compound "mentions passport AND given/family name" rule the
+   simple matcher cannot express cleanly.
 
 ## 9a. Logging (for real-world testing)
 
@@ -549,9 +587,11 @@ phone's calling code (a +966 number is Saudi Arabia) over scattered place
 mentions. All of this is pure Python and covered by `tests/test_countries.py`,
 including a per-language sweep.
 
-The field-recognition lexicon (which box is name, email, and so on) is still 9
-languages, so the country layer understands more languages than the field layer.
-Widening the lexicon is recognition data, not translating the interface.
+The field-recognition lexicon (which box is name, email, and so on) is at 13
+languages and growing to match the country layer's 24, so the two eventually
+line up; Chinese and Japanese already share the country layer's script-aware
+substring matching. Widening the lexicon is recognition data, not translating
+the interface.
 
 ATTRIBUTION: the country dataset is built from the open mledoze/countries
 project (https://github.com/mledoze/countries), licensed ODbL 1.0 for the data.

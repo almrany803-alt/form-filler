@@ -2,6 +2,15 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.47
+
+### Documentation refresh (no code change)
+- Brought the docs in line with the add-on as it now is: removed the stale
+  "optional AI" description (the AI was removed in 0.9.37, the tool is fully
+  deterministic, no network, no keys), updated the field-language count from 9
+  to 13 with the plan to reach the country data's 24, and refreshed
+  PROJECT_STATE with the Phase 4 status and the remaining next steps (the last
+  14 languages, the CV reader to the same set, and passport name sub-fields).
 ## 0.9.46
 
 ### Phase 4 (part 6): passport fields

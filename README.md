@@ -27,9 +27,20 @@ and what it left for you. It never submits a form.
   through for a dropdown or radio group, Yes/No for a checkbox, a multi-check
   list, or three dropdowns for a date, even on controls the site built badly.
   The review and Fill share one editor, so both behave identically.
-- Multilingual field recognition (English, Spanish, French, German, Italian,
-  Portuguese, Polish, Dutch, Arabic), by label, HTML name, and aria-label, then
-  a keyword lexicon you can extend.
+- Recognises the common application fields, sourced from the same field
+  dictionary browsers use: name parts (including father's and preferred name,
+  name prefix and suffix), email, phone (with separate dial code and extension),
+  address lines 1 to 3, house number, city, state or province, district,
+  postcode, country, nationality, organisation, date of birth, and passport
+  fields (number, name, issuing country, issue and expiry dates).
+- Multilingual field recognition by label, HTML name, and aria-label, using a
+  keyword lexicon you can extend. Thirteen languages so far (English, Arabic,
+  Spanish, French, German, Italian, Portuguese, Polish, Dutch, Chinese,
+  Japanese, Korean, Russian), matched on whole-word boundaries, and script-aware
+  for Chinese and Japanese, which have no spaces between words. The set is
+  growing to match the 24-language country data. The HTML autocomplete attribute
+  is language-independent, so well-built forms in any language map with no
+  translation at all.
 - Country and nationality are chosen from a dropdown of all countries and match
   the page's option in 24 languages (so an Arabic or French form still matches);
   on CV import your country is detected and pre-filled. Date of birth is three
@@ -41,10 +52,12 @@ The menu key is changeable in NVDA's Input Gestures, under "Job Form Filler".
 
 ## Your data stays yours
 
-Your details are stored encrypted on your own machine (Windows DPAPI). Nothing
-leaves your computer. Optional AI features (for the messy fields and open-ended
-questions) are off by default and, when on, use your own API key; only then does
-any text leave the machine, and only for the fields you choose.
+Your details are stored encrypted on your own machine (Windows DPAPI). The
+add-on is fully deterministic: no AI, no network, no API keys. Nothing you enter
+ever leaves your computer. (Field matching is a dictionary-and-rules job, the
+same approach browsers and the main job-autofill tools use; the only thing "AI
+autofill" tools use a model for is writing answers to open-ended custom
+questions, which you write far better yourself.)
 
 ## Install
 

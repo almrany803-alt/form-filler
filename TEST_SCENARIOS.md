@@ -131,7 +131,7 @@ user hit on first use live here.
   French and German labels (identified by label alone) alongside inaccessible
   ATS-style fields (no visible label, identified by html attributes) and a bare
   field with nothing to go on. On real NVDA the labelled and tagged fields filled;
-  the bare field was declined. Matcher identifies labels in all 9 languages.
+  the bare field was declined. Matcher identifies labels in all 13 languages (growing to the country data's 24).
 
 ## Feature: multi-section applications
 
