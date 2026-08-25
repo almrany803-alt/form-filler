@@ -635,12 +635,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     or _looks_like_calendar_day(fd.label or fd.name or "")):
                 continue
 
-            # Not a fillable review field (file upload, button, link): skip, so
-            # the review never offers a text editor for a file and its rows line
-            # up with the real fields.
+            # Not a fillable review field (file upload, button, link). A file
+            # upload, or a control whose label reads like one (Upload CV, Attach
+            # Cover Letter, Select Files), is surfaced as an "attachment" row so
+            # the review reminds you to attach it yourself, rather than dropping
+            # it silently. Everything else (plain buttons, links) is still
+            # skipped so the review stays a clean list of real fields.
             if obj.role not in review_fillable or (fd.input_type or "").lower() == "file":
-                log.info("JFF review: skip non-fillable %s %r"
-                         % (obj.role, fd.label or fd.name or ""))
+                is_file = (fd.input_type or "").lower() == "file"
+                if is_file or matcher.is_attachment(fd.label or fd.name or ""):
+                    records.append(self._review_record(
+                        obj, fd, None, "attachment", [], None))
+                else:
+                    log.info("JFF review: skip non-fillable %s %r"
+                             % (obj.role, fd.label or fd.name or ""))
                 continue
 
             # Multi-select: browse mode enumerates the option listitems, not the
@@ -757,6 +765,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         field's kind, not a blind paste. The user chose an explicit value in the
         review list, so we set exactly that. Returns True if it took."""
         kind = rec.get("kind", "text")
+        if kind == "attachment":
+            # A file to attach: never write to it, whatever slipped through.
+            return False
         obj, fd = rec["obj"], rec["fd"]
         try:
             if kind == "single" and rec.get("group") is not None:

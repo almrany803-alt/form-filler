@@ -337,6 +337,30 @@ def _is_cjk(s: str) -> bool:
     return False
 
 
+_ATTACHMENT_WORDS = (
+    "upload", "attach", "attachment", "resume", "cv", "curriculum vitae",
+    "cover letter", "select file", "choose file", "add file", "drop file",
+    "upload file", "browse file", "files",
+)
+
+
+def is_attachment(text: str) -> bool:
+    """True if a field's label looks like a file to attach (CV, cover letter,
+    an upload button), so the review can surface it as 'attach this yourself'
+    instead of silently skipping it. Whole-word matched, so 'cv' does not fire
+    inside another word and 'recovery' is not an attachment."""
+    t = _norm(text)
+    if not t:
+        return False
+    padded = " " + t + " "
+    for w in _ATTACHMENT_WORDS:
+        p = _norm(w)
+        joined = p.replace(" ", "")
+        if (" " + p + " ") in padded or (" " + joined + " ") in padded:
+            return True
+    return False
+
+
 def _lexicon_hit(text: str):
     t = _norm(text)
     if not t:

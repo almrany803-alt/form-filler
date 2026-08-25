@@ -175,3 +175,13 @@ class TestAtsPatterns(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestAttachmentDetection(unittest.TestCase):
+    def test_spots_uploads_not_ordinary_fields(self):
+        for t in ("Upload Resume", "Attach CV", "Cover Letter", "Select Files",
+                  "Choose File", "Resume/CV", "Attachment", "Drop file here"):
+            self.assertTrue(matcher.is_attachment(t), t)
+        for t in ("First Name", "Country", "Submit", "Achievements",
+                  "Recovery Email", "Profile", "Filing Status", "Experience"):
+            self.assertFalse(matcher.is_attachment(t), t)

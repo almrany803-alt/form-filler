@@ -459,6 +459,10 @@ class ReviewDialog(wx.Dialog):
                 return ", ".join(v) if v else _("empty")
             return v or _("empty")
         rec = self._records[i]
+        if rec.get("kind") == "attachment":
+            # A file to attach: the add-on cannot fill files, so it only
+            # reminds you. Show the current filename if the page exposes one.
+            return rec["value"] or _("attach this yourself")
         if rec["value"]:
             return rec["value"]
         fill = rec.get("fill")
@@ -490,6 +494,10 @@ class ReviewDialog(wx.Dialog):
         if i is None:
             return
         rec = self._records[i]
+        if rec.get("kind") == "attachment":
+            ui.message(_("This is a file to attach. Use Go to, then attach it "
+                         "yourself; the add-on cannot fill files."))
+            return
         cur = self._pending.get(i, rec["value"])
         newval = edit_field(self, rec["name"], rec.get("kind", "text"),
                             rec.get("options"), cur)
@@ -500,6 +508,10 @@ class ReviewDialog(wx.Dialog):
     def _onFill(self, evt):
         i = self._sel()
         if i is None:
+            return
+        if self._records[i].get("kind") == "attachment":
+            ui.message(_("This is a file to attach. Use Go to, then attach it "
+                         "yourself; the add-on cannot fill files."))
             return
         keys = [k for k in self._profile if self._profile.get(k)]
         if not keys:
@@ -523,6 +535,8 @@ class ReviewDialog(wx.Dialog):
     def _onClear(self, evt):
         i = self._sel()
         if i is None:
+            return
+        if self._records[i].get("kind") == "attachment":
             return
         self._pending[i] = ""
         self._refresh(i)

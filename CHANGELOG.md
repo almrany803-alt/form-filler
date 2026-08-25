@@ -2,6 +2,20 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.49
+
+### Phase 6 (focused): attachments reminder in the review
+- The review used to silently skip file uploads. Now a file input, or a control
+  whose label reads like one (Upload CV, Attach Cover Letter, Select Files), is
+  surfaced as an "attachment" row that reads "attach this yourself", so nothing
+  important is dropped and you get a checklist of what to attach. Use "Go to" to
+  jump to it and attach it yourself; Edit, Fill and Clear are blocked on these
+  rows (with a message) so a file field can never receive a text paste, and the
+  apply step refuses them as a backstop. Plain buttons and links are still
+  skipped, so the review stays a clean list of real fields. The rest of the
+  Phase 6 review-cleanup (region filtering, min-fields guard) was deliberately
+  not built: the review is already clean and complete on real forms, so it would
+  have been speculative. Attachment detection is tested.
 ## 0.9.48
 
 ### Phase 5: phone group (split the number across a dial-code and a number field)
