@@ -54,6 +54,23 @@ class TestAtsPatterns(unittest.TestCase):
         self.assertEqual(self.k(label="Vorname", name="input-3"), "given_name")
         self.assertEqual(self.k(label="البريد الإلكتروني"), "email")
 
+    def test_name_slots_do_not_grab_full_name(self):
+        # Father's-name and preferred-name fields must NOT match "full_name" off
+        # the bare word "name"; they resolve to their own concepts, which hold no
+        # profile value and so fall to "needs you" instead of the full name.
+        self.assertEqual(self.k(label="Arabic Father's Name"), "father_name")
+        self.assertEqual(self.k(label="Father's Name - Latin Script"),
+                         "father_name")
+        self.assertEqual(self.k(label="Middle Name"), "father_name")
+        self.assertEqual(self.k(label="I have a preferred name"),
+                         "preferred_name")
+        self.assertNotIn("father_name", matcher.PROFILE_KEYS)
+        self.assertNotIn("preferred_name", matcher.PROFILE_KEYS)
+        # the correctly-filling name fields are unchanged
+        self.assertEqual(self.k(label="Arabic Given Name(s)"), "given_name")
+        self.assertEqual(self.k(label="Arabic Family Name"), "family_name")
+        self.assertEqual(self.k(label="Full Name"), "full_name")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

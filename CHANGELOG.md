@@ -2,6 +2,15 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.39
+
+### Phase 3 (part 1): stop "name" fields grabbing your full name
+- Father's-name fields (both "Arabic Father's Name" and "Father's Name - Latin
+  Script"), Middle Name, and the "I have a preferred name" checkbox no longer
+  get matched to your full name off the bare word "name". They now resolve to
+  their own concepts, which hold no saved value, so the review shows them as
+  "needs you" for you to handle, instead of "will fill Mohammed Alomrani". The
+  given-name and family-name fields still fill correctly. Locked in with a test.
 ## 0.9.38
 
 ### Phase 2: the review shows the real field label and what it will fill

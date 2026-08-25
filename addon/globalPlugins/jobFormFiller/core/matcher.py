@@ -123,6 +123,19 @@ LEXICON = {
         "pt": ["apelido", "sobrenome"], "pl": ["nazwisko"],
         "nl": ["achternaam"], "ar": ["اسم العائلة", "الكنية"],
     },
+    "father_name": {
+        # The father's-name slot (Arabic-name forms label the middle field this
+        # way). Longer than the bare "name", so it wins; not a stored profile
+        # value, so the field correctly falls to "needs you" instead of the full
+        # name.
+        "en": ["father's name", "fathers name", "father name", "middle name"],
+        "ar": ["اسم الاب", "اسم الأب"],
+    },
+    "preferred_name": {
+        # "Preferred name" / "I have a preferred name" (often a checkbox). Never
+        # the full name; no stored value, so it falls to "needs you".
+        "en": ["preferred name"],
+    },
     "full_name": {   # last: "name" is the weakest catch-all
         "en": ["full name", "your name", "name"],
         "es": ["nombre completo"], "fr": ["nom complet"],
