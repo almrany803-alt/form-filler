@@ -56,6 +56,16 @@ LEXICON = {
         "nl": ["telefoon", "telefoonnummer", "mobiel"],
         "ar": ["الهاتف", "رقم الهاتف", "جوال"],
     },
+    "phone_country_code": {
+        # A phone dialling-code field ("Country Phone Code", "+966"). Longer than
+        # both "country" and "phone", so it wins; no stored value, so it falls to
+        # "needs you" rather than the country name or the phone number.
+        "en": ["country phone code", "phone country code", "country code",
+               "phone code", "dialing code", "dial code", "calling code"],
+    },
+    "phone_extension": {
+        "en": ["phone extension", "extension"],
+    },
     "linkedin": {"en": ["linkedin", "linked in", "profile url"]},
     "postcode": {
         "en": ["postcode", "post code", "zip", "zip code", "postal code"],

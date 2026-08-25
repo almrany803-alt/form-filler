@@ -2,6 +2,16 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.41
+
+### Phase 4 (part 1): stop dial-code and extension fields grabbing country / phone
+- A phone dial-code field ("Country Code", "Country / Territory Phone Code") no
+  longer matches "country" and fill your country name into it. On a live Almarai
+  application this was filling "Saudi Arabia" into the dial-code box, an invalid
+  value that helped the save fail. And a "Phone Extension" field no longer grabs
+  your full phone number. Both now resolve to their own concepts with no stored
+  value, so they show "needs you" and you set them yourself. The real Country,
+  Country of Residence, and Phone Number fields still fill correctly. Tested.
 ## 0.9.40
 
 ### Phase 3 (part 2): stop a focused field leaking in as a fake dropdown option

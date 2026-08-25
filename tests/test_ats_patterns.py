@@ -71,6 +71,22 @@ class TestAtsPatterns(unittest.TestCase):
         self.assertEqual(self.k(label="Arabic Family Name"), "family_name")
         self.assertEqual(self.k(label="Full Name"), "full_name")
 
+    def test_phone_code_and_extension_do_not_grab_country_or_phone(self):
+        # A dial-code field must NOT match "country" (it was filling "Saudi
+        # Arabia" on a live form and breaking the save), and an extension must NOT
+        # match "phone". Both resolve to their own concepts with no stored value,
+        # so they fall to "needs you".
+        self.assertEqual(self.k(label="Country Code"), "phone_country_code")
+        self.assertEqual(self.k(label="Country / Territory Phone Code"),
+                         "phone_country_code")
+        self.assertEqual(self.k(label="Phone Extension"), "phone_extension")
+        self.assertNotIn("phone_country_code", matcher.PROFILE_KEYS)
+        self.assertNotIn("phone_extension", matcher.PROFILE_KEYS)
+        # the real country and phone fields still fill correctly
+        self.assertEqual(self.k(label="Country"), "country")
+        self.assertEqual(self.k(label="Country of Residence"), "country")
+        self.assertEqual(self.k(label="Phone Number"), "phone")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
