@@ -28,6 +28,35 @@ if cmd == "seed":
     store.save()
     print("seeded BASELINE")
 
+elif cmd == "seed_sections":
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    import cvparse  # noqa: E402  (core dir already on sys.path above)
+    CV = """Mohammed Alomrani
+mohammed@example.com
+EDUCATION
+Bachelor of Arts in Education, University of the West of England, Bristol (Sep 2023 to Jun 2026)
+TEACHING AND VOLUNTEER EXPERIENCE
+Sight Support West of England, Technology Support Volunteer (Mar 2024 to Jun 2026)
+Taught visually impaired people to use technology.
+Look UK, Peer Mentor (Sep 2023 to present)
+Mentored young people.
+SKILLS
+Accessible Learning Design
+LANGUAGES
+Arabic: Native
+English: Fluent
+"""
+    store.add_profile("Mohammed", cvparse.cv_to_fields(cvparse.parse_cv_text(CV)))
+    store.set_active("Mohammed")
+    secs = cvparse.parse_cv_sections(CV)
+    n = 0
+    for sname, rows in secs.items():
+        for r in rows:
+            store.add_row(sname, r, profile="Mohammed")
+            n += 1
+    store.save()
+    print("seeded", n, "section entries across", store.section_names("Mohammed"))
+
 elif cmd == "check":
     mode = sys.argv[2]
     store.load()
