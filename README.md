@@ -9,7 +9,7 @@ and what it left for you. It never submits a form.
 
 - One key, NVDA+J, opens a menu you can arrow through or drive by access key:
   Fill this field, Fill all fields, Review fields, Profile (switch, create,
-  delete versions), Import from CV, Enter your details.
+  delete versions), Import from CV, My sections, Enter your details.
 - Fills text fields, native dropdowns, radio groups, checkboxes, multi-selects,
   and dates, verifying each against the live accessibility state. Custom
   comboboxes (react-select and similar) are opened by keyboard, the way you do
@@ -33,12 +33,26 @@ and what it left for you. It never submits a form.
   address lines 1 to 3, house number, city, state or province, district,
   postcode, country, nationality, organisation, date of birth, and passport
   fields (number, name, issuing country, issue and expiry dates).
+- Sections beyond the personal fields: Experience, Education, Skills,
+  Certifications, Languages, and any you add. Each is a list of entries you
+  manage in a shallow drill-down (sections, then entries, then one entry's
+  fields), reachable from the menu as My sections. A section you invent
+  (Publications, Volunteering) behaves exactly like the built-in ones.
+- Importing a CV fills those sections too, not just the personal fields, so you
+  start with entries to review and correct instead of a blank slate.
+- When a form splits the phone across a country-code field and a number field,
+  the dial code goes in one and the national number in the other, instead of the
+  whole international number in both.
+- File uploads (your CV, a cover letter) appear in the review as an
+  attach-this-yourself reminder, so nothing is silently skipped; the add-on never
+  types into a file field.
 - Multilingual field recognition by label, HTML name, and aria-label, using a
-  keyword lexicon you can extend. Thirteen languages so far (English, Arabic,
-  Spanish, French, German, Italian, Portuguese, Polish, Dutch, Chinese,
-  Japanese, Korean, Russian), matched on whole-word boundaries, and script-aware
-  for Chinese and Japanese, which have no spaces between words. The set is
-  growing to match the 24-language country data. The HTML autocomplete attribute
+  keyword lexicon you can extend. 27 languages (English plus the 26 the country
+  data uses: Arabic, Spanish, French, German, Italian, Portuguese, Polish, Dutch,
+  Chinese, Japanese, Korean, Russian, Turkish, Indonesian, Persian, Urdu, Czech,
+  Hungarian, Finnish, Swedish, Croatian, Serbian, Slovak, Estonian, Welsh,
+  Breton), matched on whole-word boundaries, and script-aware for Chinese and
+  Japanese, which have no spaces between words. The HTML autocomplete attribute
   is language-independent, so well-built forms in any language map with no
   translation at all.
 - Country and nationality are chosen from a dropdown of all countries and match

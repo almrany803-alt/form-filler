@@ -2,8 +2,9 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.46 (Phase 4: dictionary breadth and
-multilingual field matching).
+points to. Last updated at version 0.9.53. Phases 5 (phone group), 6
+(attachments), 7 (sections and CV seeding) and the language finish (27
+languages) are in; the repeating-row NVDA fill is parked.
 
 Repo: github.com/almrany803-alt/form-filler  (GPL v2, open source)
 
@@ -49,10 +50,10 @@ Working and proven on real hardware (see section 3):
   used to say "over to you".
 - Encrypted profile stored on the user's own machine (Windows DPAPI).
 - A "My details" form in the NVDA Tools menu to enter and edit your details.
-- Multilingual field identification (13 languages: Arabic, Chinese, Dutch,
-  English, French, German, Italian, Japanese, Korean, Polish, Portuguese,
-  Russian, Spanish), matched on whole-word boundaries and script-aware for
-  Chinese and Japanese. Growing to match the 24-language country data.
+- Multilingual field identification (27 languages: English plus the 26 the
+  country data uses), matched on whole-word boundaries and script-aware for
+  Chinese and Japanese. The field matcher and the country data now share the
+  same language set.
 - Country and nationality match through a bundled dataset of all 250 countries
   in 24 languages plus demonyms and phone codes, so "Saudi" fills السعودية on an
   Arabic form and a French form's Royaume-Uni matches. Both are chosen from a
@@ -247,8 +248,8 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
   invalidates positions not yet used), then for each field confirms focus
   actually landed on it before pasting, and skips safely if not.
 
-- **Multilingual, 13 languages** (en, es, fr, de, it, pt, pl, nl, ar, zh, ja,
-  ko, ru), growing to the country data's 24. The autocomplete/HTML-name signal
+- **Multilingual, 27 languages** (en plus the country data's 26: es fr de it pt
+  pl nl ar zh ja ko ru tr id fa ur cs hu fi sv hr sr sk et cy br). The autocomplete/HTML-name signal
   is language-independent; the keyword lexicon is extensible per language; accent
   and stroke folding normalises diacritics (including Polish's non-decomposing
   ł); matching is whole-word (anchored), and script-aware for Chinese and
@@ -494,6 +495,29 @@ Still to finish Phase 4, agreed to do last:
    since they need a compound "mentions passport AND given/family name" rule the
    simple matcher cannot express cleanly.
 
+### Phases 5 to 7 and the language finish (0.9.48 to 0.9.53) - done
+
+- Phase 5, phone group (0.9.48): when a form has a separate country-code field
+  and a phone field, the dial code fills one and the national number the other.
+  NANP-safe; never guesses a code onto a plain number. Live-tested.
+- Phase 6, attachments (0.9.49): file uploads and upload-labelled controls show
+  in the review as "attach this yourself"; edit/fill/clear are blocked so a file
+  field never gets a text paste. The speculative review-filtering was skipped as
+  not needed. Live-tested.
+- Phase 7, sections (0.9.50-0.9.52): a section data model (add/rename/remove
+  sections and rows, free-form fields, backward compatible), a three-level
+  drill-down UI reachable as My sections, and CV seeding that fills Experience,
+  Education, Skills, Certifications and Languages on import. Proven on real NVDA
+  by speech: import journey, add, delete, edit, and read-back all confirmed
+  (`import-sections-journey.yml`, `section-crud.yml`, `section-edit.yml`,
+  `section-speech.yml`). The repeating-row NVDA fill is parked; its pure planner
+  (`rowfill.py`) is built and tested.
+- Language finish (0.9.53): field matcher to 27 languages (the country data's
+  set), CV headings to the same set, CV name check made script-aware. The
+  smallest languages are a best-effort seed for native speakers to refine.
+- Passport given/family name sub-fields: still deferred until a real form shows
+  them.
+
 ## 9a. Logging (for real-world testing)
 
 Every add-on line is prefixed `JFF`. A startup banner records the version; each
@@ -597,7 +621,7 @@ phone's calling code (a +966 number is Saudi Arabia) over scattered place
 mentions. All of this is pure Python and covered by `tests/test_countries.py`,
 including a per-language sweep.
 
-The field-recognition lexicon (which box is name, email, and so on) is at 13
+The field-recognition lexicon (which box is name, email, and so on) is at 27
 languages and growing to match the country layer's 24, so the two eventually
 line up; Chinese and Japanese already share the country layer's script-aware
 substring matching. Widening the lexicon is recognition data, not translating

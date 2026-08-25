@@ -280,7 +280,9 @@ Judged by speech: what NVDA reads back, not just the store.
   (`section-crud.yml`).
 - [done] Read-back: seeded entries are spoken as one-line summaries when you
   arrow the entries list (`section-speech.yml`).
-- [todo] Edit an entry's field and hear the updated summary.
+- [done] Edit an entry's field and hear the updated summary: changed a Job
+  title, NVDA said "Entry updated." and read back "Senior Tech Volunteer, ..."
+  (`section-edit.yml`).
 - [todo] Obsessive-Compulsive: add and remove several sections rapidly.
 - [todo] Intellectual: a user-invented section (Publications) behaves exactly
   like the built-ins.
