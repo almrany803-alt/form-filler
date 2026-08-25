@@ -23,10 +23,8 @@ Add-Type -AssemblyName System.Windows.Forms
 # type the CV path and open it -> the add-on parses and opens the naming dialog
 [System.Windows.Forms.SendKeys]::SendWait($CvPath); Start-Sleep -Milliseconds 900
 [System.Windows.Forms.SendKeys]::SendWait("{ENTER}"); Start-Sleep -Seconds 6
-# accept the default profile name -> the details review opens
+# accept the default profile name -> the sections list opens directly
 [System.Windows.Forms.SendKeys]::SendWait("{ENTER}"); Start-Sleep -Seconds 6
-# close the details review (already saved) -> the sections manager opens
-[System.Windows.Forms.SendKeys]::SendWait("{ESC}"); Start-Sleep -Seconds 6
 # sections list: Personal, Education, Experience -> select Experience
 [System.Windows.Forms.SendKeys]::SendWait("{DOWN}"); Start-Sleep -Milliseconds 500
 [System.Windows.Forms.SendKeys]::SendWait("{DOWN}"); Start-Sleep -Milliseconds 800
