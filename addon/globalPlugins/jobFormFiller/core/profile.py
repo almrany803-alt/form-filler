@@ -10,6 +10,20 @@ import os
 import ctypes
 
 
+# Suggested field names for common sections, used only to pre-fill a new row so
+# the user is not staring at blank fields. Guidance, not a schema: any section
+# can be added, renamed or removed, and any field left, added or renamed.
+SECTION_TEMPLATES = {
+    "Experience": ["job_title", "employer", "start_date", "end_date",
+                   "description"],
+    "Education": ["institution", "qualification", "field_of_study",
+                  "start_date", "end_date"],
+    "Skills": ["skill"],
+    "Certifications": ["name", "issuer", "date"],
+    "Languages": ["language", "proficiency"],
+}
+
+
 class Crypto:
     """Interface. encrypt/decrypt operate on bytes and must round-trip."""
     def encrypt(self, data: bytes) -> bytes: raise NotImplementedError
@@ -67,17 +81,20 @@ class ProfileStore:
     def __init__(self, path: str, crypto: Crypto):
         self.path = path
         self.crypto = crypto
-        self._data = {"active": None, "profiles": {}}
+        self._data = {"active": None, "profiles": {}, "sections": {}}
 
     # --- persistence ---------------------------------------------------------
     def load(self):
         if not os.path.exists(self.path):
-            self._data = {"active": None, "profiles": {}}
+            self._data = {"active": None, "profiles": {}, "sections": {}}
             return self._data
         with open(self.path, "rb") as f:
             raw = f.read()
         text = self.crypto.decrypt(raw).decode("utf-8")
         self._data = json.loads(text)
+        # Backward compatible: profiles saved before sections existed have no
+        # "sections" key; give them an empty one so the section methods work.
+        self._data.setdefault("sections", {})
         return self._data
 
     def save(self):
@@ -117,11 +134,15 @@ class ProfileStore:
         if old not in self._data["profiles"] or new == old:
             return
         self._data["profiles"][new] = self._data["profiles"].pop(old)
+        secs = self._data.setdefault("sections", {})
+        if old in secs:
+            secs[new] = secs.pop(old)
         if self._data["active"] == old:
             self._data["active"] = new
 
     def delete_profile(self, name: str):
         self._data["profiles"].pop(name, None)
+        self._data.setdefault("sections", {}).pop(name, None)
         if self._data["active"] == name:
             names = self.profile_names()
             self._data["active"] = names[0] if names else None
@@ -132,3 +153,80 @@ class ProfileStore:
 
     def profile_names(self):
         return list(self._data["profiles"].keys())
+
+    # --- sections (Experience, Education, Skills, or any the user adds) -------
+    # A section is {"name": str, "rows": [ {field: value, ...}, ... ]}. Rows are
+    # free-form dicts, so a section holds whatever a CV needs, and the user can
+    # add, rename and remove both sections and rows.
+    def _sections_for(self, profile=None):
+        name = profile or self._data["active"]
+        if name is None:
+            return None
+        return self._data.setdefault("sections", {}).setdefault(name, [])
+
+    def sections(self, profile=None):
+        """Every section for a profile, as copies so callers cannot mutate the
+        store by accident; use the methods below to change them."""
+        secs = self._sections_for(profile)
+        if not secs:
+            return []
+        return [{"name": s["name"], "rows": [dict(r) for r in s["rows"]]}
+                for s in secs]
+
+    def section_names(self, profile=None):
+        secs = self._sections_for(profile)
+        return [s["name"] for s in secs] if secs else []
+
+    def add_section(self, name, profile=None):
+        """Add an empty section. No-op if one of that name already exists."""
+        secs = self._sections_for(profile)
+        if secs is None or any(s["name"] == name for s in secs):
+            return
+        secs.append({"name": name, "rows": []})
+
+    def remove_section(self, name, profile=None):
+        secs = self._sections_for(profile)
+        if secs is not None:
+            secs[:] = [s for s in secs if s["name"] != name]
+
+    def rename_section(self, old, new, profile=None):
+        secs = self._sections_for(profile)
+        if secs is None or old == new or any(s["name"] == new for s in secs):
+            return
+        for s in secs:
+            if s["name"] == old:
+                s["name"] = new
+                return
+
+    def _get_section(self, name, profile=None):
+        secs = self._sections_for(profile)
+        if secs is None:
+            return None
+        for s in secs:
+            if s["name"] == name:
+                return s
+        return None
+
+    def section_rows(self, name, profile=None):
+        s = self._get_section(name, profile)
+        return [dict(r) for r in s["rows"]] if s else []
+
+    def add_row(self, section, row=None, profile=None):
+        """Append a row to a section, creating the section if it does not exist."""
+        if self._sections_for(profile) is None:
+            return
+        s = self._get_section(section, profile)
+        if s is None:
+            self.add_section(section, profile)
+            s = self._get_section(section, profile)
+        s["rows"].append(dict(row or {}))
+
+    def update_row(self, section, index, row, profile=None):
+        s = self._get_section(section, profile)
+        if s and 0 <= index < len(s["rows"]):
+            s["rows"][index] = dict(row or {})
+
+    def remove_row(self, section, index, profile=None):
+        s = self._get_section(section, profile)
+        if s and 0 <= index < len(s["rows"]):
+            s["rows"].pop(index)

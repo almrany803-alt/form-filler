@@ -2,6 +2,19 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.50
+
+### Phase 7 (part 1): the section data model
+- The profile store can now hold sections (Experience, Education, Skills, or any
+  you add) beside your flat personal fields. A section is a name plus rows, and
+  each row is a free-form set of fields, so a section holds whatever a CV needs.
+  You can add, rename and remove sections, and add, edit and remove rows within
+  them. Sections are stored separately from the personal fields, so the fill
+  path is unchanged, and profiles saved before this still load. Renaming or
+  deleting a profile carries its sections with it. Suggested field templates are
+  provided for the common sections (guidance, not enforced). This is the data
+  layer; the drill-down UI (sections, then entries, then one entry's fields) and
+  filling repeating rows on forms come next. Fully tested.
 ## 0.9.49
 
 ### Phase 6 (focused): attachments reminder in the review
