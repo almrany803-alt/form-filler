@@ -20,6 +20,8 @@ PROFILE_KEYS = (
 _AUTOCOMPLETE = {
     "email": "email",
     "tel": "phone", "tel-national": "phone",
+    "tel-country-code": "phone_country_code", "tel-extension": "phone_extension",
+    "organization": "organisation",
     "given-name": "given_name",
     "family-name": "family_name",
     "name": "full_name",
@@ -49,7 +51,9 @@ LEXICON = {
         "ar": ["البريد الالكتروني", "بريد الكتروني"],
     },
     "phone": {
-        "en": ["phone", "telephone", "mobile", "contact number"],
+        "en": ["phone", "telephone", "telephone number", "phone number",
+               "mobile", "mobile phone", "mobile number", "cell", "cell phone",
+               "cellphone", "home phone", "work phone", "contact number"],
         "es": ["telefono", "numero de telefono", "movil"],
         "fr": ["telephone", "numero de telephone", "portable"],
         "de": ["telefon", "telefonnummer", "handy"],
@@ -68,6 +72,20 @@ LEXICON = {
     },
     "phone_extension": {
         "en": ["phone extension", "extension"],
+    },
+    "organisation": {
+        # Company / employer (organization in the dictionary). Placed after the
+        # address concepts in Firefox's order so address words win first. Not a
+        # stored value (that lives in the experience section, later), so needs
+        # you. "employment" is deliberately not here, to leave status fields be.
+        "en": ["company", "company name", "organisation", "organization",
+               "organisation name", "organization name", "employer",
+               "current employer", "previous employer"],
+        "es": ["empresa", "compania"], "fr": ["entreprise", "societe"],
+        "de": ["firma", "unternehmen", "arbeitgeber"],
+        "it": ["azienda", "societa"], "pt": ["empresa"],
+        "pl": ["firma"], "nl": ["bedrijf", "werkgever"],
+        "ar": ["الشركة", "جهة العمل", "اسم الشركة"],
     },
     "linkedin": {"en": ["linkedin", "linked in", "profile url"]},
     "postcode": {

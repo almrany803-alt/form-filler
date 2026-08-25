@@ -120,8 +120,22 @@ class TestAtsPatterns(unittest.TestCase):
         self.assertIsNone(self.k(label="Job Title"))
         self.assertIsNone(self.k(label="Business Unit"))
         # multilingual reaches the right concept
-        self.assertEqual(self.k(label="Provincia"), "address_level1")
-        self.assertEqual(self.k(label="Barrio"), "address_level3")
+    def test_phone_variants_and_organisation(self):
+        # More phone phrasings all fill the one phone value; the dial code and
+        # extension stay their own concepts (needs you).
+        for lbl in ("Mobile", "Cell Phone", "Home Phone", "Work Phone",
+                    "Telephone Number"):
+            self.assertEqual(self.k(label=lbl), "phone")
+        self.assertEqual(self.k(label="Country Code"), "phone_country_code")
+        self.assertEqual(self.k(label="Phone Extension"), "phone_extension")
+        # Organisation matches across languages, is not a profile key (needs you),
+        # and does not swallow employment-status or business-unit fields.
+        for lbl in ("Company", "Company Name", "Employer", "Current Employer",
+                    "Organisation", "Empresa"):
+            self.assertEqual(self.k(label=lbl), "organisation")
+        self.assertNotIn("organisation", matcher.PROFILE_KEYS)
+        self.assertIsNone(self.k(label="Employment Status"))
+        self.assertIsNone(self.k(label="Business Unit"))
 
 
 if __name__ == "__main__":

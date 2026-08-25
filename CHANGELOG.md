@@ -2,6 +2,15 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.44
+
+### Phase 4 (part 4): phone group and organisation
+- Widened the phone matching so mobile, cell, home and work phone variants all
+  fill your one phone number, while the separate dial-code and extension fields
+  stay "needs you" for you to set. Added a company / employer concept, matched
+  in nine languages, which shows "needs you" for now (employer belongs to the
+  experience section, added later). "Employment Status" and "Business Unit" are
+  deliberately left unmatched so nothing is mis-filled. Tested.
 ## 0.9.43
 
 ### Phase 4 (part 3): import name and address field types (multilingual)
