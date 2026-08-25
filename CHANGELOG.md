@@ -2,6 +2,13 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.32
+
+### Choose the vision model (so local Ollama models are actually usable)
+- The Vision settings dialog now has a Model field and an Ollama host field. This
+  is what lets you run a specific local model: set the backend to Ollama and the
+  model to llava or qwen2.5vl:3b, no key, fully offline. It also lets cloud users
+  pin a specific model. Blank means the backend's default.
 ## 0.9.31
 
 ### Vision errors now explain themselves

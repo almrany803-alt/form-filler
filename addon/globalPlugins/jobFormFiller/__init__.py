@@ -1332,6 +1332,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             key = wx.TextCtrl(dlg, value=s.get("api_key", ""),
                               style=wx.TE_PASSWORD)
             root.Add(key, 0, wx.EXPAND | wx.ALL, 8)
+            root.Add(wx.StaticText(dlg, label=_(
+                "Model (leave blank for the backend's default; for Ollama try "
+                "llava or qwen2.5vl:3b):")), 0, wx.LEFT, 8)
+            model = wx.TextCtrl(dlg, value=s.get("model", ""))
+            root.Add(model, 0, wx.EXPAND | wx.ALL, 8)
+            root.Add(wx.StaticText(dlg, label=_(
+                "Ollama host (only for local Ollama; blank means "
+                "localhost:11434):")), 0, wx.LEFT, 8)
+            base = wx.TextCtrl(dlg, value=s.get("base_url", ""))
+            root.Add(base, 0, wx.EXPAND | wx.ALL, 8)
             share = wx.Button(dlg, label=_("Share disagreement log with "
                                            "developer..."))
             share.Bind(wx.EVT_BUTTON, lambda e: self._shareDisagreements())
@@ -1343,6 +1353,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 s["enabled"] = enable.GetValue()
                 s["backend"] = backends[choice.GetSelection()][0]
                 s["api_key"] = key.GetValue()
+                s["model"] = model.GetValue().strip()
+                s["base_url"] = base.GetValue().strip()
                 self._save_vision_settings(s)
                 ui.message(_("Vision {state}.").format(
                     state=_("on") if s["enabled"] else _("off")))
