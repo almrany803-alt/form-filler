@@ -2,6 +2,22 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.54
+
+### Fix: sections became unreachable after opening one
+- After opening a section (or Personal details) and closing it, focus did not
+  return to the Sections list, so you were stranded on the buttons with no way
+  back to the list, and could not reach any other section. The first visit
+  worked; the second did not. Focus now returns to the list every time, in both
+  the sections list and the entries list, so every section stays reachable.
+
+### Section dates use a month/year picker
+- Start and end dates in a section entry now use an accessible dropdown picker
+  in the same idiom as the date of birth, fitted to career dates: a When choice
+  whose first, easy-to-reach options are Present (ongoing) and No date, then
+  Month and Year (no day, since jobs and courses do not have one). It stores a
+  tidy "Sep 2023"/"present", and reads back existing dates, so the summaries are
+  unchanged. No free text to guess.
 ## 0.9.53
 
 ### Language finish: field matcher and CV reader to 24+ languages

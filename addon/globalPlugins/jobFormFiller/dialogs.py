@@ -6,6 +6,7 @@
 # ones you no longer want, and import a CV into the version you have selected.
 
 import datetime
+import re
 
 import wx
 import gui
@@ -280,6 +281,41 @@ def _dob_iso(day_sel, month_sel, year_idx, years):
     return "%s-%02d-%02d" % (years[year_idx], month_sel, day_sel)
 
 
+_MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def _is_date_field(field):
+    """Career dates (start_date, end_date, and any *_date) use the month/year
+    picker instead of a free-text box."""
+    return field == "date" or field.endswith("_date")
+
+
+def _parse_monthyear(value):
+    """(present, month 1-12 or 0, year int or 0) from a stored date string like
+    'Sep 2023', 'September 2023', '2020' or 'present'."""
+    v = (value or "").strip()
+    if re.search(r"present|current|ongoing|\bnow\b|to date|till date", v, re.I):
+        return True, 0, 0
+    month = 0
+    low = v.lower()
+    for i, name in enumerate(_MONTHS):
+        if name.lower()[:3] in low:
+            month = i + 1
+            break
+    ym = re.search(r"(?:19|20)\d\d", v)
+    return False, month, int(ym.group(0)) if ym else 0
+
+
+def _format_monthyear(month, year):
+    """A readable 'Sep 2023', or just the year, or '' (so summaries stay tidy)."""
+    if year and 1 <= month <= 12:
+        return "%s %d" % (_MONTH_ABBR[month - 1], year)
+    if year:
+        return str(year)
+    return ""
+
+
 class _ComboEntryDialog(wx.Dialog):
     """An accessible editable combo box: type a value, or arrow the options and
     pick one. This is how the review editor makes an inaccessible editable
@@ -351,6 +387,67 @@ class _DateDialog(wx.Dialog):
     def GetISO(self):
         return _dob_iso(self._day.GetSelection(), self._month.GetSelection(),
                         self._year.GetSelection(), self._years)
+
+
+class _MonthYearDialog(wx.Dialog):
+    """A career-date picker in the same accessible dropdown idiom as the date of
+    birth, fitted to CV dates: a 'When' choice at the top whose easy-to-reach
+    first options are Present (ongoing) and No date, then Month and Year
+    dropdowns for a specific date. Returns a readable 'Sep 2023', 'present', or
+    '' so the entry summaries stay tidy. No day, because jobs and courses do not
+    have one, and no free text to guess."""
+
+    def __init__(self, parent, name, value):
+        super().__init__(parent, title=_("Set date"))
+        main = wx.BoxSizer(wx.VERTICAL)
+        main.Add(wx.StaticText(
+            self, label=_("Date for {name}:").format(name=name)), 0, wx.ALL, 8)
+
+        present, month, year = _parse_monthyear(value)
+        this_year = datetime.date.today().year
+        # future years too, for an expected graduation date.
+        self._years = [_("Year")] + [
+            str(y) for y in range(this_year + 8, this_year - 71, -1)]
+
+        self._status = self._labelled(main, _("When"), [
+            _("Present (ongoing)"), _("No date"), _("A specific month and year")])
+        self._month = self._labelled(main, _("Month"), [_("Month")] + _MONTHS)
+        self._year = self._labelled(main, _("Year"), self._years)
+
+        self._status.SetSelection(0 if present else 2)
+        if month:
+            self._month.SetSelection(month)
+        if year and str(year) in self._years:
+            self._year.SetSelection(self._years.index(str(year)))
+
+        main.Add(self.CreateButtonSizer(wx.OK | wx.CANCEL), 0,
+                 wx.EXPAND | wx.ALL, 8)
+        self.SetSizerAndFit(main)
+        self._status.SetFocus()
+
+    def _labelled(self, sizer, label, choices):
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        row.Add(wx.StaticText(self, label=label + ":"), 0,
+                wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+        ch = wx.Choice(self, choices=choices)
+        ch.SetSelection(0)
+        try:
+            ch.SetName(label)
+        except Exception:
+            pass
+        row.Add(ch, 0)
+        sizer.Add(row, 0, wx.ALL, 6)
+        return ch
+
+    def GetValue(self):
+        s = self._status.GetSelection()
+        if s == 0:
+            return "present"
+        if s == 1:
+            return ""
+        ysel = self._year.GetSelection()
+        year = int(self._years[ysel]) if ysel > 0 else 0
+        return _format_monthyear(self._month.GetSelection(), year)
 
 
 def edit_field(parent, name, kind, options, current):
@@ -587,27 +684,49 @@ def _fields_for(section, row):
 
 
 class EntryFormDialog(wx.Dialog):
-    """Level 3: one entry's fields. Dates are free text, so 'present', a year
-    alone, or 'Sep 2023' all work. Returns the row via values() on OK."""
+    """Level 3: one entry's fields. Dates use the month/year picker (Present, No
+    date, or a specific month and year); other fields are text. 'present', a
+    year alone, or 'Sep 2023' all round-trip. Returns the row via values()."""
 
     def __init__(self, parent, section, row):
         super().__init__(
             parent, title=_("Entry in {section}").format(section=section))
         self._fields = _fields_for(section, row or {})
-        self._ctrls = {}
+        self._ctrls = {}       # text fields:  field -> TextCtrl
+        self._date_btns = {}   # date fields:  field -> Button
+        self._date_vals = {}   # date fields:  field -> current value string
         main = wx.BoxSizer(wx.VERTICAL)
         helper = guiHelper.BoxSizerHelper(self, sizer=main)
         for f in self._fields:
-            style = wx.TE_MULTILINE if f == "description" else 0
-            ctrl = helper.addLabeledControl(
-                _entry_label(f) + ":", wx.TextCtrl, style=style)
-            ctrl.SetValue(str((row or {}).get(f, "")))
-            self._ctrls[f] = ctrl
+            if _is_date_field(f):
+                self._date_vals[f] = str((row or {}).get(f, ""))
+                btn = helper.addLabeledControl(
+                    _entry_label(f) + ":", wx.Button, label=self._date_label(f))
+                btn.Bind(wx.EVT_BUTTON, lambda e, fld=f: self._pick_date(fld))
+                self._date_btns[f] = btn
+            else:
+                style = wx.TE_MULTILINE if f == "description" else 0
+                ctrl = helper.addLabeledControl(
+                    _entry_label(f) + ":", wx.TextCtrl, style=style)
+                ctrl.SetValue(str((row or {}).get(f, "")))
+                self._ctrls[f] = ctrl
         main.Add(self.CreateButtonSizer(wx.OK | wx.CANCEL),
                  flag=wx.EXPAND | wx.ALL, border=8)
         self.SetSizerAndFit(main)
         if self._fields:
-            self._ctrls[self._fields[0]].SetFocus()
+            first = self._fields[0]
+            (self._ctrls.get(first) or self._date_btns.get(first)).SetFocus()
+
+    def _date_label(self, f):
+        return self._date_vals.get(f, "") or _("Set date")
+
+    def _pick_date(self, f):
+        with _MonthYearDialog(
+                self, _entry_label(f), self._date_vals.get(f, "")) as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                self._date_vals[f] = dlg.GetValue()
+                self._date_btns[f].SetLabel(self._date_label(f))
+        self._date_btns[f].SetFocus()
 
     def values(self):
         """The row the user entered: field -> value, with empties dropped."""
@@ -616,6 +735,9 @@ class EntryFormDialog(wx.Dialog):
             v = ctrl.GetValue().strip()
             if v:
                 out[f] = v
+        for f, v in self._date_vals.items():
+            if v.strip():
+                out[f] = v.strip()
         return out
 
 
@@ -662,6 +784,7 @@ class EntriesDialog(wx.Dialog):
         self._list.Set(self._lines())
         if rows:
             self._list.SetSelection(min(sel, len(rows) - 1))
+        self._list.SetFocus()
 
     def _sel(self):
         i = self._list.GetSelection()
@@ -745,6 +868,7 @@ class SectionsDialog(wx.Dialog):
     def _refresh(self, sel=0):
         self._list.Set(self._items())
         self._list.SetSelection(min(sel, self._list.GetCount() - 1))
+        self._list.SetFocus()
 
     def _selected_section(self):
         """The selected section name, or None for Personal details / no
@@ -767,12 +891,17 @@ class SectionsDialog(wx.Dialog):
                 except Exception:
                     log.error("JFF: could not save details", exc_info=True)
             dlg.Destroy()
+            self._list.SetFocus()
             return
         section = self._selected_section()
         if section is None:
             return
         with EntriesDialog(self, self._store, section) as dlg:
             dlg.ShowModal()
+        # Put focus back on the list so every section is reachable again, not
+        # only the first time. Without this you are stranded on the buttons
+        # after leaving a section, with no way back to the list.
+        self._list.SetFocus()
 
     def _onAdd(self, evt):
         with wx.TextEntryDialog(

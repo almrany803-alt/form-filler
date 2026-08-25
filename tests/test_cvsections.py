@@ -71,3 +71,30 @@ class TestParseCvSections(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestMonthYearHelpers(unittest.TestCase):
+    """The career-date parse/format round-trip. Skipped where wx is absent
+    (the sandbox); the live NVDA test exercises the real picker."""
+
+    def setUp(self):
+        try:
+            import sys, os
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
+                            "addon", "globalPlugins", "jobFormFiller"))
+            import dialogs
+            self.d = dialogs
+        except Exception:
+            self.skipTest("wx not available")
+
+    def test_parse_and_format_roundtrip(self):
+        for value, expect in (("Sep 2023", "Sep 2023"),
+                              ("September 2023", "Sep 2023"),
+                              ("2020", "2020"), ("present", None),
+                              ("current", None), ("", "")):
+            present, m, y = self.d._parse_monthyear(value)
+            out = "present" if present else self.d._format_monthyear(m, y)
+            if expect is None:
+                self.assertTrue(present, value)
+            else:
+                self.assertEqual(out, expect, value)
