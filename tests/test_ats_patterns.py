@@ -153,9 +153,24 @@ class TestAtsPatterns(unittest.TestCase):
                           ("гражданство", "nationality")):
             self.assertEqual(self.k(label=lbl), want, lbl)
         # English and Arabic must be untouched by the CJK branch.
-        self.assertEqual(self.k(label="Email"), "email")
+    def test_passport_fields(self):
+        # Passport fields are recognised (English and Arabic), all "needs you"
+        # since none is a profile key, and they don't collide with the plain
+        # country, nationality or date-of-birth fields.
+        self.assertEqual(self.k(label="Passport Number"), "passport_number")
+        self.assertEqual(self.k(label="Name on Passport"), "passport_name")
+        self.assertEqual(self.k(label="Issuing Country"), "passport_country")
+        self.assertEqual(self.k(label="Country of Issue"), "passport_country")
+        self.assertEqual(self.k(label="Passport Expiry Date"),
+                         "passport_expiry_date")
+        self.assertEqual(self.k(label="رقم جواز السفر"), "passport_number")
+        for key in ("passport_number", "passport_name", "passport_country",
+                    "passport_issue_date", "passport_expiry_date"):
+            self.assertNotIn(key, matcher.PROFILE_KEYS)
+        # the plain fields are unaffected
+        self.assertEqual(self.k(label="Country"), "country")
         self.assertEqual(self.k(label="Nationality"), "nationality")
-        self.assertEqual(self.k(label="البريد الإلكتروني"), "email")
+        self.assertEqual(self.k(label="Date of Birth"), "date_of_birth")
 
 
 if __name__ == "__main__":

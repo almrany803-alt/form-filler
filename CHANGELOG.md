@@ -2,6 +2,17 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.46
+
+### Phase 4 (part 6): passport fields
+- Added passport field recognition (English and Arabic for now): passport
+  number, name on passport, issuing country / place of issue, issue date and
+  expiry date. All show "needs you", nothing sensitive is stored. "Issuing
+  Country" and "Country of Issue" correctly win over the plain country field,
+  and Country, Nationality and Date of Birth are unaffected. The passport-
+  specific given/family name sub-fields are deliberately left for when a real
+  form shows them, since they need a compound rule the simple matcher can't
+  express cleanly. Tested.
 ## 0.9.45
 
 ### Phase 4 (part 5): more languages, starting with the big ones

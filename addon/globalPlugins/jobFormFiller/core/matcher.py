@@ -203,6 +203,38 @@ LEXICON = {
         "pl": ["pozwolenie na prace", "prawo do pracy"],
         "nl": ["werkvergunning", "arbeidsvergunning"],
     },
+    "passport_number": {
+        # Passport fields, relevant for Saudi and international applications.
+        # Recognition only for now: not stored, so "needs you" until a profile
+        # holds it. English and Arabic here; other languages arrive with the
+        # language phase. The passport-specific given/family NAME sub-fields
+        # need a compound "mentions passport AND given/family name" rule our
+        # simpler matcher can't express cleanly, so they are deliberately left
+        # until a real form shows them.
+        "en": ["passport number", "passport no", "passport num"],
+        "ar": ["رقم جواز السفر", "رقم الجواز"],
+    },
+    "passport_name": {
+        "en": ["name on passport", "passport name", "passport holder name",
+               "name as on passport"],
+        "ar": ["الاسم في جواز السفر", "الاسم كما في الجواز"],
+    },
+    "passport_country": {
+        # "Issuing country" / "country of issue" are longer than "country", so
+        # they win over it; plain "Country" still maps to country.
+        "en": ["passport country", "passport issuing country", "issuing country",
+               "country of issue", "place of issue"],
+        "ar": ["بلد اصدار الجواز", "جهة الاصدار", "مكان الاصدار"],
+    },
+    "passport_issue_date": {
+        "en": ["passport issue date", "date of issue", "issue date", "issued on"],
+        "ar": ["تاريخ اصدار الجواز", "تاريخ الاصدار"],
+    },
+    "passport_expiry_date": {
+        "en": ["passport expiry date", "passport expiration date",
+               "date of expiry", "expiry date", "expiration date", "valid until"],
+        "ar": ["تاريخ انتهاء الجواز", "تاريخ الانتهاء", "صالح حتى"],
+    },
     "given_name": {
         "en": ["first name", "given name", "given names", "forename",
                "christian name"],
