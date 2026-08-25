@@ -2,6 +2,15 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.40
+
+### Phase 3 (part 2): stop a focused field leaking in as a fake dropdown option
+- When a chooser (like "How Did You Hear About Us?") had no readable options, the
+  add-on fell back to the field the page highlighted, but that fallback could hand
+  back whatever field simply held focus at the time (an edit box such as "Given
+  Name(s) - Latin Script"), and offered it as a choice. It now accepts that
+  fallback only when the target is genuinely a list option, so a focused edit box
+  or button can no longer leak in. The chooser offers a clean type box instead.
 ## 0.9.39
 
 ### Phase 3 (part 1): stop "name" fields grabbing your full name

@@ -1842,9 +1842,22 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             from NVDAObjects.IAccessible import IAccessible as _IA
             child_ia = focused.QueryInterface(oleacc.IAccessible)
             child = _IA(IAccessibleObject=child_ia, IAccessibleChildID=0)
-            name = (child.name or "").strip()
         except Exception:
             return "", None
+        # A real aria-activedescendant points to a highlighted OPTION inside the
+        # combobox's own list. But accFocus can instead hand back whatever control
+        # holds focus, an edit box or a button, which is how an unrelated field's
+        # label leaked in as a fake dropdown choice. Accept the target only when it
+        # is genuinely an option; otherwise reject it, and the chooser offers a
+        # clean type box instead of a stray option.
+        try:
+            from controlTypes import Role
+            if child.role not in (Role.LISTITEM, Role.MENUITEM,
+                                  Role.TREEVIEWITEM):
+                return "", None
+        except Exception:
+            return "", None
+        name = (child.name or "").strip()
         if name:
             log.info("JFF nsel: aria-activedescendant -> %r" % name)
         return name, child
