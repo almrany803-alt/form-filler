@@ -2161,6 +2161,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 log.info("JFF review: %s opened the menu, read %d option(s) "
                          "(polled for async render)" % (opener, len(labels)))
                 break
+        # Diagnostic: if the menu opened but we still read nothing, dump what
+        # object navigation and the display-model (screen-text) layer see, while
+        # the menu is STILL OPEN (before the Escape below closes it), so a live log
+        # shows which layer the options actually live in. Read-only.
+        if not labels:
+            try:
+                self._diag_dump_menu(obj)
+            except Exception:
+                log.error("JFF diag: menu dump failed", exc_info=True)
         try:
             KeyboardInputGesture.fromName("escape").send()
             time.sleep(0.1)
@@ -2202,6 +2211,83 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         log.info("JFF review: no options readable for this field "
                  "(no aria-controls, no readable menu); not guessing")
         return []
+
+    def _diag_dump_menu(self, obj):
+        """DIAGNOSTIC ONLY. When an opened menu could not be read the normal way,
+        dump what the two reading layers actually see, so a live log reveals which
+        layer the options live in:
+          1. the object tree (a flat walk of descendants, every role, not just
+             list items), and
+          2. the display model (the rendered screen text, the same layer flat and
+             screen review use, which catches content that is not exposed as child
+             objects).
+        Roots covered: the focus, its parent, and the foreground (a react-select or
+        Workday menu often portals far from the field). Read-only: it sends no key,
+        touches no mouse, and every step is guarded so it can never break the read
+        path or raise. Logs its findings and returns None."""
+        import textInfos
+        try:
+            foc = api.getFocusObject()
+        except Exception:
+            foc = None
+        try:
+            fg = api.getForegroundObject()
+        except Exception:
+            fg = None
+        roots = []
+        for tag, r in (("focus", foc),
+                       ("focus.parent", getattr(foc, "parent", None) if foc else None),
+                       ("foreground", fg)):
+            if r is not None:
+                roots.append((tag, r))
+        # Layer 1: object tree, flat-walked, bounded so it can never run away.
+        for tag, root in roots:
+            state = {"n": 0}
+            lines = []
+
+            def _walk(node, depth):
+                if depth > 8 or state["n"] > 150:
+                    return
+                try:
+                    kids = list(node.children or [])
+                except Exception:
+                    kids = []
+                for c in kids:
+                    state["n"] += 1
+                    if state["n"] > 150:
+                        return
+                    try:
+                        rn = getattr(c.role, "name", "?")
+                    except Exception:
+                        rn = "?"
+                    try:
+                        nm = (c.name or "")[:50]
+                    except Exception:
+                        nm = ""
+                    try:
+                        vl = (c.value or "")[:40]
+                    except Exception:
+                        vl = ""
+                    lines.append("%s%s '%s'%s" % ("  " * depth, rn, nm,
+                                 (" val='%s'" % vl) if vl else ""))
+                    _walk(c, depth + 1)
+            try:
+                _walk(root, 0)
+            except Exception:
+                pass
+            log.info("JFF diag[obj-tree %s]: %d node(s)\n%s"
+                     % (tag, state["n"], "\n".join(lines[:150])))
+        # Layer 2: display model, the rendered screen text of each root.
+        for tag, root in roots:
+            try:
+                info = root.makeTextInfo(textInfos.POSITION_ALL)
+                text = (info.text or "").strip()
+            except Exception as e:
+                log.info("JFF diag[text %s]: no display model (%s)" % (tag, e))
+                continue
+            snippet = text[:800].replace("\r", " ").replace("\n", " | ")
+            log.info("JFF diag[text %s]: %d char(s): %s"
+                     % (tag, len(text), snippet))
 
     def _fill_native_select(self, obj, value, concept):
         """Open a native <select>, read its options from the popup, choose the

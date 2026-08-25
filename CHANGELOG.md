@@ -2,6 +2,17 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.36
+
+### Two-layer diagnostic for unreadable menus (object tree + display model)
+- When a menu opens but its options still can't be read, the add-on now dumps, to
+  the log, what BOTH reading layers see while the menu is still open: the object
+  tree (a flat walk of every descendant and its role, not just list items) and the
+  display model (the rendered screen text, the same layer flat/screen review uses,
+  which catches content not exposed as child objects). Covers the focus, its
+  parent, and the foreground, since menus often portal far from the field. This
+  tells us definitively which layer Workday's options live in. Read-only: no keys,
+  no mouse; it only reads and logs.
 ## 0.9.35
 
 ### Poll for async prompts to settle (Workday open-then-read)
