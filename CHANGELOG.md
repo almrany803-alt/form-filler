@@ -2,6 +2,16 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.33
+
+### Read a combobox's real options via ARIA (aria-controls + aria-activedescendant)
+- The option reader now also reads aria-activedescendant, the option the widget
+  itself highlights, and falls back to it when the aria-controls listbox reads
+  empty (which is what a type-to-filter prompt like Workday's shows until you
+  type). This offers the widget's own highlighted option instead of a stray
+  document match (the cause of the "Saudi Arabia" leak on "How did you hear").
+- Added diagnostics (aria-controls target count, the highlighted option) so a live
+  log shows exactly what a given prompt exposes. Read-only: no keys, no mouse.
 ## 0.9.32
 
 ### Choose the vision model (so local Ollama models are actually usable)

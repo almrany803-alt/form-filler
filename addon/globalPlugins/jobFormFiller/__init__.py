@@ -2036,15 +2036,48 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 opts.extend(sub_o)
         return labels, opts
 
+    def _active_descendant(self, obj):
+        """Read the option a combobox currently highlights via aria-activedescendant.
+        Chrome exposes it as the container's accFocus, so a type-to-filter prompt
+        (Workday) reveals its highlighted match here even when the listbox reads as
+        empty. Returns (name, childObj) or ("", None). Read-only: it sends no key
+        and never touches the mouse, it only reads, and any failure returns empty so
+        callers fall back to today's behaviour."""
+        try:
+            iao = getattr(obj, "IAccessibleObject", None)
+            if iao is None:
+                return "", None
+            focused = iao.accFocus
+        except Exception:
+            return "", None
+        # CHILDID_SELF or a numeric child id we can't resolve here: nothing to read.
+        if focused is None or isinstance(focused, int):
+            return "", None
+        try:
+            import oleacc
+            from NVDAObjects.IAccessible import IAccessible as _IA
+            child_ia = focused.QueryInterface(oleacc.IAccessible)
+            child = _IA(IAccessibleObject=child_ia, IAccessibleChildID=0)
+            name = (child.name or "").strip()
+        except Exception:
+            return "", None
+        if name:
+            log.info("JFF nsel: aria-activedescendant -> %r" % name)
+        return name, child
+
     def _options_via_controls(self, obj):
         """Read a combobox's options straight from the listbox it points at with
         aria-controls, using NVDA's controllerFor relation. This finds a listbox
         rendered far from the combobox (a portal at the end of the body), which
-        walking the parent tree would miss. Returns (labels, opts) or ([], [])."""
+        walking the parent tree would miss. If that listbox reads empty, as a
+        type-to-filter prompt does until you type, fall back to the single option
+        the widget highlights via aria-activedescendant. Returns (labels, opts) or
+        ([], []). Read-only: no keys, no mouse."""
         try:
             targets = obj.controllerFor or []
         except Exception:
             targets = []
+        log.info("JFF nsel: aria-controls targets=%d" % len(targets))
         for target in targets:
             try:
                 labels, opts = self._read_option_children(target, "aria-controls")
@@ -2054,6 +2087,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     return labels, opts
             except Exception:
                 continue
+        # The controlled listbox was absent or empty (a type-to-filter prompt shows
+        # nothing until typed). Offer the highlighted option, which is the widget's
+        # own state, not a stray document match.
+        name, child = self._active_descendant(obj)
+        if name and child is not None:
+            return [name], [child]
         return [], []
 
     def _read_select_options(self, obj, arrow_open=False):
