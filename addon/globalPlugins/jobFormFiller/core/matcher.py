@@ -51,6 +51,9 @@ LEXICON = {
         "ar": ["البريد الالكتروني", "بريد الكتروني"],
         "zh": ["电子邮件", "邮箱", "电子邮箱"], "ja": ["メール", "電子メール", "メールアドレス"],
         "ko": ["이메일", "전자우편"], "ru": ["электронная почта", "имейл"],
+        "tr": ["e-posta", "eposta"], "id": ["surel"], "fa": ["ایمیل", "پست الکترونیک"], "ur": ["ای میل"],
+        "fi": ["sähköposti", "sähköpostiosoite"], "sv": ["e-post", "epost"], "hr": ["e-pošta"], "sr": ["имејл", "е-пошта"],
+        "et": ["meiliaadress"], "cy": ["e-bost", "ebost"], "br": ["postel"],
     },
     "phone": {
         "en": ["phone", "telephone", "telephone number", "phone number",
@@ -66,6 +69,9 @@ LEXICON = {
         "ar": ["الهاتف", "رقم الهاتف", "جوال"],
         "zh": ["电话", "手机", "电话号码", "手机号码"], "ja": ["電話", "電話番号", "携帯電話"],
         "ko": ["전화", "전화번호", "휴대폰", "휴대전화"], "ru": ["телефон", "номер телефона", "мобильный"],
+        "tr": ["telefon", "cep telefonu"], "id": ["telepon", "nomor telepon", "ponsel"], "fa": ["تلفن", "شماره تلفن", "موبایل"], "ur": ["فون", "موبائل"],
+        "fi": ["puhelin", "puhelinnumero"], "sv": ["telefon", "telefonnummer"], "hr": ["telefon", "mobitel"], "sr": ["телефон"],
+        "hu": ["telefon", "telefonszám"], "et": ["telefon", "telefoninumber"], "cy": ["ffôn", "rhif ffôn"], "br": ["pellgomz"],
     },
     "phone_country_code": {
         # A phone dialling-code field ("Country Phone Code", "+966"). Longer than
@@ -100,6 +106,9 @@ LEXICON = {
         "ar": ["الرمز البريدي"],
         "zh": ["邮编", "邮政编码"], "ja": ["郵便番号"],
         "ko": ["우편번호"], "ru": ["почтовый индекс", "индекс"],
+        "tr": ["posta kodu"], "id": ["kode pos"], "fa": ["کد پستی"], "ur": ["ڈاک کوڈ"],
+        "fi": ["postinumero"], "sv": ["postnummer"], "hr": ["poštanski broj"], "sr": ["поштански број"],
+        "cs": ["psč"], "sk": ["psč"], "hu": ["irányítószám"], "et": ["sihtnumber", "postiindeks"], "cy": ["cod post"],
     },
     "address_line1": {
         "en": ["address", "street", "address line 1", "street address",
@@ -110,6 +119,9 @@ LEXICON = {
         "nl": ["adres", "straat"], "ar": ["العنوان", "الشارع"],
         "zh": ["地址", "详细地址", "住址"], "ja": ["住所", "ご住所"],
         "ko": ["주소"], "ru": ["адрес"],
+        "tr": ["adres"], "id": ["alamat"], "fa": ["آدرس", "نشانی"], "ur": ["پتہ"],
+        "fi": ["osoite"], "sv": ["adress"], "hr": ["adresa"], "sr": ["адреса"],
+        "cs": ["adresa"], "sk": ["adresa"], "hu": ["cím"], "et": ["aadress"], "cy": ["cyfeiriad"], "br": ["chomlec'h"],
     },
     "address_line2": {
         # A second address line (apartment, suite, landmark). Longer than
@@ -163,6 +175,9 @@ LEXICON = {
         "nl": ["stad", "plaats", "woonplaats"], "ar": ["المدينة"],
         "zh": ["城市", "市"], "ja": ["市", "市区町村"],
         "ko": ["도시", "시"], "ru": ["город"],
+        "tr": ["şehir", "il"], "id": ["kota"], "fa": ["شهر"], "ur": ["شہر"],
+        "fi": ["kaupunki"], "sv": ["stad", "ort"], "hr": ["grad"], "sr": ["град"],
+        "cs": ["město"], "sk": ["mesto"], "hu": ["város"], "et": ["linn"], "cy": ["dinas", "tref"], "br": ["kêr"],
     },
     "country": {
         "en": ["country", "country of residence"], "es": ["pais"],
@@ -172,6 +187,9 @@ LEXICON = {
         "ar": ["الدولة", "البلد", "بلد الاقامة"],
         "zh": ["国家", "国"], "ja": ["国", "国名"],
         "ko": ["국가", "나라"], "ru": ["страна"],
+        "tr": ["ülke"], "id": ["negara"], "fa": ["کشور"], "ur": ["ملک"],
+        "fi": ["maa"], "sv": ["land"], "hr": ["država", "zemlja"], "sr": ["држава"],
+        "cs": ["země", "stát"], "sk": ["krajina", "štát"], "hu": ["ország"], "et": ["riik"], "cy": ["gwlad"], "br": ["bro"],
     },
     "nationality": {
         "en": ["nationality", "citizenship"], "es": ["nacionalidad"],
@@ -181,6 +199,9 @@ LEXICON = {
         "ar": ["الجنسية"],
         "zh": ["国籍"], "ja": ["国籍"],
         "ko": ["국적"], "ru": ["гражданство", "национальность"],
+        "tr": ["uyruk", "vatandaşlık"], "id": ["kewarganegaraan", "kebangsaan"], "fa": ["ملیت", "تابعیت"], "ur": ["قومیت", "شہریت"],
+        "fi": ["kansalaisuus"], "sv": ["nationalitet", "medborgarskap"], "hr": ["državljanstvo"], "sr": ["држављанство"],
+        "cs": ["národnost", "státní příslušnost"], "sk": ["národnosť", "štátna príslušnosť"], "hu": ["állampolgárság"], "et": ["kodakondsus"], "cy": ["cenedligrwydd"],
     },
     "date_of_birth": {
         "en": ["date of birth", "birth date", "birthday", "born", "dob"],
@@ -190,6 +211,9 @@ LEXICON = {
         "nl": ["geboortedatum"], "ar": ["تاريخ الميلاد", "تاريخ الميلاد"],
         "zh": ["出生日期", "生日"], "ja": ["生年月日"],
         "ko": ["생년월일"], "ru": ["дата рождения"],
+        "tr": ["doğum tarihi"], "id": ["tanggal lahir"], "fa": ["تاریخ تولد"], "ur": ["تاریخ پیدائش"],
+        "fi": ["syntymäaika"], "sv": ["födelsedatum"], "hr": ["datum rođenja"], "sr": ["датум рођења"],
+        "cs": ["datum narození"], "sk": ["dátum narodenia"], "hu": ["születési dátum", "születési idő"], "et": ["sünnikuupäev"], "cy": ["dyddiad geni"],
     },
     "work_authorisation": {
         "en": ["work authorisation", "work authorization", "right to work",
@@ -243,6 +267,9 @@ LEXICON = {
         "pl": ["imie"], "nl": ["voornaam"], "ar": ["الاسم الاول"],
         "zh": ["名"], "ja": ["名"],
         "ko": ["이름"], "ru": ["имя"],
+        "tr": ["ad", "isim", "adı"], "id": ["nama depan"], "fa": ["نام"], "ur": ["پہلا نام"],
+        "fi": ["etunimi"], "sv": ["förnamn"], "hr": ["ime"], "sr": ["име"],
+        "cs": ["jméno", "křestní jméno"], "sk": ["meno", "krstné meno"], "hu": ["keresztnév", "utónév"], "et": ["eesnimi"], "cy": ["enw cyntaf"], "br": ["anv-bihan"],
     },
     "family_name": {
         "en": ["last name", "surname", "family name", "last names"],
@@ -252,6 +279,9 @@ LEXICON = {
         "nl": ["achternaam"], "ar": ["اسم العائلة", "الكنية"],
         "zh": ["姓", "姓氏"], "ja": ["姓"],
         "ko": ["성", "성씨"], "ru": ["фамилия"],
+        "tr": ["soyad", "soyadı"], "id": ["nama belakang", "nama keluarga"], "fa": ["نام خانوادگی"], "ur": ["آخری نام", "خاندانی نام"],
+        "fi": ["sukunimi"], "sv": ["efternamn"], "hr": ["prezime"], "sr": ["презиме"],
+        "cs": ["příjmení"], "sk": ["priezvisko"], "hu": ["vezetéknév", "családnév"], "et": ["perekonnanimi", "perenimi"], "cy": ["cyfenw"], "br": ["anv-familh"],
     },
     "father_name": {
         # The father's-name slot (Arabic-name forms label the middle field this
@@ -274,6 +304,9 @@ LEXICON = {
         "nl": ["volledige naam", "naam"], "ar": ["الاسم الكامل"],
         "zh": ["姓名", "名字", "全名"], "ja": ["氏名", "名前", "お名前"],
         "ko": ["성명"], "ru": ["полное имя", "фио"],
+        "tr": ["ad soyad", "tam ad"], "id": ["nama lengkap"], "fa": ["نام و نام خانوادگی", "نام کامل"], "ur": ["پورا نام", "مکمل نام"],
+        "fi": ["koko nimi"], "sv": ["fullständigt namn"], "hr": ["ime i prezime"], "sr": ["име и презиме"],
+        "cs": ["celé jméno", "jméno a příjmení"], "sk": ["celé meno", "meno a priezvisko"], "hu": ["teljes név"], "et": ["täisnimi"], "cy": ["enw llawn"],
     },
 }
 

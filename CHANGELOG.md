@@ -2,6 +2,19 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.53
+
+### Language finish: field matcher and CV reader to 24+ languages
+- The field matcher now reads field labels in the full set the country data uses:
+  27 languages (English plus 26), adding Turkish, Indonesian, Persian, Urdu,
+  Czech, Hungarian, Finnish, Swedish, Croatian, Serbian, Slovak, Estonian, Welsh
+  and Breton to the earlier thirteen. Core fields (name parts, email, phone,
+  address, city, country, postcode, date of birth, nationality). The CV reader's
+  section headings (Education, Experience, Skills) learned the same languages,
+  and its name detection is now script-aware, so a Chinese or Japanese name (no
+  spaces) is picked up as well as Latin, Arabic and Cyrillic ones. The smaller
+  languages, Welsh and Breton especially, are a best-effort seed for native
+  speakers to refine, in keeping with the community-contributable lexicon.
 ## 0.9.52
 
 ### Phase 7 (part 4): seed sections from your CV on import

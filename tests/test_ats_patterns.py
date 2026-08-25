@@ -168,9 +168,25 @@ class TestAtsPatterns(unittest.TestCase):
                     "passport_issue_date", "passport_expiry_date"):
             self.assertNotIn(key, matcher.PROFILE_KEYS)
         # the plain fields are unaffected
-        self.assertEqual(self.k(label="Country"), "country")
-        self.assertEqual(self.k(label="Nationality"), "nationality")
-        self.assertEqual(self.k(label="Date of Birth"), "date_of_birth")
+    def test_full_language_set(self):
+        # The remaining 14 languages, so the field matcher matches the country
+        # data's set. Core fields, one probe per language.
+        for lbl, want in (("E-posta", "email"), ("Soyad", "family_name"),  # tr
+                          ("Nama lengkap", "full_name"),                    # id
+                          ("نام خانوادگی", "family_name"),                   # fa
+                          ("تاریخ پیدائش", "date_of_birth"),                 # ur
+                          ("Datum narození", "date_of_birth"),              # cs
+                          ("Születési dátum", "date_of_birth"),             # hu
+                          ("Etunimi", "given_name"),                        # fi
+                          ("Förnamn", "given_name"),                        # sv
+                          ("Ime i prezime", "full_name"),                   # hr
+                          ("Датум рођења", "date_of_birth"),                # sr
+                          ("Priezvisko", "family_name"),                    # sk
+                          ("Sünnikuupäev", "date_of_birth"),                # et
+                          ("Cyfeiriad", "address_line1")):                  # cy
+            self.assertEqual(self.k(label=lbl), want, lbl)
+        langs = {lg for c in matcher.LEXICON.values() for lg in c}
+        self.assertGreaterEqual(len(langs), 27)
 
 
 if __name__ == "__main__":

@@ -30,6 +30,9 @@ _HEADINGS = {
         "de": ["ausbildung", "bildung"],
         "es": ["educacion", "formacion"],
         "ar": ["التعليم", "المؤهلات"],
+        "tr": ["eğitim", "öğrenim"], "id": ["pendidikan"], "fa": ["تحصیلات"], "ur": ["تعلیم"],
+        "cs": ["vzdělání"], "sk": ["vzdelanie"], "hu": ["tanulmányok", "végzettség"], "fi": ["koulutus"],
+        "sv": ["utbildning"], "hr": ["obrazovanje"], "sr": ["образовање"], "et": ["haridus"], "cy": ["addysg"],
     },
     "experience": {
         "it": ["esperienza", "esperienza professionale", "esperienza lavorativa"],
@@ -41,6 +44,9 @@ _HEADINGS = {
         "de": ["berufserfahrung", "erfahrung"],
         "es": ["experiencia", "experiencia laboral"],
         "ar": ["الخبرة", "الخبرات"],
+        "tr": ["deneyim", "iş deneyimi", "tecrübe"], "id": ["pengalaman"], "fa": ["تجربه", "سابقه کار"], "ur": ["تجربہ"],
+        "cs": ["praxe", "zkušenosti"], "sk": ["prax", "skúsenosti"], "hu": ["tapasztalat"], "fi": ["kokemus", "työkokemus"],
+        "sv": ["erfarenhet", "arbetslivserfarenhet"], "hr": ["iskustvo", "radno iskustvo"], "sr": ["искуство"], "et": ["kogemus", "töökogemus"], "cy": ["profiad"],
     },
     "skills": {
         "it": ["competenze"],
@@ -52,6 +58,9 @@ _HEADINGS = {
         "de": ["kenntnisse", "faehigkeiten"],
         "es": ["habilidades", "competencias"],
         "ar": ["المهارات"],
+        "tr": ["beceriler", "yetenekler"], "id": ["keterampilan", "keahlian"], "fa": ["مهارت‌ها", "مهارتها"], "ur": ["مہارتیں"],
+        "cs": ["dovednosti"], "sk": ["zručnosti"], "hu": ["készségek"], "fi": ["taidot"],
+        "sv": ["färdigheter", "kompetenser"], "hr": ["vještine"], "sr": ["вештине"], "et": ["oskused"], "cy": ["sgiliau"],
     },
     "certifications": {
         "en": ["certifications", "certificates", "certification",
@@ -112,14 +121,24 @@ def _heading_key(line: str):
     return None
 
 
+def _is_cjk_char(ch) -> bool:
+    o = ord(ch)
+    return (0x3040 <= o <= 0x30FF or 0x3400 <= o <= 0x4DBF
+            or 0x4E00 <= o <= 0x9FFF or 0xF900 <= o <= 0xFAFF)
+
+
 def _looks_like_name(line: str) -> bool:
     line = line.strip()
     if not line or any(ch.isdigit() for ch in line) or "@" in line:
         return False
+    # Chinese and Japanese names have no spaces: a short run of Han/Kana
+    # characters at the top of a CV is a name (this is the first line only).
+    if 1 <= len(line) <= 6 and all(_is_cjk_char(ch) for ch in line):
+        return True
     words = line.split()
     if not (2 <= len(words) <= 4):
         return False
-    # each word begins with a letter (works for non-latin scripts too)
+    # each word begins with a letter (works for Latin, Arabic, Cyrillic scripts)
     return all(w[:1].isalpha() for w in words)
 
 
