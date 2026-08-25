@@ -2,6 +2,16 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.42
+
+### Phase 4 (part 2): whole-word matching (the anchoring change)
+- Field labels are now matched on whole-word boundaries instead of "appears
+  anywhere inside". A short concept word like "state" no longer matches inside
+  "real estate", and "name" no longer matches inside "username", so a whole
+  class of accidental wrong-matches is gone. The no-separator forms that ATS
+  put in field names ("firstname", "emailaddress") still match, via a
+  concatenated-token path. This is the structural groundwork for importing the
+  browser field dictionary. All existing matches were checked and unchanged.
 ## 0.9.41
 
 ### Phase 4 (part 1): stop dial-code and extension fields grabbing country / phone

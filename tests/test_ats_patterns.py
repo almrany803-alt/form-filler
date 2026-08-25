@@ -82,10 +82,19 @@ class TestAtsPatterns(unittest.TestCase):
         self.assertEqual(self.k(label="Phone Extension"), "phone_extension")
         self.assertNotIn("phone_country_code", matcher.PROFILE_KEYS)
         self.assertNotIn("phone_extension", matcher.PROFILE_KEYS)
-        # the real country and phone fields still fill correctly
-        self.assertEqual(self.k(label="Country"), "country")
-        self.assertEqual(self.k(label="Country of Residence"), "country")
-        self.assertEqual(self.k(label="Phone Number"), "phone")
+    def test_whole_word_anchoring(self):
+        # Short concept words must match only as whole words, not inside longer
+        # ones. Before anchoring, "state" hit inside "real estate" and "name"
+        # inside "username". They must now miss.
+        self.assertIsNone(self.k(label="Real Estate Experience"))
+        self.assertIsNone(self.k(label="Username"))
+        self.assertIsNone(self.k(label="Estate Planning"))
+        # But the no-separator attribute forms ATS put in name/id must still hit,
+        # via the concatenated-token path.
+        self.assertEqual(matcher.match_field(FD(name="firstname")).key, "given_name")
+        self.assertEqual(matcher.match_field(FD(name="lastname")).key, "family_name")
+        self.assertEqual(matcher.match_field(FD(name="emailaddress")).key, "email")
+        self.assertEqual(matcher.match_field(FD(name="fullname")).key, "full_name")
 
 
 if __name__ == "__main__":

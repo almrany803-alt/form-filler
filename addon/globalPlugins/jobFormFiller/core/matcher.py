@@ -207,12 +207,27 @@ def _lexicon_hit(text: str):
     t = _norm(text)
     if not t:
         return None
+    # Whole-word match, not substring: _norm has already reduced the text to
+    # single-space-separated tokens, so wrapping both sides in spaces means a
+    # phrase only matches on word boundaries. This stops short phrases matching
+    # inside longer words, e.g. "state" no longer hits inside "real estate",
+    # and "name" no longer hits inside "username". Longest phrase still wins,
+    # so specific labels beat generic ones.
+    padded = " " + t + " "
     best = None
     for key, langs in LEXICON.items():
         for lang, phrases in langs.items():
             for phrase in phrases:
                 p = _norm(phrase)
-                if p and p in t:
+                if not p:
+                    continue
+                # (a) phrase as consecutive whole words, or (b) the phrase with
+                # its spaces removed as a single whole token. (b) catches the
+                # no-separator attribute forms ATS use ("firstname", "emailaddress")
+                # without reopening substring matches: "username" still won't hit
+                # "name" because "name" is not a whole token of "username".
+                joined = p.replace(" ", "")
+                if (" " + p + " ") in padded or (" " + joined + " ") in padded:
                     if best is None or len(p) > best[2]:
                         best = (key, lang, len(p))
     return best
