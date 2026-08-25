@@ -2,6 +2,16 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.34
+
+### Stop the stray-option leak on unreadable prompts
+- When a field's options genuinely can't be read (as on Workday's "How did you
+  hear" prompt, which exposes no aria-controls and no aria-activedescendant), the
+  add-on no longer falls back to a blind document-wide search that grabbed an
+  unrelated value from elsewhere on the page (the "Saudi Arabia (+966)" leak from
+  the phone field). It now offers an honest type-a-value box so you can search the
+  field yourself, rather than presenting a wrong option. Correctly built widgets
+  are unaffected: their options are still read via aria-controls.
 ## 0.9.33
 
 ### Read a combobox's real options via ARIA (aria-controls + aria-activedescendant)

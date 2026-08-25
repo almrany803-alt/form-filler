@@ -2183,40 +2183,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 labels = []
             if labels:
                 return labels
-        # Bounded document-wide search: the option nodes exist somewhere now.
-        try:
-            root = None
-            ti = getattr(obj, "treeInterceptor", None)
-            if ti is not None:
-                root = getattr(ti, "rootNVDAObject", None)
-            if root is None:
-                root = api.getForegroundObject()
-            found = []
-            count = [0]
-
-            def _walk(n, d):
-                if d > 12 or count[0] > 2500 or len(found) > 300:
-                    return
-                try:
-                    kids = list(n.children or [])
-                except Exception:
-                    kids = []
-                for c in kids:
-                    count[0] += 1
-                    try:
-                        if c.role == controlTypes.Role.LISTITEM and c.name:
-                            found.append(c.name)
-                    except Exception:
-                        pass
-                    _walk(c, d + 1)
-            _walk(root, 0)
-            if found:
-                log.info("JFF review: read %d option(s) via document search"
-                         % len(found))
-            return found
-        except Exception:
-            log.error("JFF review: document menu search failed", exc_info=True)
-            return []
+        # No reliable options found. We deliberately do NOT walk the whole
+        # document for stray list items: that grabbed unrelated values from
+        # elsewhere on the page (a different field's committed value), and offered
+        # them as options here, which is worse than offering nothing. Correctly
+        # built widgets are already read above via aria-controls. Returning empty
+        # lets the caller be honest ("type to search this field") rather than
+        # invent an option from a blind, leak-prone guess.
+        log.info("JFF review: no options readable for this field "
+                 "(no aria-controls, no readable menu); not guessing")
+        return []
 
     def _fill_native_select(self, obj, value, concept):
         """Open a native <select>, read its options from the popup, choose the
