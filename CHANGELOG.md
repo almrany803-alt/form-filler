@@ -2,6 +2,16 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.35
+
+### Poll for async prompts to settle (Workday open-then-read)
+- When a custom combobox is opened to read its options, the add-on now polls a few
+  times as the list renders, instead of reading once and giving up. Workday's
+  prompt opens an empty shell first and fills its options a moment later (it takes
+  a beat to settle on expanded), so a single read missed them. It now opens with
+  Down / Alt+Down, waits for the options to appear, then reads them. It never
+  sends Enter to open (that would commit a value) and never touches the mouse, so
+  it cannot select anything; it only reads, then Escape closes the list unchanged.
 ## 0.9.34
 
 ### Stop the stray-option leak on unreadable prompts

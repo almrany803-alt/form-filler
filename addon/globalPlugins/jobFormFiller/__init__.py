@@ -2144,13 +2144,22 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         for opener in openers:
             try:
                 KeyboardInputGesture.fromName(opener).send()
-                time.sleep(0.4)
             except Exception:
                 continue
-            labels = self._read_open_menu(obj)
+            # Async prompts (Workday) open an empty shell first and render their
+            # options a moment later, taking a beat to settle on expanded, so poll
+            # a few times before giving up instead of reading once. We only RE-READ
+            # here, never re-press: alt+downArrow and downArrow open the list, and
+            # if it is already open they only move the highlight, never commit.
+            # (Enter would commit a value, so we never send it to open.)
+            for _ in range(4):
+                time.sleep(0.3)
+                labels = self._read_open_menu(obj)
+                if labels:
+                    break
             if labels:
-                log.info("JFF review: %s opened the menu, read %d option(s)"
-                         % (opener, len(labels)))
+                log.info("JFF review: %s opened the menu, read %d option(s) "
+                         "(polled for async render)" % (opener, len(labels)))
                 break
         try:
             KeyboardInputGesture.fromName("escape").send()
@@ -2163,7 +2172,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             except Exception:
                 pass
         if not labels:
-            log.info("JFF review: opened select, read 0 option(s)")
+            log.info("JFF review: opened select, polled, read 0 option(s)")
         return labels
 
     def _read_open_menu(self, obj):
