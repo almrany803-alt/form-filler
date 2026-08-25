@@ -2,6 +2,20 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.56
+
+### Fix: the profile now always opens as the sections list
+- The real cause of being trapped in the first name / last name form: Edit
+  profile and New profile opened that form on its own, with no way to reach the
+  other sections. They now open the sections list (Personal information,
+  Education, Experience, and the rest), so every section is one step away and
+  you are never stuck. Import from CV also lands on the list.
+
+### Import from CV button on the sections list
+- The list has an Import from CV button that auto-fills the current profile:
+  empty personal fields, plus the Experience, Education and Skills entries it
+  finds, all there to review. So you can import right after New profile without
+  going back to the menu.
 ## 0.9.55
 
 ### Section date buttons say which date they are

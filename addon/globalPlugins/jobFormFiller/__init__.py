@@ -271,9 +271,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if self._store is None:
             ui.message(_("Your details cannot be stored on this system."))
             return
-        saved = dialogs.edit_details(self._store)
-        if saved is not None:
-            self._profile = self._store.get_active() or {}
+        # Open the sections list (Personal information, Education, ...), not the
+        # personal form on its own, so every section is reachable from one place.
+        dialogs.manage_sections(self._store)
+        self._profile = self._store.get_active() or {}
 
     # --- add-on menu: press NVDA+J for a navigable menu ----------------------
     # A real native popup menu: arrow to an item and press Enter, or press its
@@ -549,13 +550,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._profile = self._store.get_active() or {}
         log.info("JFF import: created profile %r with %d field(s)"
                  % (name, len(fields)))
-        # 5. Open the dialog to review and adjust; it is already saved.
-        dialogs.edit_details(self._store)
-        # If the CV seeded any sections, take you straight to review them too.
+        # 5. Open the sections list to review everything (Personal information is
+        #    the first item), including any entries seeded from the CV.
         if seeded_entries:
             ui.message(_("Added {n} entries across your sections from the CV. "
                          "Review them here.").format(n=seeded_entries))
-            dialogs.manage_sections(self._store)
+        dialogs.manage_sections(self._store)
         self._profile = self._store.get_active() or {}
 
     # --- review list ---------------------------------------------------------

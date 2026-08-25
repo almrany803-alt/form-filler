@@ -13,7 +13,7 @@ import gui
 from gui import guiHelper
 import ui
 
-from .core import announce, countries, profile
+from .core import announce, countries, cvparse, profile
 
 try:
     from logHandler import log
@@ -662,7 +662,7 @@ def review_fields(records, profile):
 #   level 3  EntryFormDialog - one entry's handful of fields
 # ---------------------------------------------------------------------------
 
-_PERSONAL = _("Personal details")
+_PERSONAL = _("Personal information")
 
 _ENTRY_LABELS = {
     "job_title": _("Job title"), "employer": _("Employer"),
@@ -833,6 +833,48 @@ class EntriesDialog(wx.Dialog):
         self.EndModal(wx.ID_CLOSE)
 
 
+def import_cv_into_active(parent, store):
+    """Pick a CV and auto-fill the ACTIVE profile from it: fill any empty
+    personal fields (existing values are kept), and append the Experience,
+    Education, Skills and other entries it finds. Returns the number of section
+    entries added, or -1 if cancelled or nothing could be read. The user reviews
+    everything in the list afterwards; nothing is submitted anywhere."""
+    if store is None or store.active_name() is None:
+        return -1
+    with wx.FileDialog(
+            parent, _("Choose your CV"),
+            wildcard=_("CV files (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt"),
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fd:
+        if fd.ShowModal() != wx.ID_OK:
+            return -1
+        path = fd.GetPath()
+    try:
+        text = cvparse.extract_text(path)
+        fields = cvparse.cv_to_fields(cvparse.parse_cv_text(text))
+        if not fields.get("country"):
+            c = countries.detect_country(text, fields.get("phone", ""))
+            if c:
+                fields["country"] = c
+        sections = cvparse.parse_cv_sections(text)
+    except Exception:
+        log.error("JFF: in-dialog CV import failed", exc_info=True)
+        return -1
+    active = store.get_active() or {}
+    for k, v in fields.items():
+        if not str(active.get(k, "")).strip():
+            store.set_field(k, v)
+    seeded = 0
+    for sname, rows in sections.items():
+        for row in rows:
+            store.add_row(sname, row)
+            seeded += 1
+    try:
+        store.save()
+    except Exception:
+        log.error("JFF: save after in-dialog import failed", exc_info=True)
+    return seeded
+
+
 class SectionsDialog(wx.Dialog):
     """Level 1: Personal details plus every section. Open one, or add, rename
     and remove sections. Personal details opens the details form; a section
@@ -851,6 +893,7 @@ class SectionsDialog(wx.Dialog):
 
         row = wx.BoxSizer(wx.HORIZONTAL)
         for label, handler in ((_("&Open"), self._onOpen),
+                               (_("&Import from CV..."), self._onImport),
                                (_("&Add section"), self._onAdd),
                                (_("Re&name"), self._onRename),
                                (_("&Remove"), self._onRemove)):
@@ -903,6 +946,14 @@ class SectionsDialog(wx.Dialog):
         # Put focus back on the list so every section is reachable again, not
         # only the first time. Without this you are stranded on the buttons
         # after leaving a section, with no way back to the list.
+        self._list.SetFocus()
+
+    def _onImport(self, evt):
+        n = import_cv_into_active(self, self._store)
+        if n >= 0:
+            self._refresh()
+            ui.message(_("Imported. Added {n} entries.").format(n=n) if n
+                       else _("Imported your details from the CV."))
         self._list.SetFocus()
 
     def _onAdd(self, evt):
