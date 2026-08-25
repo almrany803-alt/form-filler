@@ -261,3 +261,26 @@ still enumerates the fields, opens the closed dropdown to read its real options,
 and the three editors still write back.
 [todo] Drive the date (three dropdowns) and multi-check editors by keyboard.
 [todo] Backtracker: fill, go back, change an answer through the review editor.
+
+## Feature: sections (NVDA+J, My sections) - Experience, Education, Skills, and any you add
+
+The profile's repeating sections, managed by a three-level drill-down (sections
+list, then entries, then one entry's fields), and seeded from a CV on import.
+Judged by speech: what NVDA reads back, not just the store.
+
+- [done] Landmark (import journey): a first-time user with NO profile imports a
+  real .docx CV from the menu (Import from CV, file picker, name, review), lands
+  in the sections manager, opens Experience, and NVDA reads the seeded entries
+  back. NVDA spoke "Software Engineer, Acme Corporation, ..." and "Junior
+  Developer, Globex, ..." (`import-sections-journey.yml`).
+- [done] Guidebook (add): open My sections, Add section, name it "Awards"; NVDA
+  confirms "Added section Awards" (`section-crud.yml`).
+- [done] Rained-Out (delete): open Experience (2 entries), Remove one, confirm;
+  NVDA says "Removed. 1 entries." and the store drops to one Experience entry
+  (`section-crud.yml`).
+- [done] Read-back: seeded entries are spoken as one-line summaries when you
+  arrow the entries list (`section-speech.yml`).
+- [todo] Edit an entry's field and hear the updated summary.
+- [todo] Obsessive-Compulsive: add and remove several sections rapidly.
+- [todo] Intellectual: a user-invented section (Publications) behaves exactly
+  like the built-ins.
