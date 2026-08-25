@@ -283,6 +283,14 @@ Judged by speech: what NVDA reads back, not just the store.
 - [done] Edit an entry's field and hear the updated summary: changed a Job
   title, NVDA said "Entry updated." and read back "Senior Tech Volunteer, ..."
   (`section-edit.yml`).
-- [todo] Obsessive-Compulsive: add and remove several sections rapidly.
+- [done] Obsessive-Compulsive / re-entry (THE bug): open a section, close it,
+  then reach ANOTHER section, and another, and re-open the first. Focus returns
+  to the list every time. NVDA reached Education, Experience, Skills, then
+  Education again, and added then removed a section, all in one session
+  (`section-journey.yml`). This is the regression test for being trapped after
+  the first section.
+- [done] Date picker: a section entry's Start and End dates are a month/year
+  picker button (Present, No date, or Month and Year), self-describing so NVDA
+  says "Start date: Mar 2024", not just the value (`section-journey.yml`).
 - [todo] Intellectual: a user-invented section (Publications) behaves exactly
   like the built-ins.
