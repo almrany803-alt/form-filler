@@ -327,6 +327,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         menu.AppendSeparator()
 
         mImport = menu.Append(wx.ID_ANY, _("&Import from CV..."))
+        # Sections (Experience, Education, and any you add) belong to a profile,
+        # so this appears once you have one.
+        mSections = menu.Append(wx.ID_ANY, _("My &sections...")) \
+            if has_profile else None
         # The manual on-ramp only appears when there is no profile yet; once you
         # have one, editing lives in the Profile submenu (Edit profile).
         mEnter = None
@@ -343,6 +347,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("editp"), mEditP)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("del"), mDel)
         frame.Bind(wx.EVT_MENU, lambda e: self._setMenuAction("import"), mImport)
+        if mSections is not None:
+            frame.Bind(wx.EVT_MENU,
+                       lambda e: self._setMenuAction("sections"), mSections)
         if mEnter is not None:
             frame.Bind(wx.EVT_MENU,
                        lambda e: self._setMenuAction("new"), mEnter)
@@ -385,9 +392,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             "new": self._onNewProfile,
             "del": self._onDeleteProfile,
             "switch": lambda: self._onSwitchProfile(act[1]),
+            "sections": self._onSections,
         }.get(kind)
         if after:
             wx.CallAfter(after)
+
+    def _onSections(self):
+        dialogs.manage_sections(self._store)
 
     def _setMenuAction(self, *action):
         self._menuAction = action

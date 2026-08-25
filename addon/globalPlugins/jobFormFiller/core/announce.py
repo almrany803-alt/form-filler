@@ -16,6 +16,37 @@ def human(k: str) -> str:
     return _HUMAN.get(k, k)
 
 
+def entry_summary(row) -> str:
+    """A one-line summary of a section entry for the entries list, for example
+    'Technology Support Volunteer, Sight Support West of England, Mar 2024 to
+    Jun 2026'. Rows are free-form, so this favours the common fields (a title,
+    then an organisation, then dates) and falls back to whatever values the row
+    holds, so a user-invented section still reads sensibly."""
+    if not row:
+        return "(empty entry)"
+    parts = []
+    for k in ("job_title", "qualification", "skill", "language", "name",
+              "title"):
+        if row.get(k):
+            parts.append(str(row[k]).strip())
+            break
+    for k in ("employer", "institution", "issuer", "field_of_study",
+              "proficiency"):
+        if row.get(k):
+            parts.append(str(row[k]).strip())
+            break
+    start = str(row.get("start_date") or "").strip()
+    end = str(row.get("end_date") or "").strip()
+    if start or end:
+        parts.append("{a} to {b}".format(a=start or "?", b=end or "present"))
+    elif row.get("date"):
+        parts.append(str(row["date"]).strip())
+    if parts:
+        return ", ".join(p for p in parts if p)
+    vals = [str(v).strip() for v in row.values() if str(v).strip()]
+    return ", ".join(vals[:3]) if vals else "(empty entry)"
+
+
 def build_summary(filled, guessed, leftovers, cap=6):
     """filled/guessed: profile keys. leftovers: human labels we could not fill.
     Non-fillable controls (buttons, toggles) are filtered out before this, so

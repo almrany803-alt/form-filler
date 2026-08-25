@@ -74,3 +74,43 @@ class TestSections(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestSectionHelpers(unittest.TestCase):
+    def test_fields_for_section(self):
+        self.assertEqual(profile.fields_for_section("Skills"), ["skill"])
+        self.assertEqual(
+            profile.fields_for_section("Experience"),
+            ["job_title", "employer", "start_date", "end_date", "description"])
+        # unknown empty section -> generic default so it is still fillable
+        self.assertEqual(profile.fields_for_section("Publications"),
+                         ["title", "detail", "start_date", "end_date"])
+        # unknown section with a row -> that row's fields
+        self.assertEqual(
+            profile.fields_for_section("Volunteering", {"role": "M", "org": "L"}),
+            ["role", "org"])
+        # known section plus a custom field on the row -> template then the extra
+        self.assertEqual(
+            profile.fields_for_section("Experience", {"job_title": "X",
+                                                      "reference": "Y"}),
+            ["job_title", "employer", "start_date", "end_date", "description",
+             "reference"])
+
+
+class TestEntrySummary(unittest.TestCase):
+    def test_summary_lines(self):
+        from core import announce
+        self.assertEqual(
+            announce.entry_summary({"job_title": "Peer Mentor",
+                                    "employer": "Look UK",
+                                    "start_date": "Sep 2023", "end_date": ""}),
+            "Peer Mentor, Look UK, Sep 2023 to present")
+        self.assertEqual(
+            announce.entry_summary({"skill": "Accessible Learning Design"}),
+            "Accessible Learning Design")
+        self.assertEqual(
+            announce.entry_summary({"language": "Arabic",
+                                    "proficiency": "Native"}),
+            "Arabic, Native")
+        self.assertEqual(announce.entry_summary({}), "(empty entry)")
+        self.assertEqual(announce.entry_summary({"custom": "v"}), "v")

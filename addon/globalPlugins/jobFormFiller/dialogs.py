@@ -12,7 +12,7 @@ import gui
 from gui import guiHelper
 import ui
 
-from .core import announce, countries
+from .core import announce, countries, profile
 
 try:
     from logHandler import log
@@ -555,3 +555,285 @@ def review_fields(records, profile):
     finally:
         gui.mainFrame.postPopup()
     return changes, goto
+
+
+# ---------------------------------------------------------------------------
+# Phase 7: sections (Experience, Education, Skills, or any you add). A shallow
+# drill-down so a screen-reader user is always in a short list or a small form:
+#   level 1  SectionsDialog  - Personal details + your sections
+#   level 2  EntriesDialog   - the entries (rows) in one section
+#   level 3  EntryFormDialog - one entry's handful of fields
+# ---------------------------------------------------------------------------
+
+_PERSONAL = _("Personal details")
+
+_ENTRY_LABELS = {
+    "job_title": _("Job title"), "employer": _("Employer"),
+    "institution": _("Institution"), "qualification": _("Qualification"),
+    "field_of_study": _("Field of study"), "start_date": _("Start date"),
+    "end_date": _("End date"), "description": _("Description"),
+    "skill": _("Skill"), "name": _("Name"), "issuer": _("Issuer"),
+    "date": _("Date"), "language": _("Language"),
+    "proficiency": _("Proficiency"), "title": _("Title"), "detail": _("Detail"),
+}
+
+
+def _entry_label(field):
+    return _ENTRY_LABELS.get(field, field.replace("_", " ").capitalize())
+
+
+def _fields_for(section, row):
+    return profile.fields_for_section(section, row or {})
+
+
+class EntryFormDialog(wx.Dialog):
+    """Level 3: one entry's fields. Dates are free text, so 'present', a year
+    alone, or 'Sep 2023' all work. Returns the row via values() on OK."""
+
+    def __init__(self, parent, section, row):
+        super().__init__(
+            parent, title=_("Entry in {section}").format(section=section))
+        self._fields = _fields_for(section, row or {})
+        self._ctrls = {}
+        main = wx.BoxSizer(wx.VERTICAL)
+        helper = guiHelper.BoxSizerHelper(self, sizer=main)
+        for f in self._fields:
+            style = wx.TE_MULTILINE if f == "description" else 0
+            ctrl = helper.addLabeledControl(
+                _entry_label(f) + ":", wx.TextCtrl, style=style)
+            ctrl.SetValue(str((row or {}).get(f, "")))
+            self._ctrls[f] = ctrl
+        main.Add(self.CreateButtonSizer(wx.OK | wx.CANCEL),
+                 flag=wx.EXPAND | wx.ALL, border=8)
+        self.SetSizerAndFit(main)
+        if self._fields:
+            self._ctrls[self._fields[0]].SetFocus()
+
+    def values(self):
+        """The row the user entered: field -> value, with empties dropped."""
+        out = {}
+        for f, ctrl in self._ctrls.items():
+            v = ctrl.GetValue().strip()
+            if v:
+                out[f] = v
+        return out
+
+
+class EntriesDialog(wx.Dialog):
+    """Level 2: the entries in one section, one summary line each. Add, edit and
+    remove rows."""
+
+    def __init__(self, parent, store, section):
+        super().__init__(
+            parent, title=_("Job Form Filler: {s}").format(s=section))
+        self._store = store
+        self._section = section
+        main = wx.BoxSizer(wx.VERTICAL)
+        helper = guiHelper.BoxSizerHelper(self, sizer=main)
+        self._list = helper.addLabeledControl(
+            _("&Entries:"), wx.ListBox, choices=self._lines())
+        if self._rows():
+            self._list.SetSelection(0)
+        self._list.Bind(wx.EVT_LISTBOX_DCLICK, self._onEdit)
+
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        for label, handler in ((_("&Add entry"), self._onAdd),
+                               (_("&Edit"), self._onEdit),
+                               (_("&Remove"), self._onRemove)):
+            b = wx.Button(self, label=label)
+            b.Bind(wx.EVT_BUTTON, handler)
+            row.Add(b, flag=wx.RIGHT, border=8)
+        main.Add(row, flag=wx.ALL, border=8)
+        main.Add(self.CreateButtonSizer(wx.CLOSE),
+                 flag=wx.EXPAND | wx.ALL, border=8)
+        self.Bind(wx.EVT_BUTTON, self._onClose, id=wx.ID_CLOSE)
+        self.SetSizerAndFit(main)
+        self._list.SetFocus()
+
+    def _rows(self):
+        return self._store.section_rows(self._section)
+
+    def _lines(self):
+        rows = self._rows()
+        return [announce.entry_summary(r) for r in rows] or [_("(no entries yet)")]
+
+    def _refresh(self, sel=0):
+        rows = self._rows()
+        self._list.Set(self._lines())
+        if rows:
+            self._list.SetSelection(min(sel, len(rows) - 1))
+
+    def _sel(self):
+        i = self._list.GetSelection()
+        return i if (i != wx.NOT_FOUND and self._rows()) else None
+
+    def _onAdd(self, evt):
+        with EntryFormDialog(self, self._section, {}) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            row = dlg.values()
+        if not row:
+            return
+        self._store.add_row(self._section, row)
+        self._refresh(len(self._rows()) - 1)
+        ui.message(_("Added. {n} entries.").format(n=len(self._rows())))
+
+    def _onEdit(self, evt):
+        i = self._sel()
+        if i is None:
+            return
+        with EntryFormDialog(self, self._section, self._rows()[i]) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            row = dlg.values()
+        self._store.update_row(self._section, i, row)
+        self._refresh(i)
+        ui.message(_("Entry updated."))
+
+    def _onRemove(self, evt):
+        i = self._sel()
+        if i is None:
+            return
+        summary = announce.entry_summary(self._rows()[i])
+        with wx.MessageDialog(
+                self, _("Remove this entry?\n{s}").format(s=summary),
+                _("Remove entry"), wx.YES_NO | wx.ICON_WARNING) as dlg:
+            if dlg.ShowModal() != wx.ID_YES:
+                return
+        self._store.remove_row(self._section, i)
+        self._refresh(max(0, i - 1))
+        ui.message(_("Removed. {n} entries.").format(n=len(self._rows())))
+
+    def _onClose(self, evt):
+        self.EndModal(wx.ID_CLOSE)
+
+
+class SectionsDialog(wx.Dialog):
+    """Level 1: Personal details plus every section. Open one, or add, rename
+    and remove sections. Personal details opens the details form; a section
+    opens its entries. Personal details cannot be renamed or removed."""
+
+    def __init__(self, parent, store):
+        super().__init__(
+            parent, title=_("Job Form Filler: My details and sections"))
+        self._store = store
+        main = wx.BoxSizer(wx.VERTICAL)
+        helper = guiHelper.BoxSizerHelper(self, sizer=main)
+        self._list = helper.addLabeledControl(
+            _("&Sections:"), wx.ListBox, choices=self._items())
+        self._list.SetSelection(0)
+        self._list.Bind(wx.EVT_LISTBOX_DCLICK, self._onOpen)
+
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        for label, handler in ((_("&Open"), self._onOpen),
+                               (_("&Add section"), self._onAdd),
+                               (_("Re&name"), self._onRename),
+                               (_("&Remove"), self._onRemove)):
+            b = wx.Button(self, label=label)
+            b.Bind(wx.EVT_BUTTON, handler)
+            row.Add(b, flag=wx.RIGHT, border=8)
+        main.Add(row, flag=wx.ALL, border=8)
+        main.Add(self.CreateButtonSizer(wx.CLOSE),
+                 flag=wx.EXPAND | wx.ALL, border=8)
+        self.Bind(wx.EVT_BUTTON, self._onClose, id=wx.ID_CLOSE)
+        self.SetSizerAndFit(main)
+        self._list.SetFocus()
+
+    def _items(self):
+        return [_PERSONAL] + self._store.section_names()
+
+    def _refresh(self, sel=0):
+        self._list.Set(self._items())
+        self._list.SetSelection(min(sel, self._list.GetCount() - 1))
+
+    def _selected_section(self):
+        """The selected section name, or None for Personal details / no
+        selection (so the caller blocks rename and remove on Personal)."""
+        i = self._list.GetSelection()
+        if i == wx.NOT_FOUND or i == 0:
+            return None
+        names = self._store.section_names()
+        return names[i - 1] if (i - 1) < len(names) else None
+
+    def _onOpen(self, evt):
+        i = self._list.GetSelection()
+        if i == 0:
+            dlg = DetailsDialog(self, self._store)
+            if dlg.ShowModal() == wx.ID_OK:
+                dlg.commit()
+                try:
+                    self._store.save()
+                    ui.message(_("Details saved."))
+                except Exception:
+                    log.error("JFF: could not save details", exc_info=True)
+            dlg.Destroy()
+            return
+        section = self._selected_section()
+        if section is None:
+            return
+        with EntriesDialog(self, self._store, section) as dlg:
+            dlg.ShowModal()
+
+    def _onAdd(self, evt):
+        with wx.TextEntryDialog(
+                self, _("Name for the new section:"), _("Add section")) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            name = dlg.GetValue().strip()
+        if not name or name == _PERSONAL or name in self._store.section_names():
+            return
+        self._store.add_section(name)
+        self._refresh(self._list.GetCount())   # select the new one
+        ui.message(_("Added section {name}.").format(name=name))
+
+    def _onRename(self, evt):
+        section = self._selected_section()
+        if section is None:
+            ui.message(_("Pick a section to rename. "
+                         "Personal details cannot be renamed."))
+            return
+        with wx.TextEntryDialog(
+                self, _("New name for {name}:").format(name=section),
+                _("Rename section"), value=section) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            new = dlg.GetValue().strip()
+        if not new or new == section or new in self._store.section_names():
+            return
+        self._store.rename_section(section, new)
+        self._refresh(self._list.GetSelection())
+        ui.message(_("Renamed to {name}.").format(name=new))
+
+    def _onRemove(self, evt):
+        section = self._selected_section()
+        if section is None:
+            ui.message(_("Pick a section to remove. "
+                         "Personal details cannot be removed."))
+            return
+        with wx.MessageDialog(
+                self,
+                _("Remove the section {name} and all its entries?").format(
+                    name=section),
+                _("Remove section"), wx.YES_NO | wx.ICON_WARNING) as dlg:
+            if dlg.ShowModal() != wx.ID_YES:
+                return
+        self._store.remove_section(section)
+        self._refresh(0)
+        ui.message(_("Removed section {name}.").format(name=section))
+
+    def _onClose(self, evt):
+        self.EndModal(wx.ID_CLOSE)
+
+
+def manage_sections(store):
+    """Open the sections manager (level 1). Saves on close. Main thread only."""
+    gui.mainFrame.prePopup()
+    try:
+        with SectionsDialog(gui.mainFrame, store) as dlg:
+            dlg.ShowModal()
+        try:
+            store.save()
+        except Exception:
+            log.error("JFF: could not save sections", exc_info=True)
+    finally:
+        gui.mainFrame.postPopup()

@@ -2,6 +2,22 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.51
+
+### Phase 7 (part 2): the sections UI (drill-down)
+- Added the three-level sections manager, reachable from the NVDA+J menu as "My
+  sections...". Level 1 lists Personal details plus your sections, with Open,
+  Add section, Rename and Remove (Personal details cannot be renamed or
+  removed). Level 2 lists the entries in a section, one summary line each
+  ("Peer Mentor, Look UK, Sep 2023 to present"), with Add entry, Edit and
+  Remove. Level 3 is a small form for one entry's fields; dates are free text so
+  "present", a year alone, or "Sep 2023" all work. Every level is a short list
+  or a small form, so a screen-reader user is never facing everything at once.
+  A user-invented section (Publications, Volunteering) behaves exactly like the
+  built-in ones. The entry summary and the field-selection logic are pure and
+  unit-tested; the dialogs' live speech and keyboard feel are covered by the
+  NVDA live tests. Still to come in Phase 7: filling repeating rows onto real
+  forms, then the full live test pass, then docs.
 ## 0.9.50
 
 ### Phase 7 (part 1): the section data model

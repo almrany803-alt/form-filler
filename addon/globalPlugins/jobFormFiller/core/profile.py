@@ -24,6 +24,20 @@ SECTION_TEMPLATES = {
 }
 
 
+def fields_for_section(section, row=None):
+    """Which fields an entry in this section should show: the template for a
+    known section, plus any extra fields the row already has, and a small
+    generic set so a brand-new user-invented section is still fillable. Pure, so
+    it can be tested without the dialog."""
+    fields = list(SECTION_TEMPLATES.get(section, []))
+    for k in (row or {}):
+        if k not in fields:
+            fields.append(k)
+    if not fields:
+        fields = ["title", "detail", "start_date", "end_date"]
+    return fields
+
+
 class Crypto:
     """Interface. encrypt/decrypt operate on bytes and must round-trip."""
     def encrypt(self, data: bytes) -> bytes: raise NotImplementedError
