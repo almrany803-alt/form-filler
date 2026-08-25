@@ -24,7 +24,10 @@ _AUTOCOMPLETE = {
     "family-name": "family_name",
     "name": "full_name",
     "address-line1": "address_line1", "street-address": "address_line1",
+    "address-line2": "address_line2", "address-line3": "address_line3",
     "address-level2": "city",
+    "address-level1": "address_level1",
+    "honorific-prefix": "name_prefix", "honorific-suffix": "name_suffix",
     "postal-code": "postcode",
     "country": "country", "country-name": "country",
     "url": "linkedin",
@@ -75,11 +78,57 @@ LEXICON = {
         "ar": ["الرمز البريدي"],
     },
     "address_line1": {
-        "en": ["address", "street", "address line 1"],
+        "en": ["address", "street", "address line 1", "street address",
+               "mailing address", "residential address"],
         "es": ["direccion", "calle"], "fr": ["adresse", "rue"],
         "de": ["adresse", "strasse"], "it": ["indirizzo", "via"],
         "pt": ["endereco", "morada", "rua"], "pl": ["adres", "ulica"],
         "nl": ["adres", "straat"], "ar": ["العنوان", "الشارع"],
+    },
+    "address_line2": {
+        # A second address line (apartment, suite, landmark). Longer than
+        # "address", so it wins over line 1; not a stored value, so it falls to
+        # "needs you" instead of duplicating line 1. Bare "unit" is deliberately
+        # left out so it never grabs "Business Unit".
+        "en": ["address line 2", "address line two", "apartment", "apt",
+               "suite", "flat", "unit number", "landmark"],
+        "es": ["complemento", "interior"], "it": ["interno"],
+        "pt": ["complemento"], "nl": ["toevoeging"],
+    },
+    "address_line3": {
+        "en": ["address line 3", "address line three"],
+    },
+    "address_housenumber": {
+        # "House number" / "Building number". Longer than "street", so
+        # "Street Number" beats the line-1 "street"; no stored value, needs you.
+        "en": ["house number", "building number", "street number",
+               "house no", "building no"],
+        "de": ["hausnummer"], "nl": ["huisnummer"], "es": ["numero exterior"],
+    },
+    "address_level1": {
+        # State / province / region (address-level1). Multilingual for global
+        # forms; no stored value yet, so needs you until a profile holds it.
+        "en": ["state", "province", "region", "county", "state province"],
+        "es": ["provincia", "estado"], "de": ["bundesland"],
+        "it": ["provincia", "regione"], "pt": ["estado"],
+        "pl": ["wojewodztwo"], "nl": ["provincie"],
+        "ar": ["المنطقة", "المحافظة"],
+    },
+    "address_level3": {
+        # District / neighbourhood (address-level3), common in Gulf and Latin
+        # American addresses.
+        "en": ["district", "neighbourhood", "neighborhood", "suburb"],
+        "es": ["barrio", "colonia"], "pt": ["bairro"], "ar": ["الحي"],
+    },
+    "name_prefix": {
+        # Honorific / salutation (Mr, Mrs, Dr). Bare "title" is left out so a
+        # "Job Title" field is never swallowed here. No stored value, needs you.
+        "en": ["salutation", "honorific", "name prefix", "courtesy title"],
+        "es": ["tratamiento"], "fr": ["civilite"], "de": ["anrede"],
+        "nl": ["aanhef"],
+    },
+    "name_suffix": {
+        "en": ["name suffix", "suffix"],
     },
     "city": {
         "en": ["city", "town"], "es": ["ciudad", "poblacion"],
@@ -121,13 +170,14 @@ LEXICON = {
         "nl": ["werkvergunning", "arbeidsvergunning"],
     },
     "given_name": {
-        "en": ["first name", "given name", "forename"],
+        "en": ["first name", "given name", "given names", "forename",
+               "christian name"],
         "es": ["nombre"], "fr": ["prenom"], "de": ["vorname"],
         "it": ["nome"], "pt": ["primeiro nome", "nome proprio"],
         "pl": ["imie"], "nl": ["voornaam"], "ar": ["الاسم الاول"],
     },
     "family_name": {
-        "en": ["last name", "surname", "family name"],
+        "en": ["last name", "surname", "family name", "last names"],
         "es": ["apellido", "apellidos"], "fr": ["nom de famille", "nom"],
         "de": ["nachname", "familienname"], "it": ["cognome"],
         "pt": ["apelido", "sobrenome"], "pl": ["nazwisko"],

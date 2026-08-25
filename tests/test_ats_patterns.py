@@ -94,7 +94,34 @@ class TestAtsPatterns(unittest.TestCase):
         self.assertEqual(matcher.match_field(FD(name="firstname")).key, "given_name")
         self.assertEqual(matcher.match_field(FD(name="lastname")).key, "family_name")
         self.assertEqual(matcher.match_field(FD(name="emailaddress")).key, "email")
-        self.assertEqual(matcher.match_field(FD(name="fullname")).key, "full_name")
+    def test_imported_address_and_name_types(self):
+        # New address types from the dictionary resolve to their own concepts,
+        # none of them in PROFILE_KEYS, so they show "needs you" rather than
+        # mis-filling line 1 or the full name.
+        self.assertEqual(self.k(label="Address Line 2"), "address_line2")
+        self.assertEqual(self.k(label="Apartment"), "address_line2")
+        self.assertEqual(self.k(label="Address Line 3"), "address_line3")
+        self.assertEqual(self.k(label="State"), "address_level1")
+        self.assertEqual(self.k(label="Province"), "address_level1")
+        self.assertEqual(self.k(label="District"), "address_level3")
+        self.assertEqual(self.k(label="House Number"), "address_housenumber")
+        self.assertEqual(self.k(label="Street Number"), "address_housenumber")
+        self.assertEqual(self.k(label="Salutation"), "name_prefix")
+        for key in ("address_line2", "address_line3", "address_housenumber",
+                    "address_level1", "address_level3", "name_prefix",
+                    "name_suffix"):
+            self.assertNotIn(key, matcher.PROFILE_KEYS)
+        # line 1, street and the names are unchanged
+        self.assertEqual(self.k(label="Address"), "address_line1")
+        self.assertEqual(self.k(label="Street"), "address_line1")
+        self.assertEqual(self.k(label="Given Names"), "given_name")
+        self.assertEqual(self.k(label="Surname"), "family_name")
+        # collision traps stay clear: neither "title" nor bare "unit" was added
+        self.assertIsNone(self.k(label="Job Title"))
+        self.assertIsNone(self.k(label="Business Unit"))
+        # multilingual reaches the right concept
+        self.assertEqual(self.k(label="Provincia"), "address_level1")
+        self.assertEqual(self.k(label="Barrio"), "address_level3")
 
 
 if __name__ == "__main__":

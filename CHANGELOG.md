@@ -2,6 +2,17 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.43
+
+### Phase 4 (part 3): import name and address field types (multilingual)
+- Added the name and address field types from the browser field dictionary,
+  with non-English phrases so they work on global forms. New: address line 2
+  and 3, house/building number, state/province/region, district/neighbourhood,
+  salutation and name suffix. "Address Line 2" no longer grabs line 1's value,
+  it now says "needs you". None of these hold a stored value yet, so they show
+  "needs you" until a profile has them. Two collisions were deliberately
+  avoided: "Job Title" and "Business Unit" stay unmatched. Existing name,
+  street, city and country matching is unchanged. Tested.
 ## 0.9.42
 
 ### Phase 4 (part 2): whole-word matching (the anchoring change)
