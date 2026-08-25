@@ -833,12 +833,74 @@ class EntriesDialog(wx.Dialog):
         self.EndModal(wx.ID_CLOSE)
 
 
+def _apply_import(store, fields, sections, take_personal, take_sections):
+    """Apply the chosen parts of a parsed CV to the active profile, REPLACING:
+    personal fields overwrite (only the fields the CV actually has), and each
+    chosen section's entries are replaced wholesale. take_sections is a set of
+    section names. Pure store operations, so it is testable without a dialog.
+    Returns the number of section entries added."""
+    if take_personal:
+        for k, v in fields.items():
+            store.set_field(k, v)
+    added = 0
+    for sname, rows in sections.items():
+        if sname in take_sections:
+            for i in range(len(store.section_rows(sname)) - 1, -1, -1):
+                store.remove_row(sname, i)
+            for row in rows:
+                store.add_row(sname, row)
+                added += 1
+    return added
+
+
+class ImportPreviewDialog(wx.Dialog):
+    """Before importing, show what the CV holds and let you choose, with
+    checkboxes, exactly what to bring in. Ticked items REPLACE what you have;
+    unticked ones are left as they are. Nothing changes until you press Import."""
+
+    def __init__(self, parent, fields, sections):
+        super().__init__(parent, title=_("Import from CV"))
+        self._has_personal = bool(fields)
+        self._section_names = list(sections)
+        main = wx.BoxSizer(wx.VERTICAL)
+        main.Add(wx.StaticText(self, label=_(
+            "Your CV contains the following. Ticked items will replace what you "
+            "have now. Untick anything you want to keep, then press Import.")),
+            0, wx.ALL, 8)
+        labels = []
+        if self._has_personal:
+            names = ", ".join(announce.human(k) for k in fields)
+            labels.append(_("Personal information: {names}").format(names=names))
+        for sname in self._section_names:
+            labels.append(_("{name}: {n} entries").format(
+                name=sname, n=len(sections[sname])))
+        self._check = wx.CheckListBox(self, choices=labels)
+        for i in range(len(labels)):
+            self._check.Check(i, True)
+        main.Add(self._check, 1, wx.EXPAND | wx.ALL, 8)
+        main.Add(self.CreateButtonSizer(wx.OK | wx.CANCEL),
+                 0, wx.EXPAND | wx.ALL, 8)
+        ok = self.FindWindowById(wx.ID_OK)
+        if ok:
+            ok.SetLabel(_("Import"))
+        self.SetSizerAndFit(main)
+        self._check.SetFocus()
+
+    def take_personal(self):
+        return self._has_personal and self._check.IsChecked(0)
+
+    def take_sections(self):
+        base = 1 if self._has_personal else 0
+        return {self._section_names[i]
+                for i in range(len(self._section_names))
+                if self._check.IsChecked(base + i)}
+
+
 def import_cv_into_active(parent, store):
-    """Pick a CV and auto-fill the ACTIVE profile from it: fill any empty
-    personal fields (existing values are kept), and append the Experience,
-    Education, Skills and other entries it finds. Returns the number of section
-    entries added, or -1 if cancelled or nothing could be read. The user reviews
-    everything in the list afterwards; nothing is submitted anywhere."""
+    """Pick a CV, show a checklist of what it holds, and REPLACE the ticked
+    parts of the active profile with it. Returns the number of section entries
+    added, or -1 if cancelled or nothing could be read. Nothing is submitted
+    anywhere; you review the result in the list afterwards."""
     if store is None or store.active_name() is None:
         return -1
     with wx.FileDialog(
@@ -859,20 +921,20 @@ def import_cv_into_active(parent, store):
     except Exception:
         log.error("JFF: in-dialog CV import failed", exc_info=True)
         return -1
-    active = store.get_active() or {}
-    for k, v in fields.items():
-        if not str(active.get(k, "")).strip():
-            store.set_field(k, v)
-    seeded = 0
-    for sname, rows in sections.items():
-        for row in rows:
-            store.add_row(sname, row)
-            seeded += 1
+    if not fields and not sections:
+        ui.message(_("Nothing could be read from that CV."))
+        return -1
+    with ImportPreviewDialog(parent, fields, sections) as dlg:
+        if dlg.ShowModal() != wx.ID_OK:
+            return -1
+        take_personal = dlg.take_personal()
+        take_sections = dlg.take_sections()
+    added = _apply_import(store, fields, sections, take_personal, take_sections)
     try:
         store.save()
     except Exception:
         log.error("JFF: save after in-dialog import failed", exc_info=True)
-    return seeded
+    return added
 
 
 class SectionsDialog(wx.Dialog):
@@ -952,8 +1014,8 @@ class SectionsDialog(wx.Dialog):
         n = import_cv_into_active(self, self._store)
         if n >= 0:
             self._refresh()
-            ui.message(_("Imported. Added {n} entries.").format(n=n) if n
-                       else _("Imported your details from the CV."))
+            ui.message(_("Imported. {n} entries.").format(n=n) if n
+                       else _("Imported your personal information."))
         self._list.SetFocus()
 
     def _onAdd(self, evt):

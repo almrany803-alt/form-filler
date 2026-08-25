@@ -2,6 +2,15 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.57
+
+### Import from CV now asks first, and replaces what you choose
+- Import shows a checklist of what the CV holds first: Personal information, and
+  each section with its entry count. Everything is ticked by default; untick
+  anything you want to keep. Ticked items REPLACE what you have (personal fields
+  overwrite; a section's entries are replaced wholesale), unticked items are left
+  exactly as they were. Nothing changes until you press Import, and you review
+  the result in the list afterwards.
 ## 0.9.56
 
 ### Fix: the profile now always opens as the sections list

@@ -98,3 +98,51 @@ class TestMonthYearHelpers(unittest.TestCase):
                 self.assertTrue(present, value)
             else:
                 self.assertEqual(out, expect, value)
+
+
+class TestApplyImport(unittest.TestCase):
+    """The replace-on-import logic. Skipped where wx is absent (sandbox); the
+    live NVDA test exercises the real preview dialog end to end."""
+
+    def setUp(self):
+        try:
+            import sys, os
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
+                            "addon", "globalPlugins", "jobFormFiller"))
+            import dialogs
+            from core import profile
+        except Exception:
+            self.skipTest("wx not available")
+        import tempfile
+        self.d = dialogs
+        self.profile = profile
+        self.store = profile.ProfileStore(
+            os.path.join(tempfile.mkdtemp(), "p.dat"), profile.NullCrypto())
+        self.store.load()
+        self.store.add_profile("Me", {"given_name": "Old", "email": "old@x.com"})
+        self.store.set_active("Me")
+        self.store.add_row("Experience", {"job_title": "Old job"})
+        self.store.add_row("Experience", {"job_title": "Older job"})
+
+    def test_replaces_chosen_keeps_declined(self):
+        fields = {"given_name": "New", "phone": "123"}
+        sections = {"Experience": [{"job_title": "A"}, {"job_title": "B"}],
+                    "Education": [{"qualification": "Deg"}]}
+        added = self.d._apply_import(self.store, fields, sections,
+                                     take_personal=True,
+                                     take_sections={"Experience"})
+        p = self.store.get_active()
+        self.assertEqual(p["given_name"], "New")          # replaced
+        self.assertEqual(p["email"], "old@x.com")         # CV didn't touch it
+        self.assertEqual([r["job_title"] for r in
+                          self.store.section_rows("Experience", "Me")], ["A", "B"])
+        self.assertEqual(self.store.section_rows("Education", "Me"), [])  # not chosen
+        self.assertEqual(added, 2)
+
+    def test_declining_changes_nothing(self):
+        added = self.d._apply_import(
+            self.store, {"given_name": "New"}, {"Experience": [{"job_title": "A"}]},
+            take_personal=False, take_sections=set())
+        self.assertEqual(self.store.get_active()["given_name"], "Old")
+        self.assertEqual(len(self.store.section_rows("Experience", "Me")), 2)
+        self.assertEqual(added, 0)
