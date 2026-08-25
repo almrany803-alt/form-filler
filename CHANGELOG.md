@@ -2,6 +2,17 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.37
+
+### Phase 1: remove the AI/vision feature (deterministic-only from here)
+- Removed the opt-in AI vision fallback entirely: the vision provider module, the
+  screen-capture helper, the Vision settings dialog and its API-key field, the
+  disagreement log, and the dead-end hook that called vision during a fill. The
+  add-on is now fully deterministic, with no AI, no API keys, and no network
+  calls. Smaller and simpler, and nothing that read or filled fields changed:
+  detection, matching, the review, and filling all behave exactly as before,
+  minus the vision path. (141 tests pass; the drop from before is only the
+  removed vision tests.)
 ## 0.9.36
 
 ### Two-layer diagnostic for unreadable menus (object tree + display model)
