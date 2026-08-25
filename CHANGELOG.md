@@ -2,6 +2,17 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.45
+
+### Phase 4 (part 5): more languages, starting with the big ones
+- The field matcher now reads field labels in Chinese, Japanese, Korean and
+  Russian for the core fields (name parts, email, phone, address, city,
+  country, postcode, date of birth, nationality), on the way to matching the
+  same language set as the country data. To do this the matcher learned the
+  same script-aware trick the country list uses: Chinese and Japanese have no
+  spaces between words, so they match by substring, while spaced scripts stay
+  whole-word. Existing languages are unchanged. Tested, including the cases
+  where a short character sits inside a longer word.
 ## 0.9.44
 
 ### Phase 4 (part 4): phone group and organisation

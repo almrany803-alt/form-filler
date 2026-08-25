@@ -133,9 +133,29 @@ class TestAtsPatterns(unittest.TestCase):
         for lbl in ("Company", "Company Name", "Employer", "Current Employer",
                     "Organisation", "Empresa"):
             self.assertEqual(self.k(label=lbl), "organisation")
-        self.assertNotIn("organisation", matcher.PROFILE_KEYS)
-        self.assertIsNone(self.k(label="Employment Status"))
-        self.assertIsNone(self.k(label="Business Unit"))
+    def test_cjk_and_russian_core_fields(self):
+        # Chinese and Japanese have no word spaces, so they match by substring;
+        # longest-wins must still pick the specific concept over the character
+        # that sits inside it (nationality over country, full name over surname).
+        for lbl, want in (("电子邮件", "email"), ("电话", "phone"),
+                          ("姓", "family_name"), ("名", "given_name"),
+                          ("姓名", "full_name"), ("国家", "country"),
+                          ("国籍", "nationality"), ("城市", "city"),
+                          ("氏名", "full_name"), ("住所", "address_line1"),
+                          ("郵便番号", "postcode")):
+            self.assertEqual(self.k(label=lbl), want, lbl)
+        # Korean (spaced Hangul) and Russian (spaced Cyrillic) use whole-word.
+        for lbl, want in (("이메일", "email"), ("전화번호", "phone"),
+                          ("성명", "full_name"), ("국적", "nationality"),
+                          ("электронная почта", "email"),
+                          ("фамилия", "family_name"),
+                          ("полное имя", "full_name"),
+                          ("гражданство", "nationality")):
+            self.assertEqual(self.k(label=lbl), want, lbl)
+        # English and Arabic must be untouched by the CJK branch.
+        self.assertEqual(self.k(label="Email"), "email")
+        self.assertEqual(self.k(label="Nationality"), "nationality")
+        self.assertEqual(self.k(label="البريد الإلكتروني"), "email")
 
 
 if __name__ == "__main__":

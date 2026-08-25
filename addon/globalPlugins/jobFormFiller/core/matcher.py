@@ -49,6 +49,8 @@ LEXICON = {
         "pl": ["adres e-mail", "e-mail", "poczta elektroniczna"],
         "nl": ["e-mailadres", "e-mail"],
         "ar": ["البريد الالكتروني", "بريد الكتروني"],
+        "zh": ["电子邮件", "邮箱", "电子邮箱"], "ja": ["メール", "電子メール", "メールアドレス"],
+        "ko": ["이메일", "전자우편"], "ru": ["электронная почта", "имейл"],
     },
     "phone": {
         "en": ["phone", "telephone", "telephone number", "phone number",
@@ -62,6 +64,8 @@ LEXICON = {
         "pl": ["telefon", "numer telefonu", "komorka"],
         "nl": ["telefoon", "telefoonnummer", "mobiel"],
         "ar": ["الهاتف", "رقم الهاتف", "جوال"],
+        "zh": ["电话", "手机", "电话号码", "手机号码"], "ja": ["電話", "電話番号", "携帯電話"],
+        "ko": ["전화", "전화번호", "휴대폰", "휴대전화"], "ru": ["телефон", "номер телефона", "мобильный"],
     },
     "phone_country_code": {
         # A phone dialling-code field ("Country Phone Code", "+966"). Longer than
@@ -94,6 +98,8 @@ LEXICON = {
         "de": ["postleitzahl", "plz"], "it": ["codice postale", "cap"],
         "pt": ["codigo postal"], "pl": ["kod pocztowy"], "nl": ["postcode"],
         "ar": ["الرمز البريدي"],
+        "zh": ["邮编", "邮政编码"], "ja": ["郵便番号"],
+        "ko": ["우편번호"], "ru": ["почтовый индекс", "индекс"],
     },
     "address_line1": {
         "en": ["address", "street", "address line 1", "street address",
@@ -102,6 +108,8 @@ LEXICON = {
         "de": ["adresse", "strasse"], "it": ["indirizzo", "via"],
         "pt": ["endereco", "morada", "rua"], "pl": ["adres", "ulica"],
         "nl": ["adres", "straat"], "ar": ["العنوان", "الشارع"],
+        "zh": ["地址", "详细地址", "住址"], "ja": ["住所", "ご住所"],
+        "ko": ["주소"], "ru": ["адрес"],
     },
     "address_line2": {
         # A second address line (apartment, suite, landmark). Longer than
@@ -153,6 +161,8 @@ LEXICON = {
         "fr": ["ville"], "de": ["stadt", "ort"], "it": ["citta"],
         "pt": ["cidade"], "pl": ["miasto", "miejscowosc"],
         "nl": ["stad", "plaats", "woonplaats"], "ar": ["المدينة"],
+        "zh": ["城市", "市"], "ja": ["市", "市区町村"],
+        "ko": ["도시", "시"], "ru": ["город"],
     },
     "country": {
         "en": ["country", "country of residence"], "es": ["pais"],
@@ -160,6 +170,8 @@ LEXICON = {
         "it": ["paese"], "pt": ["pais"],
         "pl": ["kraj", "panstwo"], "nl": ["land"],
         "ar": ["الدولة", "البلد", "بلد الاقامة"],
+        "zh": ["国家", "国"], "ja": ["国", "国名"],
+        "ko": ["국가", "나라"], "ru": ["страна"],
     },
     "nationality": {
         "en": ["nationality", "citizenship"], "es": ["nacionalidad"],
@@ -167,6 +179,8 @@ LEXICON = {
         "it": ["nazionalita"], "pt": ["nacionalidade"],
         "pl": ["narodowosc", "obywatelstwo"], "nl": ["nationaliteit"],
         "ar": ["الجنسية"],
+        "zh": ["国籍"], "ja": ["国籍"],
+        "ko": ["국적"], "ru": ["гражданство", "национальность"],
     },
     "date_of_birth": {
         "en": ["date of birth", "birth date", "birthday", "born", "dob"],
@@ -174,6 +188,8 @@ LEXICON = {
         "de": ["geburtsdatum"], "it": ["data di nascita"],
         "pt": ["data de nascimento"], "pl": ["data urodzenia"],
         "nl": ["geboortedatum"], "ar": ["تاريخ الميلاد", "تاريخ الميلاد"],
+        "zh": ["出生日期", "生日"], "ja": ["生年月日"],
+        "ko": ["생년월일"], "ru": ["дата рождения"],
     },
     "work_authorisation": {
         "en": ["work authorisation", "work authorization", "right to work",
@@ -193,6 +209,8 @@ LEXICON = {
         "es": ["nombre"], "fr": ["prenom"], "de": ["vorname"],
         "it": ["nome"], "pt": ["primeiro nome", "nome proprio"],
         "pl": ["imie"], "nl": ["voornaam"], "ar": ["الاسم الاول"],
+        "zh": ["名"], "ja": ["名"],
+        "ko": ["이름"], "ru": ["имя"],
     },
     "family_name": {
         "en": ["last name", "surname", "family name", "last names"],
@@ -200,6 +218,8 @@ LEXICON = {
         "de": ["nachname", "familienname"], "it": ["cognome"],
         "pt": ["apelido", "sobrenome"], "pl": ["nazwisko"],
         "nl": ["achternaam"], "ar": ["اسم العائلة", "الكنية"],
+        "zh": ["姓", "姓氏"], "ja": ["姓"],
+        "ko": ["성", "성씨"], "ru": ["фамилия"],
     },
     "father_name": {
         # The father's-name slot (Arabic-name forms label the middle field this
@@ -220,6 +240,8 @@ LEXICON = {
         "de": ["vollstandiger name"], "it": ["nome completo"],
         "pt": ["nome completo"], "pl": ["imie i nazwisko"],
         "nl": ["volledige naam", "naam"], "ar": ["الاسم الكامل"],
+        "zh": ["姓名", "名字", "全名"], "ja": ["氏名", "名前", "お名前"],
+        "ko": ["성명"], "ru": ["полное имя", "фио"],
     },
 }
 
@@ -271,6 +293,18 @@ def _norm(s: str) -> str:
     return " ".join(s.split())
 
 
+def _is_cjk(s: str) -> bool:
+    """True if the text is Chinese or Japanese, which do not delimit words with
+    spaces. Korean Hangul is deliberately excluded: it does use spaces. Same
+    ranges as the country matcher, so both stay consistent."""
+    for ch in s:
+        o = ord(ch)
+        if (0x3040 <= o <= 0x30FF or 0x3400 <= o <= 0x4DBF
+                or 0x4E00 <= o <= 0x9FFF or 0xF900 <= o <= 0xFAFF):
+            return True
+    return False
+
+
 def _lexicon_hit(text: str):
     t = _norm(text)
     if not t:
@@ -289,15 +323,25 @@ def _lexicon_hit(text: str):
                 p = _norm(phrase)
                 if not p:
                     continue
-                # (a) phrase as consecutive whole words, or (b) the phrase with
-                # its spaces removed as a single whole token. (b) catches the
-                # no-separator attribute forms ATS use ("firstname", "emailaddress")
-                # without reopening substring matches: "username" still won't hit
-                # "name" because "name" is not a whole token of "username".
-                joined = p.replace(" ", "")
-                if (" " + p + " ") in padded or (" " + joined + " ") in padded:
-                    if best is None or len(p) > best[2]:
-                        best = (key, lang, len(p))
+                if _is_cjk(p):
+                    # Chinese / Japanese have no spaces between words, so there
+                    # are no boundaries to anchor to: match by substring, the
+                    # same way the country matcher does. Longest phrase still
+                    # wins, so "nationality" beats "country" even though the
+                    # country character sits inside it.
+                    hit = p in t
+                else:
+                    # (a) phrase as consecutive whole words, or (b) the phrase
+                    # with its spaces removed as a single whole token. (b)
+                    # catches the no-separator attribute forms ATS use
+                    # ("firstname", "emailaddress") without reopening substring
+                    # matches: "username" still won't hit "name" because "name"
+                    # is not a whole token of "username".
+                    joined = p.replace(" ", "")
+                    hit = ((" " + p + " ") in padded
+                           or (" " + joined + " ") in padded)
+                if hit and (best is None or len(p) > best[2]):
+                    best = (key, lang, len(p))
     return best
 
 
