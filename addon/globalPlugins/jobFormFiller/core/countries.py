@@ -151,6 +151,46 @@ def country_from_phone(phone: str) -> str:
     return best_name
 
 
+_ROOTS = None
+
+
+def _root_codes():
+    """Set of root dial codes, with the North-American +1XXX area codes
+    collapsed to a single '+1', built once."""
+    global _ROOTS
+    if _ROOTS is None:
+        _load()
+        r = set()
+        for c in _DATA:
+            for code in c.get("codes", []):
+                r.add("+1" if code.startswith("+1") and len(code) > 2 else code)
+        _ROOTS = r
+    return _ROOTS
+
+
+def phone_parts(phone: str):
+    """Split a phone into (dial_code, national_number), e.g. '+966569277208' ->
+    ('+966', '569277208'). Only splits an EXPLICITLY international number (one
+    that starts with '+'); a plain national number is returned as ('', digits)
+    untouched, so we never guess a country code onto a number that did not have
+    one. Uses the bundled calling codes, collapsing the North American +1XXX
+    area codes to '+1' so an area code is never mistaken for the dial code."""
+    raw = str(phone or "").strip()
+    digits = re.sub(r"\D", "", raw)
+    if not digits:
+        return "", ""
+    if not raw.startswith("+"):
+        return "", digits
+    plus = "+" + digits
+    best = ""
+    for code in _root_codes():
+        if plus.startswith(code) and len(code) > len(best):
+            best = code
+    if not best:
+        return "", digits
+    return best, plus[len(best):]
+
+
 def detect_country(text: str, phone: str = "") -> str:
     """Best guess at the country a CV states, in any of the supported languages.
     A phone calling code is the most reliable signal, so try that first;

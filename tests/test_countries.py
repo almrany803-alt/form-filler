@@ -152,3 +152,20 @@ class ChooseOptionIntegration(unittest.TestCase):
         pick = self.controls.choose_option(
             "Yes", ["Yes", "No"], concept="work_authorisation")
         self.assertEqual(pick.label, "Yes")
+
+
+class TestPhoneParts(unittest.TestCase):
+    def test_splits_international_numbers(self):
+        self.assertEqual(countries.phone_parts("+966569277208"),
+                         ("+966", "569277208"))
+        self.assertEqual(countries.phone_parts("+44 1234 567890"),
+                         ("+44", "1234567890"))
+        # North American numbers collapse to +1, area code stays in the number
+        self.assertEqual(countries.phone_parts("+1 (201) 555-1234"),
+                         ("+1", "2015551234"))
+
+    def test_does_not_guess_a_code_onto_a_plain_number(self):
+        # No leading '+': never invent a country code (569... is not Chile)
+        self.assertEqual(countries.phone_parts("569277208"), ("", "569277208"))
+        self.assertEqual(countries.phone_parts("0569277208"), ("", "0569277208"))
+        self.assertEqual(countries.phone_parts(""), ("", ""))

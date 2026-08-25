@@ -2,6 +2,20 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.48
+
+### Phase 5: phone group (split the number across a dial-code and a number field)
+- When a form has a separate country-code field alongside the phone field, the
+  add-on now understands them as one group: it fills the dial code (e.g. +966,
+  derived from your stored number) into the code field, and the national number
+  (569277208) into the phone field, instead of leaving the code field to you and
+  putting the whole international number in both. A form with only a phone field
+  still gets the full +966569277208. The split only happens for an explicitly
+  international number (one starting with +); a plain national number is never
+  guessed at, and North American +1 numbers keep their area code in the number.
+  Names and addresses are left per-field, since your forms label each part and a
+  positional group parser would be speculative there. Splitter tested; the fill
+  wiring is confirmed by simulation and awaits a live-form check.
 ## 0.9.47
 
 ### Documentation refresh (no code change)

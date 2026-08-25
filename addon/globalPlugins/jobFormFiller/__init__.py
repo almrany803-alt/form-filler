@@ -734,6 +734,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # fill time, since NVDA reports its network-loaded options as empty.
             records.append(self._review_record(
                 obj, fd, key, controls.EDITOR_TEXT, [], None))
+        # Phone group: when the form has BOTH a separate dial-code field and a
+        # phone field, put the national number in the phone field (the dial code
+        # already goes in the code field), instead of the full international
+        # number in both. Only when the stored number is international enough to
+        # split; otherwise the phone field keeps the whole number.
+        keys = {r["key"] for r in records if r["key"]}
+        if "phone_country_code" in keys and "phone" in keys:
+            from .core import countries
+            code, national = countries.phone_parts(
+                self._profile.get("phone") or "")
+            if code and national:
+                for r in records:
+                    if r["key"] == "phone":
+                        r["fill"] = national
         log.info("JFF review: collected %d field(s) [%s]"
                  % (len(records), ", ".join(r["kind"] for r in records)))
         return records
@@ -1396,6 +1410,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             given = (self._profile.get("given_name") or "").strip()
             family = (self._profile.get("family_name") or "").strip()
             v = (given + " " + family).strip() or None
+        if not v and key == "phone_country_code":
+            # A separate dial-code field: derive it from the stored phone, so
+            # "Country Code" fills "+966" instead of needing you to set it.
+            from .core import countries
+            code, _national = countries.phone_parts(
+                self._profile.get("phone") or "")
+            v = code or None
         return v
 
     @script(
@@ -1447,6 +1468,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             controlTypes.Role.CHECKBOX, controlTypes.Role.RADIOBUTTON,
             controlTypes.Role.SPINBUTTON,
         )
+
+        # Which concepts appear in this form, so the phone field knows whether a
+        # separate dial-code field is present (then it takes the national number,
+        # and the code field takes the dial code).
+        present = set()
+        for o in objs:
+            try:
+                pk = matcher.match_field(_descriptor_from_object(o)).key
+                if pk:
+                    present.add(pk)
+            except Exception:
+                pass
 
         for obj in objs:
             fd = _descriptor_from_object(obj)
@@ -1581,6 +1614,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 leftovers.append(fd.label or _("an unlabelled field"))
                 continue
             value = self._value_for(result.key)
+            if result.key == "phone" and "phone_country_code" in present:
+                from .core import countries
+                _code, _national = countries.phone_parts(
+                    self._profile.get("phone") or "")
+                if _code and _national:
+                    value = _national
             if not value:
                 leftovers.append(announce.human(result.key))
                 continue
