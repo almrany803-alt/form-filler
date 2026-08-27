@@ -2,14 +2,22 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.62
+
+### Fix: form questions ending in a question mark now match
+- Field matching ignored the question mark (and a few other punctuation marks),
+  so a question like "Are you legally authorized to work?" or "What is your
+  email?" failed to match when the keyword sat right before the "?". Since most
+  form questions end that way, this quietly cost matches on real forms. Now the
+  add-on strips that punctuation first, so these questions match and get filled.
+  This is what let a custom radio question go unanswered in testing.
 ## 0.9.61
 
-### Fix: custom (ARIA) radio buttons now get set
-- Some forms use custom radio buttons (role=radio with aria-checked) instead of
-  standard HTML ones. These accept the accessibility "click" without complaint
-  but do nothing, so the option was silently left unset. The add-on now confirms
-  the choice actually took and presses Space, then Enter, if needed, so custom
-  radios are set like native ones. Native radios and checkboxes are unchanged.
+### Radio selection is more robust
+- When setting a radio option the add-on now confirms the choice actually took
+  and presses Space, then Enter, if the accessibility action reported success
+  but did nothing (as some custom widgets do). Native radios and checkboxes are
+  unchanged.
 ## 0.9.60
 
 ### CV reader: single-date education and more formats

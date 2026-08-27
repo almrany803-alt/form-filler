@@ -353,7 +353,7 @@ def _norm(s: str) -> str:
     # substring-match "firstname" and mislabel it as a full-name field.
     s = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", s)
     s = s.lower()
-    for ch in "_-[](){}./\\:":
+    for ch in "_-[](){}./\\:?!,;'\"*&":
         s = s.replace(ch, " ")
     return " ".join(s.split())
 
