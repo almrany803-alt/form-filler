@@ -1,0 +1,16 @@
+David Okoro
+d.okoro@example.co.uk
++44 20 7946 0000
+PROFESSIONAL EXPERIENCE
+Backend Engineer – Ferrovia Systems
+09/2019 – 06/2022
+Maintained payment services.
+Software Developer – Kestrel Digital
+01/2016 – 08/2019
+CAREER HISTORY
+Intern, Bright Labs (06/2015 – 12/2015)
+EDUCATION
+MEng Software Engineering – Imperial College London
+2015
+SKILLS
+Go, Kubernetes, PostgreSQL

@@ -235,6 +235,32 @@ def _is_bullet(line):
     return line.lstrip()[:1] in ("-", "\u2022", "*", "\u00b7")
 
 
+_SINGLE_DATE = re.compile(
+    r"(?:graduated|completed|class of|awarded|expected)?\s*"
+    r"((?:[A-Za-z]{3,9}\.?\s+)?(?:19|20)\d\d)", re.I)
+
+
+def _single_date(line):
+    """A single graduation-style date from a short line ('Graduated May 2016',
+    '2016', 'May 2016 | GPA 3.8'), or None. A '| GPA ...' style tail is dropped
+    first. Kept to short lines so it does not fire on long descriptive bullets.
+    Ranges are handled elsewhere."""
+    s = line.strip().split("|")[0].strip()
+    if not s or len(s.split()) > 6 or _bare_dates(s) is not None:
+        return None
+    m = _SINGLE_DATE.search(s)
+    return m.group(1).strip() if m else None
+
+
+def _looks_like_entry_header(line):
+    """A structured header line (has a comma or an en-dash/hyphen separator) that
+    is not a full sentence, so a lone date on the next line makes it an entry
+    without mistaking a descriptive sentence for a header."""
+    s = line.strip()
+    return bool(s) and not s.endswith(".") and (
+        "," in s or re.search(r"\s[\u2013\u2014-]\s", s) is not None)
+
+
 def _split_header(header, key):
     """Split an entry header into fields, best effort. A 'Title - Company' style
     (en-dash or hyphen) is very common and puts the role or qualification first;
@@ -289,6 +315,14 @@ def _dated_entries(body, key):
             s, e = _bare_dates(body[i + 1])
             cur = _split_header(ln.strip(), key)
             cur["start_date"], cur["end_date"] = s, e
+            rows.append(cur)
+            i += 2
+            continue
+        if (i + 1 < n and _looks_like_entry_header(ln)
+                and _bare_dates(body[i + 1]) is None
+                and _single_date(body[i + 1]) is not None):
+            cur = _split_header(ln.strip(), key)
+            cur["end_date"] = _single_date(body[i + 1])   # graduation/single date
             rows.append(cur)
             i += 2
             continue

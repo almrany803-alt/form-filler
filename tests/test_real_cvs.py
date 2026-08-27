@@ -50,6 +50,26 @@ class TestRealCVs(unittest.TestCase):
         self.assertEqual(first["employer"], "Streamline Inc.")
         self.assertEqual(first["start_date"], "March 2021")
         self.assertEqual(first["end_date"], "")   # "Present"
+        # single graduation date (no range)
+        self.assertEqual(len(secs["Education"]), 1)
+        self.assertEqual(secs["Education"][0]["institution"], "University of Texas")
+        self.assertEqual(secs["Education"][0]["end_date"], "May 2016")
+
+    def test_david_mm_yyyy_dates_and_multiple_headings(self):
+        _, secs = _parse("david_okoro.txt")
+        # "Professional Experience" and "Career History" both feed Experience
+        self.assertEqual(len(secs["Experience"]), 3)
+        self.assertEqual(secs["Experience"][0]["start_date"], "09/2019")
+        self.assertEqual(secs["Experience"][0]["end_date"], "06/2022")
+        self.assertEqual(secs["Education"][0]["end_date"], "2015")
+
+    def test_lena_mixed_formats_in_one_cv(self):
+        _, secs = _parse("lena_fischer.txt")
+        # one entry parenthetical, one separate-line, both must parse
+        self.assertEqual(len(secs["Experience"]), 2)
+        self.assertEqual(secs["Experience"][0]["end_date"], "")   # Present
+        self.assertEqual(secs["Experience"][1]["start_date"], "2017")
+        self.assertEqual(len(secs["Languages"]), 2)
 
     def test_marcus_parenthetical_year_ranges(self):
         _, secs = _parse("marcus_reid.txt")

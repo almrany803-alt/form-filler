@@ -37,8 +37,12 @@ def entry_summary(row) -> str:
             break
     start = str(row.get("start_date") or "").strip()
     end = str(row.get("end_date") or "").strip()
-    if start or end:
-        parts.append("{a} to {b}".format(a=start or "?", b=end or "present"))
+    if start and end:
+        parts.append("{a} to {b}".format(a=start, b=end))
+    elif start:
+        parts.append("{a} to present".format(a=start))
+    elif end:
+        parts.append(end)          # a single graduation/completion date
     elif row.get("date"):
         parts.append(str(row["date"]).strip())
     if parts:

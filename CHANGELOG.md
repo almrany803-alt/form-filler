@@ -2,6 +2,17 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.60
+
+### CV reader: single-date education and more formats
+- Education entries that give only a graduation date, not a range ("Graduated
+  May 2016"), are now read as entries, so degrees with one date are no longer
+  skipped. A single date reads cleanly (for example "May 2016") rather than
+  "? to ...".
+- Verified against more CV structures: MM/YYYY dates ("09/2019 - 06/2022"),
+  "Professional Experience", "Career History" and "Employment History" headings,
+  and CVs that mix parenthetical and separate-line dates in one document. The
+  real and realistic CV fixture set now covers five different layouts.
 ## 0.9.59
 
 ### A dedicated Languages type
