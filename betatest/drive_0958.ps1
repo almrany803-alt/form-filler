@@ -16,10 +16,9 @@ Start-Sleep -Seconds 2
 Add-Type -AssemblyName System.Windows.Forms
 function K($s){ [System.Windows.Forms.SendKeys]::SendWait($s) }
 
-# open the sections list through Edit profile (Profile submenu)
+# open the sections list through Edit profile (e activates it and opens the list)
 K("p"); Start-Sleep -Seconds 2
-K("e"); Start-Sleep -Seconds 1
-K("{ENTER}"); Start-Sleep -Seconds 3
+K("e"); Start-Sleep -Seconds 3
 
 # Enter opens the selected section (Education), no Open button
 K("{HOME}"); Start-Sleep -Milliseconds 400

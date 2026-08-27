@@ -11,6 +11,7 @@ Start-Sleep -Milliseconds 60
 $k::keybd_event($J,0,0x2,[UIntPtr]::Zero); $k::keybd_event($INS,0,0x3,[UIntPtr]::Zero)
 Start-Sleep -Seconds 2
 Add-Type -AssemblyName System.Windows.Forms
-[System.Windows.Forms.SendKeys]::SendWait("{UP}"); Start-Sleep -Milliseconds 900
-[System.Windows.Forms.SendKeys]::SendWait("{ENTER}"); Start-Sleep -Seconds 3
+# Edit profile opens the sections list (e activates it); "My sections" is gone.
+[System.Windows.Forms.SendKeys]::SendWait("p"); Start-Sleep -Milliseconds 900
+[System.Windows.Forms.SendKeys]::SendWait("e"); Start-Sleep -Seconds 3
 Write-Host "opened the sections dialog"

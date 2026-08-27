@@ -8,9 +8,14 @@ name: Nav re-entry (pywinauto, fixed vs buggy)
 # pywinauto reads the real UI Automation tree, so we assert reachability as a
 # property of the tree, not by counting Tab presses.
 
+# This was the one-time proof that the pywinauto navigation check has teeth: it
+# caught the re-entry bug on 0.9.53 and passed on the fixed build. Menu and
+# routing have since changed (My sections removed, Edit profile now opens the
+# list), so the buggy 0.9.53 variant is no longer reachable the same way.
+# Ongoing re-entry protection lives in the CRUD machine's focus invariant on the
+# current build; this stays runnable on demand as the historical proof.
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   nav:
