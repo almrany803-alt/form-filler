@@ -1,0 +1,26 @@
+Sarah Mitchell
+sarah.mitchell@email.com | (555) 987-6543 | New York, NY
+linkedin.com/in/sarahmitchell | github.com/sarahmitchell
+Professional Summary
+Results-driven Product Manager with 7 years of experience leading
+cross-functional teams to deliver SaaS products from concept to launch.
+Work Experience
+Senior Product Manager – Streamline Inc., New York, NY
+March 2021 – Present
+- Led launch of core analytics dashboard, increasing DAU by 38%
+- Managed roadmap for 4 product lines with $12M combined ARR
+Product Manager – Growbase, Remote
+June 2018 – February 2021
+- Owned end-to-end product lifecycle for B2B reporting features
+Associate Product Manager – DataFlow, Austin, TX
+August 2016 – May 2018
+- Defined requirements for mobile app (4.7-star App Store rating)
+Education
+Bachelor of Science, Computer Science – University of Texas, Austin
+Graduated May 2016 | GPA: 3.8 / 4.0
+Skills
+Product: Roadmapping, A/B Testing, User Research, OKRs, Agile/Scrum
+Tools: Jira, Figma, Mixpanel, Amplitude, SQL, Looker, Notion
+Certifications
+Certified Scrum Product Owner (CSPO) – Scrum Alliance, 2020
+Google Analytics Individual Qualification – Google, 2022

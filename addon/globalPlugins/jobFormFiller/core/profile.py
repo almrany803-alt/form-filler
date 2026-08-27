@@ -25,7 +25,8 @@ SECTION_TEMPLATES = {
 
 # Sections have a type, chosen when you create them, which decides an entry's
 # fields. "Other" has no fixed shape, so its entries pick a type each time.
-SECTION_TYPES = ["Work", "Education", "Skills", "Certification", "Other"]
+SECTION_TYPES = ["Work", "Education", "Skills", "Certification",
+                 "Languages", "Other"]
 
 SECTION_TYPE_FIELDS = {
     "Work": ["job_title", "employer", "start_date", "end_date", "description"],
@@ -33,12 +34,14 @@ SECTION_TYPE_FIELDS = {
                   "start_date", "end_date", "grade"],
     "Skills": ["skill", "description"],
     "Certification": ["name", "issuer", "date"],
+    "Languages": ["language", "proficiency"],
 }
 
 _NAME_TO_TYPE = {
     "experience": "Work", "work": "Work", "employment": "Work",
     "work experience": "Work", "education": "Education", "skills": "Skills",
     "certifications": "Certification", "certification": "Certification",
+    "languages": "Languages", "language": "Languages",
 }
 
 

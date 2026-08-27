@@ -210,14 +210,47 @@ def _dates(line):
     return "", "", None
 
 
+_BARE_DATE = (r"(?:[A-Za-z]{3,9}\.?\s+)?(?:19|20)\d\d"
+              r"|\d{1,2}/(?:19|20)\d\d|(?:19|20)\d\d")
+_BARE_RANGE = re.compile(
+    r"^\s*(" + _BARE_DATE + r")\s*(?:to|until|[-\u2013\u2014])\s*"
+    r"(present|current|ongoing|now|" + _BARE_DATE + r")\s*$", re.I)
+
+
+def _bare_dates(line):
+    """If the whole line is just a date range ('March 2021 - Present',
+    '2019-2022'), return (start, end); else None. Catches the very common CV
+    style where dates sit on their own line, not in parentheses."""
+    m = _BARE_RANGE.match(line.strip())
+    if not m:
+        return None
+    start = m.group(1).strip()
+    end = m.group(2).strip()
+    if re.search(r"present|current|ongoing|now", end, re.I):
+        end = ""
+    return start, end
+
+
+def _is_bullet(line):
+    return line.lstrip()[:1] in ("-", "\u2022", "*", "\u00b7")
+
+
 def _split_header(header, key):
-    """Comma-split an entry header into fields. Best effort: for education the
-    first part is the qualification and the second the institution; for
-    experience the first is the employer and the second the job title. The user
-    reviews and corrects, so a school with no degree is fine to get slightly
-    wrong."""
-    parts = [p.strip() for p in header.split(",") if p.strip()]
+    """Split an entry header into fields, best effort. A 'Title - Company' style
+    (en-dash or hyphen) is very common and puts the role or qualification first;
+    a plain comma list we take with employer or institution first. The user
+    reviews and corrects either way."""
     row = {}
+    dash = re.split(r"\s+[\u2013\u2014-]\s+", header, maxsplit=1)
+    if len(dash) == 2:
+        left = dash[0].strip()
+        right = dash[1].split(",")[0].strip()   # drop a trailing ", Location"
+        if key == "education":
+            row["qualification"], row["institution"] = left, right
+        else:
+            row["job_title"], row["employer"] = left, right
+        return row
+    parts = [p.strip() for p in header.split(",") if p.strip()]
     if not parts:
         return row
     if key == "education":
@@ -232,23 +265,38 @@ def _split_header(header, key):
 
 
 def _dated_entries(body, key):
-    """Split a section body into entries at each dated header line; lines between
-    headers become that entry's description."""
+    """Split a section body into entries. Handles dates in parentheses on the
+    header line AND the common style where the header is one line and the date
+    range is the next. Other lines become the current entry's description."""
     rows = []
     cur = None
-    for ln in body:
+    i = 0
+    n = len(body)
+    while i < n:
+        ln = body[i]
         start, end, span = _dates(ln)
         if span is not None:
             header = (ln[:span[0]] + ln[span[1]:]).strip().strip(",").strip()
-            row = _split_header(header, key)
-            row["start_date"] = start
-            row["end_date"] = "" if re.search(
+            cur = _split_header(header, key)
+            cur["start_date"] = start
+            cur["end_date"] = "" if re.search(
                 r"present|current|ongoing|now", end, re.I) else end
-            rows.append(row)
-            cur = row
-        elif cur is not None:
+            rows.append(cur)
+            i += 1
+            continue
+        if (i + 1 < n and not _is_bullet(ln) and _bare_dates(ln) is None
+                and _bare_dates(body[i + 1]) is not None):
+            s, e = _bare_dates(body[i + 1])
+            cur = _split_header(ln.strip(), key)
+            cur["start_date"], cur["end_date"] = s, e
+            rows.append(cur)
+            i += 2
+            continue
+        if cur is not None:
             extra = cur.get("description", "")
-            cur["description"] = (extra + " " + ln).strip() if extra else ln
+            text = ln.lstrip("-\u2022*\u00b7 \t").strip()
+            cur["description"] = (extra + " " + text).strip() if extra else text
+        i += 1
     return rows
 
 

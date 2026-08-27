@@ -1,0 +1,11 @@
+Marcus Reid
+marcus.reid@example.com
++44 7700 900123
+WORK HISTORY
+Data Analyst, Northwind Ltd (2019 - 2022)
+Built reporting dashboards used across the company.
+Junior Analyst, Beacon Media (2017 - 2019)
+EDUCATION
+BSc Mathematics, University of Leeds (2014 - 2017)
+SKILLS
+Python, SQL, Tableau

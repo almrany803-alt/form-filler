@@ -822,7 +822,8 @@ class EntriesDialog(wx.Dialog):
         t = self._store.section_type(self._section)
         if t != "Other":
             return profile.fields_for_type(t)
-        choices = ["Work", "Education", "Skills", "Certification", "Custom"]
+        choices = ["Work", "Education", "Skills", "Certification",
+                   "Languages", "Custom"]
         with wx.SingleChoiceDialog(
                 self, _("What kind of entry is this?"),
                 _("Entry type"), choices) as dlg:

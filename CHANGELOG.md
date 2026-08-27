@@ -2,6 +2,20 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.59
+
+### A dedicated Languages type
+- Sections can now be typed Languages (language and proficiency), alongside Work,
+  Education, Skills, Certification and Other. An imported Languages section is
+  typed automatically.
+
+### CV reader handles more real-world layouts
+- Tested against real sample CVs, the reader now understands dates that sit on
+  their own line under the header ("March 2021 - Present"), not only dates in
+  parentheses, and it reads a "Job Title - Company" style header, so Work
+  Experience and similar sections extract properly from ordinary ATS resumes.
+  It also recognises "Work History" and "Employment" as experience headings.
+  A small library of real and realistic CV fixtures now guards this.
 ## 0.9.58
 
 ### Simpler, clearer profile editing
