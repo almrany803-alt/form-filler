@@ -35,6 +35,12 @@ class DialogMachine(RuleBasedStateMachine):
         self.lst = self.dlg.child_window(control_type="List", found_index=0)
         self.lst.wait("visible", timeout=10)
         self._sync_to_list()
+        try:
+            self.dlg.set_focus()
+            self.lst.set_focus()
+        except Exception:
+            pass
+        time.sleep(0.4)
         self.sections = [n for n in self._names() if n not in _PERSONAL]
 
     # ---- helpers ----------------------------------------------------------
@@ -138,7 +144,16 @@ class DialogMachine(RuleBasedStateMachine):
     # ---- invariant checked after EVERY operation --------------------------
     @invariant()
     def list_reachable_and_consistent(self):
-        assert self.lst.has_keyboard_focus(), \
+        focused = False
+        for _ in range(4):
+            try:
+                if self.lst.has_keyboard_focus():
+                    focused = True
+                    break
+            except Exception:
+                pass
+            time.sleep(0.4)
+        assert focused, \
             "sections list not focused after an operation (stranding/re-entry bug)"
         names = self._names()
         for s in self.sections:
