@@ -868,22 +868,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.info("JFF review: radio label %r not found" % label)
             return False
         target = radios[pick.index]
-        if not self._live_checked(target):
-            try:
-                target.doAction()
-            except Exception:
-                try:
-                    target.setFocus()
-                    api.setFocusObject(target)
-                    KeyboardInputGesture.fromName("space").send()
-                except Exception:
-                    log.error("JFF review: radio select failed", exc_info=True)
-                    return False
-        for _k in range(8):
-            if self._live_checked(target):
-                return True
-            time.sleep(0.06)
-        return False
+        return self._activate_radio(target)
 
     def _write_field(self, obj, fd, value):
         target_id = fd.id
@@ -2322,6 +2307,30 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         except Exception:
             return False
 
+    def _activate_radio(self, target):
+        """Select a radio, including a custom ARIA radio (role=radio), by trying
+        the accessibility default action, then Space, then Enter, and verifying
+        after each. Custom widgets often accept the default action without error
+        but do nothing, so we must confirm it actually took and press a key if
+        not. Returns True once the radio reads as checked."""
+        if self._live_checked(target):
+            return True
+        for method in ("action", "space", "enter"):
+            try:
+                if method == "action":
+                    target.doAction()
+                else:
+                    target.setFocus()
+                    api.setFocusObject(target)
+                    KeyboardInputGesture.fromName(method).send()
+            except Exception:
+                continue
+            for _k in range(6):
+                if self._live_checked(target):
+                    return True
+                time.sleep(0.06)
+        return False
+
     def _radio_group(self, obj):
         """Find a radio's group container and its sibling radio options. Logs the
         parent chain so the real tree is visible for the first runs."""
@@ -2414,23 +2423,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if pick.index is None:
             return result.key, pick, "none"
         target = radios[pick.index]
-        try:
-            target.doAction()
-        except Exception:
-            try:
-                target.setFocus()
-                api.setFocusObject(target)
-                KeyboardInputGesture.fromName("space").send()
-            except Exception:
-                log.error("JFF radio: select failed", exc_info=True)
-        verdict = "unknown"
-        for _k in range(8):
-            if self._live_checked(target):
-                verdict = "confirmed"
-                break
-            time.sleep(0.06)
-        if verdict != "confirmed":
-            verdict = "mismatch"
+        verdict = "confirmed" if self._activate_radio(target) else "mismatch"
         log.info("JFF radio: verdict=%r" % verdict)
         return result.key, pick, verdict
 

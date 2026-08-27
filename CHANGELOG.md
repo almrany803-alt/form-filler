@@ -2,6 +2,14 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.61
+
+### Fix: custom (ARIA) radio buttons now get set
+- Some forms use custom radio buttons (role=radio with aria-checked) instead of
+  standard HTML ones. These accept the accessibility "click" without complaint
+  but do nothing, so the option was silently left unset. The add-on now confirms
+  the choice actually took and presses Space, then Enter, if needed, so custom
+  radios are set like native ones. Native radios and checkboxes are unchanged.
 ## 0.9.60
 
 ### CV reader: single-date education and more formats
