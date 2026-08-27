@@ -1757,7 +1757,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # courses). Ask which stored entries to place and fill each block,
         # adding blocks with the form's "Add another" control as needed.
         try:
-            self._fill_repeating_sections(objs)
+            self._fill_repeating_sections(objs, ti)
         except Exception:
             log.error("JFF rowfill: repeating-section fill failed",
                       exc_info=True)
@@ -1774,7 +1774,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         wx.CallLater(400, ui.message, summary)
 
     # --- repeating Work / Education blocks -----------------------------------
-    def _fill_repeating_sections(self, objs):
+    def _fill_repeating_sections(self, objs, ti):
         """Find runs of consecutive fields that map to Work or Education entry
         fields, and fill each as a repeating section from the stored entries."""
         concepts = []
@@ -1804,7 +1804,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 if len(block_fields) >= 2:
                     try:
                         if self._do_repeating_fill(
-                                objs[i:j], block_fields, present, stype):
+                                objs[i:j], block_fields, present, stype, ti):
                             done += 1
                     except Exception:
                         log.error("JFF rowfill: fill of %s failed" % stype,
@@ -1837,11 +1837,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         r"\badd\b.*\b(another|more|experience|employment|job|education|"
         r"qualification|entry|role|position)\b|\badd\b", re.I)
 
-    def _find_add_button(self, stype):
-        """Find the form's 'Add another' button for this section, by scanning the
-        document's buttons for an add-like label. Best effort."""
-        focus = api.getFocusObject()
-        ti = getattr(focus, "treeInterceptor", None)
+    def _find_add_button(self, ti, stype):
+        """Find the form's 'Add another' button by scanning the document's
+        buttons for an add-like label, using the tree interceptor captured
+        during the scan (so it works after the checklist dialog closed)."""
         if ti is None:
             return None
         try:
@@ -1852,16 +1851,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     continue
                 label = (_descriptor_from_object(o).label or "")
                 if self._ADD_RE.search(label):
+                    log.info("JFF rowfill: add button %r" % label)
                     return o
         except Exception:
             log.error("JFF rowfill: add-button scan failed", exc_info=True)
         return None
 
-    def _section_block_objs(self, stype, block_len):
-        """Re-enumerate the form and return the field objects of the section of
-        this type, as a flat list (all blocks), after the page has changed."""
-        focus = api.getFocusObject()
-        ti = getattr(focus, "treeInterceptor", None)
+    def _section_block_objs(self, ti, stype):
+        """Re-enumerate the form via the captured tree interceptor and return the
+        field objects of the section of this type, as a flat list of all its
+        blocks, after the page has changed from adding blocks."""
         if ti is None:
             return []
         try:
@@ -1878,20 +1877,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 c = None
             if c is None:
                 if out:
-                    break          # end of the (first) matching run
+                    break
                 continue
-            # start collecting once we hit a field of the right kind
             if not out:
                 is_work = c in ("job_title", "employer")
                 is_edu = c in ("institution", "qualification")
                 if (stype == "Work" and not is_work) or \
                    (stype == "Education" and not is_edu):
-                    # a run of the other kind; skip it
                     continue
             out.append(o)
         return out
 
-    def _do_repeating_fill(self, run_objs, block_fields, blocks_present, stype):
+    def _do_repeating_fill(self, run_objs, block_fields, blocks_present, stype,
+                           ti):
         name, rows = self._stored_section_for_type(stype)
         if not rows:
             return False
@@ -1904,18 +1902,21 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # Add the extra blocks first (each 'Add another' changes the page).
         added = 0
         for _c in range(adds):
-            btn = self._find_add_button(stype)
+            btn = self._find_add_button(ti, stype)
             if btn is None:
                 break
             try:
                 btn.doAction()
             except Exception:
+                log.error("JFF rowfill: add doAction failed", exc_info=True)
                 break
-            time.sleep(0.6)
+            time.sleep(1.0)
             added += 1
         # Re-read the section's blocks now that the page has settled.
         L = len(block_fields)
-        section_objs = self._section_block_objs(stype, L) or run_objs
+        section_objs = self._section_block_objs(ti, stype) or run_objs
+        log.info("JFF rowfill: %d block-objs after %d adds (need %d)"
+                 % (len(section_objs), added, len(fills) * L))
         placed = 0
         for b, values in fills:
             block = section_objs[b * L:(b + 1) * L]
@@ -1926,7 +1927,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         total = len(chosen)
         if placed < total:
             wx.CallLater(500, ui.message, _(
-                "Filled {n} of {total} {name} entries; the form took "
+                "Filled {n} of {total} {name} entries; the form allowed "
                 "{added} more block(s).").format(
                     n=placed, total=total, name=name, added=added))
         else:
