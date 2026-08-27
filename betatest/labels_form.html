@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Varied labelling</title></head>
+<body>
+  <h1>Application form (varied field labelling)</h1>
+
+  <!-- 1. Labelled only by a placeholder (no label element) -->
+  <p><input id="f_email" type="text" placeholder="Email address"></p>
+
+  <!-- 2. Labelled only by aria-label -->
+  <p><input id="f_phone" type="text" aria-label="Phone number"></p>
+
+  <!-- 3. Labelled by aria-labelledby pointing at a separate element -->
+  <p>
+    <span id="lbl_fn">First name</span>
+    <input id="f_fn" type="text" aria-labelledby="lbl_fn">
+  </p>
+
+  <!-- 4. Implicit label: the input is wrapped inside the label -->
+  <p><label>Last name <input id="f_ln" type="text"></label></p>
+
+  <!-- 5. Accessibility anti-pattern: nearby text with NO programmatic link -->
+  <p>City</p>
+  <p><input id="f_city" type="text"></p>
+</body>
+</html>
