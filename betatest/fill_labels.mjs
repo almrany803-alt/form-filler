@@ -35,16 +35,16 @@ await fillField("#f_phone");
   console.log(`${p ? "PASS" : "FAIL"}  aria-label-only phone: got ${JSON.stringify(v)}`); ok = ok && p; }
 
 await fillField("#f_fn");
-{ const v = await val("#f_fn"); const p = v === "Alex";
+{ const v = await val("#f_fn"); const p = v === "Mohammed";
   console.log(`${p ? "PASS" : "FAIL"}  aria-labelledby first name: got ${JSON.stringify(v)}`); ok = ok && p; }
 
 await fillField("#f_ln");
-{ const v = await val("#f_ln"); const p = v === "Sample";
+{ const v = await val("#f_ln"); const p = v === "Al Omrani";
   console.log(`${p ? "PASS" : "FAIL"}  wrapped-label last name: got ${JSON.stringify(v)}`); ok = ok && p; }
 
 await fillField("#f_city");
-{ const v = await val("#f_city");
-  console.log(`INFO  unassociated 'City' label: got ${JSON.stringify(v)} (accessibility anti-pattern; not required to fill)`); }
+{ const v = await val("#f_city"); const p = v === "Bristol";
+  console.log(`${p ? "PASS" : "INFO"}  unassociated 'City' label: got ${JSON.stringify(v)} (accessibility anti-pattern; a bonus when it works)`); }
 
 await browser.close();
 if (!ok) process.exit(1);
