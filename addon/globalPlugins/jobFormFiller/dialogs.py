@@ -976,6 +976,25 @@ class AddSectionDialog(wx.Dialog):
         return profile.SECTION_TYPES[max(0, self._type.GetSelection())]
 
 
+def choose_entries(parent, section_name, rows):
+    """A checklist of a section's entries (already ordered most recent first),
+    all ticked, so the user picks which go on this application. Returns the
+    chosen rows in the shown order, or None if cancelled. Empty in, empty out."""
+    if not rows:
+        return []
+    labels = [announce.entry_summary(r) or _("(entry)") for r in rows]
+    with wx.MultiChoiceDialog(
+            parent,
+            _("Which {name} entries should go on this form? "
+              "Most recent first.").format(name=section_name),
+            _("Fill {name}").format(name=section_name), labels) as dlg:
+        dlg.SetSelections(list(range(len(rows))))     # all ticked by default
+        if dlg.ShowModal() != wx.ID_OK:
+            return None
+        picks = dlg.GetSelections()
+    return [rows[i] for i in picks]
+
+
 class SectionsDialog(wx.Dialog):
     """Level 1: Personal details plus every section. Open one, or add, rename
     and remove sections. Personal details opens the details form; a section

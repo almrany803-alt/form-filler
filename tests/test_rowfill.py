@@ -41,7 +41,7 @@ class TestPlanSectionFill(unittest.TestCase):
         self.bf = ["job_title", "employer", "start_date", "end_date"]
 
     def test_adds_and_fills(self):
-        adds, fills = rowfill.plan_section_fill(self.rows, self.bf, blocks_present=1)
+        adds, fills, leftover = rowfill.plan_section_fill(self.rows, self.bf, blocks_present=1)
         self.assertEqual(adds, 2)                       # 3 rows, 1 block -> add 2
         self.assertEqual(len(fills), 3)
         self.assertEqual(fills[0][0], 0)
@@ -51,18 +51,48 @@ class TestPlanSectionFill(unittest.TestCase):
         self.assertNotIn("end_date", fills[2][1])
 
     def test_enough_blocks_needs_no_adds(self):
-        adds, _ = rowfill.plan_section_fill(self.rows, self.bf, blocks_present=3)
+        adds, _, _ = rowfill.plan_section_fill(self.rows, self.bf, blocks_present=3)
         self.assertEqual(adds, 0)
 
     def test_empty_row_is_skipped(self):
-        adds, fills = rowfill.plan_section_fill(
+        adds, fills, _ = rowfill.plan_section_fill(
             [{"job_title": "X"}, {}], self.bf, blocks_present=1)
         self.assertEqual(len(fills), 1)
         self.assertEqual(adds, 0)
 
     def test_no_rows(self):
-        self.assertEqual(rowfill.plan_section_fill([], self.bf), (0, []))
+        self.assertEqual(rowfill.plan_section_fill([], self.bf), (0, [], 0))
 
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestOrderingAndMax(unittest.TestCase):
+    def setUp(self):
+        self.rows = [
+            {"job_title": "Old", "start_date": "2015", "end_date": "2017"},
+            {"job_title": "Current", "start_date": "2021", "end_date": ""},
+            {"job_title": "Middle", "start_date": "2018", "end_date": "2020"},
+        ]
+
+    def test_most_recent_first(self):
+        ordered = rowfill.order_recent_first(self.rows)
+        self.assertEqual([r["job_title"] for r in ordered],
+                         ["Current", "Middle", "Old"])   # ongoing first
+
+    def test_max_blocks_limits_and_reports_leftover(self):
+        bf = ["job_title", "start_date", "end_date"]
+        adds, fills, leftover = rowfill.plan_section_fill(
+            self.rows, bf, blocks_present=1, max_blocks=2)
+        self.assertEqual(len(fills), 2)
+        self.assertEqual(leftover, 1)
+        self.assertEqual(adds, 1)     # 2 to place, 1 present -> add 1
+
+
+class TestDetectBlocks(unittest.TestCase):
+    def test_one_and_many_blocks(self):
+        bf = ["job_title", "employer", "start_date", "end_date"]
+        self.assertEqual(rowfill.detect_blocks(bf), (bf, 1))
+        self.assertEqual(rowfill.detect_blocks(bf * 3), (bf, 3))
+        self.assertEqual(rowfill.detect_blocks([]), ([], 0))

@@ -53,21 +53,64 @@ def row_concept(label):
     return best[0] if best else None
 
 
-def plan_section_fill(rows, block_fields, blocks_present=1):
+def _year_of(s):
+    m = re.search(r"(?:19|20)\d\d", str(s or ""))
+    return int(m.group(0)) if m else 0
+
+
+def _recency_key(row):
+    """Sort key so the most recent entry comes first: an ongoing role (a start
+    date but an empty or 'present' end) is newest, then by end year, then by
+    start year. Undated rows keep their original order (stable sort)."""
+    end = str(row.get("end_date", "")).strip().lower()
+    has_start = bool(str(row.get("start_date", "")).strip())
+    ongoing = has_start and end in ("", "present", "current", "ongoing", "now")
+    end_year = 9999 if ongoing else _year_of(row.get("end_date"))
+    return (end_year, _year_of(row.get("start_date")))
+
+
+def detect_blocks(keys):
+    """From the row-concept keys read down a form's section, work out one
+    block's fields and how many blocks are already present. If the keys repeat
+    (title, employer, from, to, title, employer, from, to) that repeating unit
+    is the block; otherwise there is one block of the distinct keys in order."""
+    keys = [k for k in keys if k]
+    if not keys:
+        return [], 0
+    first = keys[0]
+    block_len = len(keys)
+    for i in range(1, len(keys)):
+        if keys[i] == first:
+            block_len = i
+            break
+    block_fields = keys[:block_len]
+    blocks = len(keys) // block_len if block_len else 1
+    return block_fields, max(1, blocks)
+
+
+def order_recent_first(rows):
+    """Return the rows most recent first, for showing in the checklist and for
+    placing the newest job in the first block. Stable for undated rows."""
+    return sorted(rows or [], key=_recency_key, reverse=True)
+
+
+def plan_section_fill(rows, block_fields, blocks_present=1, max_blocks=None):
     """Decide how to spread stored rows across a form's repeating blocks.
 
-    rows          : the stored rows for the section (list of dicts).
+    rows          : the stored rows for the section, in the order to place them
+                    (already filtered to the user's choice and ordered).
     block_fields  : the row-field keys one form block exposes, e.g.
                     ['job_title', 'employer', 'start_date', 'end_date'].
-    blocks_present: how many blocks the form already shows (at least 1).
+    blocks_present: how many blocks the form already shows (at least 1); these
+                    are filled first before any 'Add another'.
+    max_blocks    : the most blocks the form allows, or None for no limit.
 
-    Returns (adds, fills):
-      adds  = how many 'Add another' clicks are needed so there is one block per
-              row (0 if the form already has enough).
-      fills = [(block_index, {field: value}), ...] - for each row, the values
-              that go in that block, limited to fields the block actually has
-              and the row actually provides. Rows with nothing to place are
-              skipped, so an empty stored row never consumes a block.
+    Returns (adds, fills, leftover):
+      adds     = how many 'Add another' clicks are needed (0 if enough already).
+      fills    = [(block_index, {field: value}), ...] - the values for each block,
+                 limited to fields the block has and the row provides. Rows with
+                 nothing to place are skipped, so an empty row never takes a block.
+      leftover = how many chosen rows did not fit because of max_blocks.
     """
     rows = rows or []
     block_fields = list(block_fields or [])
@@ -76,6 +119,10 @@ def plan_section_fill(rows, block_fields, blocks_present=1):
         vals = {f: row[f] for f in block_fields if str(row.get(f, "")).strip()}
         if vals:
             placeable.append(vals)
+    total = len(placeable)
+    if max_blocks is not None and max_blocks >= 0:
+        placeable = placeable[:max_blocks]
     adds = max(0, len(placeable) - max(1, blocks_present))
     fills = list(enumerate(placeable))
-    return adds, fills
+    leftover = total - len(placeable)
+    return adds, fills, leftover

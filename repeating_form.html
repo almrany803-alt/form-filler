@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Work history</title></head>
+<body>
+  <h1>Work history</h1>
+  <div id="blocks">
+    <div class="block">
+      <p><label>Job title <input class="jt" type="text"></label></p>
+      <p><label>Employer <input class="emp" type="text"></label></p>
+      <p><label>Start date <input class="sd" type="text"></label></p>
+      <p><label>End date <input class="ed" type="text"></label></p>
+    </div>
+  </div>
+  <button id="add" type="button">Add another role</button>
+  <script>
+    document.getElementById("add").addEventListener("click", function () {
+      const first = document.querySelector(".block");
+      const clone = first.cloneNode(true);
+      clone.querySelectorAll("input").forEach((i) => (i.value = ""));
+      document.getElementById("blocks").appendChild(clone);
+    });
+  </script>
+</body>
+</html>

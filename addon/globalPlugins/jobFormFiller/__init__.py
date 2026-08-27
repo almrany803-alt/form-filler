@@ -23,7 +23,7 @@ from scriptHandler import script
 from keyboardHandler import KeyboardInputGesture
 import addonHandler
 
-from .core import matcher, controls, announce, profile, fingerprints
+from .core import matcher, controls, announce, profile, fingerprints, rowfill
 from . import dialogs
 
 try:
@@ -1753,6 +1753,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 log.error("JFF form action: failed on %r" % result.key, exc_info=True)
                 leftovers.append(announce.human(result.key))
 
+        # Second pass: repeating Work/Education blocks (several jobs, several
+        # courses). Ask which stored entries to place and fill each block,
+        # adding blocks with the form's "Add another" control as needed.
+        try:
+            self._fill_repeating_sections(objs)
+        except Exception:
+            log.error("JFF rowfill: repeating-section fill failed",
+                      exc_info=True)
+
         summary = announce.build_summary(filled, guessed, leftovers)
         if native_date_left:
             summary += " " + _("For the date, put your cursor on it and press "
@@ -1763,6 +1772,167 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         log.info("JFF form summary: %s (prefilled: %d)" % (summary, len(prefilled)))
         # Delay so the last field's focus announcement does not cancel this.
         wx.CallLater(400, ui.message, summary)
+
+    # --- repeating Work / Education blocks -----------------------------------
+    def _fill_repeating_sections(self, objs):
+        """Find runs of consecutive fields that map to Work or Education entry
+        fields, and fill each as a repeating section from the stored entries."""
+        concepts = []
+        for o in objs:
+            try:
+                concepts.append(rowfill.row_concept(
+                    _descriptor_from_object(o).label or ""))
+            except Exception:
+                concepts.append(None)
+        i, n, done = 0, len(objs), 0
+        while i < n:
+            if concepts[i] is None:
+                i += 1
+                continue
+            j = i
+            while j < n and concepts[j] is not None:
+                j += 1
+            run_keys = concepts[i:j]
+            if "job_title" in run_keys or "employer" in run_keys:
+                stype = "Work"
+            elif "institution" in run_keys or "qualification" in run_keys:
+                stype = "Education"
+            else:
+                stype = None
+            if stype:
+                block_fields, present = rowfill.detect_blocks(run_keys)
+                if len(block_fields) >= 2:
+                    try:
+                        if self._do_repeating_fill(
+                                objs[i:j], block_fields, present, stype):
+                            done += 1
+                    except Exception:
+                        log.error("JFF rowfill: fill of %s failed" % stype,
+                                  exc_info=True)
+            i = j
+        return done
+
+    def _stored_section_for_type(self, stype):
+        """The user's section of this type with entries: (name, rows)."""
+        for name in self._store.section_names():
+            if self._store.section_type(name) == stype:
+                rows = self._store.section_rows(name)
+                if rows:
+                    return name, rows
+        return None, []
+
+    def _fill_block(self, block_objs, block_fields, values):
+        """Write a row's values into one block's field objects, by position."""
+        for k, obj in enumerate(block_objs):
+            if k >= len(block_fields):
+                break
+            v = values.get(block_fields[k])
+            if v:
+                try:
+                    self._write_field(obj, _descriptor_from_object(obj), str(v))
+                except Exception:
+                    log.error("JFF rowfill: write failed", exc_info=True)
+
+    _ADD_RE = re.compile(
+        r"\badd\b.*\b(another|more|experience|employment|job|education|"
+        r"qualification|entry|role|position)\b|\badd\b", re.I)
+
+    def _find_add_button(self, stype):
+        """Find the form's 'Add another' button for this section, by scanning the
+        document's buttons for an add-like label. Best effort."""
+        focus = api.getFocusObject()
+        ti = getattr(focus, "treeInterceptor", None)
+        if ti is None:
+            return None
+        try:
+            start = ti.makeTextInfo(textInfos.POSITION_FIRST)
+            for item in ti._iterNodesByType("button", "next", start):
+                o = _obj_from_item(item)
+                if o is None:
+                    continue
+                label = (_descriptor_from_object(o).label or "")
+                if self._ADD_RE.search(label):
+                    return o
+        except Exception:
+            log.error("JFF rowfill: add-button scan failed", exc_info=True)
+        return None
+
+    def _section_block_objs(self, stype, block_len):
+        """Re-enumerate the form and return the field objects of the section of
+        this type, as a flat list (all blocks), after the page has changed."""
+        focus = api.getFocusObject()
+        ti = getattr(focus, "treeInterceptor", None)
+        if ti is None:
+            return []
+        try:
+            start = ti.makeTextInfo(textInfos.POSITION_FIRST)
+            items = list(ti._iterNodesByType("formField", "next", start))
+        except Exception:
+            return []
+        objs = [o for o in (_obj_from_item(it) for it in items) if o is not None]
+        out = []
+        for o in objs:
+            try:
+                c = rowfill.row_concept(_descriptor_from_object(o).label or "")
+            except Exception:
+                c = None
+            if c is None:
+                if out:
+                    break          # end of the (first) matching run
+                continue
+            # start collecting once we hit a field of the right kind
+            if not out:
+                is_work = c in ("job_title", "employer")
+                is_edu = c in ("institution", "qualification")
+                if (stype == "Work" and not is_work) or \
+                   (stype == "Education" and not is_edu):
+                    # a run of the other kind; skip it
+                    continue
+            out.append(o)
+        return out
+
+    def _do_repeating_fill(self, run_objs, block_fields, blocks_present, stype):
+        name, rows = self._stored_section_for_type(stype)
+        if not rows:
+            return False
+        rows = rowfill.order_recent_first(rows)
+        chosen = dialogs.choose_entries(gui.mainFrame, name, rows)
+        if not chosen:
+            return False
+        adds, fills, _leftover = rowfill.plan_section_fill(
+            chosen, block_fields, blocks_present)
+        # Add the extra blocks first (each 'Add another' changes the page).
+        added = 0
+        for _c in range(adds):
+            btn = self._find_add_button(stype)
+            if btn is None:
+                break
+            try:
+                btn.doAction()
+            except Exception:
+                break
+            time.sleep(0.6)
+            added += 1
+        # Re-read the section's blocks now that the page has settled.
+        L = len(block_fields)
+        section_objs = self._section_block_objs(stype, L) or run_objs
+        placed = 0
+        for b, values in fills:
+            block = section_objs[b * L:(b + 1) * L]
+            if len(block) < 1:
+                break
+            self._fill_block(block, block_fields, values)
+            placed += 1
+        total = len(chosen)
+        if placed < total:
+            wx.CallLater(500, ui.message, _(
+                "Filled {n} of {total} {name} entries; the form took "
+                "{added} more block(s).").format(
+                    n=placed, total=total, name=name, added=added))
+        else:
+            wx.CallLater(500, ui.message, _(
+                "Filled {n} {name} entries.").format(n=placed, name=name))
+        return True
 
     # --- text ----------------------------------------------------------------
     def _fill_text(self, obj, fd, result, value):
