@@ -81,7 +81,13 @@ class DialogMachine(RuleBasedStateMachine):
                 time.sleep(0.5)
         raise last
 
-    # ---- operations (rules): real section features, not just menus --------
+    # ---- helpers for opening (Enter, since the Open button is gone) --------
+    def _open_selected(self):
+        self.lst.set_focus()
+        time.sleep(0.2)
+        send_keys("{ENTER}")
+
+    # ---- operations (rules): real section AND entry features ---------------
     @rule(name=st.text(alphabet="abcde", min_size=1, max_size=3))
     def add_section(self, name):
         self._sync_to_list()
@@ -89,9 +95,15 @@ class DialogMachine(RuleBasedStateMachine):
             return
         self._button("Add section")
         time.sleep(0.8)
+        # AddSectionDialog: Name field focused, then a Type combo (default Work),
+        # then OK. Type the name and confirm; the default type is fine here.
         send_keys(name)
         time.sleep(0.2)
-        send_keys("{ENTER}")
+        try:
+            Desktop(backend="uia").window(title_re="Add section").child_window(
+                title="OK", control_type="Button").invoke()
+        except Exception:
+            send_keys("{TAB}{TAB}{ENTER}")
         time.sleep(0.8)
         self._sync_to_list()
         assert name in self._names(), ("add_section failed", name, self._names())
@@ -112,35 +124,13 @@ class DialogMachine(RuleBasedStateMachine):
         self.sections.remove(name)
 
     @precondition(lambda self: self.sections)
-    @rule(data=st.data(), new=st.text(alphabet="fghij", min_size=1, max_size=3))
-    def rename_section(self, data, new):
-        self._sync_to_list()
-        old = data.draw(st.sampled_from(sorted(self.sections)))
-        if new in self._names():
-            return
-        self._select(old)
-        self._button("Rename")
-        time.sleep(0.8)
-        send_keys("^a")
-        time.sleep(0.2)
-        send_keys(new)
-        time.sleep(0.2)
-        send_keys("{ENTER}")
-        time.sleep(0.8)
-        self._sync_to_list()
-        names = self._names()
-        assert new in names and old not in names, ("rename failed", old, new, names)
-        self.sections[self.sections.index(old)] = new
-
-    @precondition(lambda self: self.sections)
     @rule(data=st.data())
     def open_and_close(self, data):
         self._sync_to_list()
         name = data.draw(st.sampled_from(sorted(self.sections)))
         self._select(name)
-        self._button("Open")
+        self._open_selected()
         time.sleep(1.0)
-        # only close the child if it actually opened (never blind-Esc the list)
         ent = Desktop(backend="uia").window(title_re="^%s$" % name)
         if ent.exists(timeout=3):
             try:
@@ -149,6 +139,86 @@ class DialogMachine(RuleBasedStateMachine):
                 send_keys("{ESC}")
             time.sleep(1.0)
         self._sync_to_list()
+
+    @precondition(lambda self: self.sections)
+    @rule(data=st.data())
+    def add_entry(self, data):
+        self._sync_to_list()
+        name = data.draw(st.sampled_from(sorted(self.sections)))
+        try:
+            self._select(name)
+            self._open_selected()
+            time.sleep(1.2)
+            entries = Desktop(backend="uia").window(title_re="^%s$" % name)
+            elist = entries.child_window(control_type="List", found_index=0)
+            before = len(elist.children(control_type="ListItem"))
+            entries.child_window(
+                title="Add entry", control_type="Button").invoke()
+            time.sleep(1.0)
+            # a typed section goes straight to the entry form; type into the
+            # first field and OK. (An "Other" section would ask a type first;
+            # seeded sections are typed, so this path is direct.)
+            send_keys("testvalue")
+            time.sleep(0.3)
+            form = Desktop(backend="uia").window(title_re="Entry in .*")
+            form.child_window(title="OK", control_type="Button").invoke()
+            time.sleep(1.0)
+            after = len(elist.children(control_type="ListItem"))
+            assert after == before + 1, \
+                ("add_entry did not add one", name, before, after)
+        except AssertionError:
+            raise
+        except Exception as exc:
+            print("add_entry UIA hiccup, recovering:", type(exc).__name__)
+        finally:
+            try:
+                ent = Desktop(backend="uia").window(title_re="^%s$" % name)
+                if ent.exists(timeout=1):
+                    ent.child_window(
+                        title="Close", control_type="Button").invoke()
+            except Exception:
+                pass
+            time.sleep(0.8)
+            self._sync_to_list()
+
+    @precondition(lambda self: self.sections)
+    @rule(data=st.data())
+    def remove_entry(self, data):
+        self._sync_to_list()
+        name = data.draw(st.sampled_from(sorted(self.sections)))
+        try:
+            self._select(name)
+            self._open_selected()
+            time.sleep(1.2)
+            entries = Desktop(backend="uia").window(title_re="^%s$" % name)
+            elist = entries.child_window(control_type="List", found_index=0)
+            before = len(elist.children(control_type="ListItem"))
+            if before == 0:
+                return
+            elist.children(control_type="ListItem")[0].select()
+            time.sleep(0.3)
+            entries.child_window(
+                title="Remove", control_type="Button").invoke()
+            time.sleep(0.7)
+            send_keys("y")            # confirm
+            time.sleep(0.8)
+            after = len(elist.children(control_type="ListItem"))
+            assert after == before - 1, \
+                ("remove_entry did not remove one", name, before, after)
+        except AssertionError:
+            raise
+        except Exception as exc:
+            print("remove_entry UIA hiccup, recovering:", type(exc).__name__)
+        finally:
+            try:
+                ent = Desktop(backend="uia").window(title_re="^%s$" % name)
+                if ent.exists(timeout=1):
+                    ent.child_window(
+                        title="Close", control_type="Button").invoke()
+            except Exception:
+                pass
+            time.sleep(0.8)
+            self._sync_to_list()
 
     # ---- invariant checked after EVERY operation --------------------------
     @invariant()

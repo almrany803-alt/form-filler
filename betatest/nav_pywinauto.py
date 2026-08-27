@@ -46,11 +46,13 @@ def main():
             send_keys("{DOWN}")
             time.sleep(0.1)
         time.sleep(0.3)
-        # open the section via the Open button (falls back to Enter)
+        # open the section by double-clicking it: works on both the current
+        # build and 0.9.53, since the Open button was removed in 0.9.58 but
+        # double-click has always opened.
         try:
-            dlg.child_window(title="Open", control_type="Button").invoke()
+            lst.children(control_type="ListItem")[idx].double_click_input()
         except Exception as exc:
-            print("  Open button invoke failed (%s), using Enter" % exc)
+            print("  double-click failed (%s), using Enter" % exc)
             send_keys("{ENTER}")
         time.sleep(1.3)
         # close the child dialog and return to the sections list
