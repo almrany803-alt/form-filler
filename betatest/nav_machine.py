@@ -18,7 +18,7 @@ import sys
 import time
 import unittest
 
-from pywinauto import Application
+from pywinauto import Application, Desktop
 from pywinauto.keyboard import send_keys
 
 from hypothesis import settings
@@ -38,8 +38,8 @@ class NavMachine(RuleBasedStateMachine):
         self.app = Application(backend="uia").start(
             'python "%s" "%s"' % (HARNESS, os.path.abspath(ADDON_DIR)),
             wait_for_idle=False)
-        time.sleep(2)
-        self.win = self.app.window(title=TITLE)
+        time.sleep(3)
+        self.win = Desktop(backend="uia").window(title=TITLE)
         self.win.wait("visible ready", timeout=30)
         self.in_child = False
 
