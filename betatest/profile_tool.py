@@ -67,6 +67,16 @@ elif cmd == "check_sections":
         sys.exit(1)
     print("PASS crud store state")
 
+elif cmd == "check_import_replaced":
+    store.load()
+    exp = store.section_rows("Experience", "Mohammed")
+    emps = [r.get("employer", "") for r in exp]
+    print("Experience employers after import:", emps)
+    if not any("Acme" in e for e in emps):
+        print("MISMATCH: expected Acme in Experience after the import replace")
+        sys.exit(1)
+    print("PASS import replaced Experience")
+
 elif cmd == "check":
     mode = sys.argv[2]
     store.load()

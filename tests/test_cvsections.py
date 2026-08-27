@@ -146,3 +146,37 @@ class TestApplyImport(unittest.TestCase):
         self.assertEqual(self.store.get_active()["given_name"], "Old")
         self.assertEqual(len(self.store.section_rows("Experience", "Me")), 2)
         self.assertEqual(added, 0)
+
+
+class TestSectionTypes(unittest.TestCase):
+    """Section types decide an entry's fields; pure, no wx."""
+
+    def setUp(self):
+        import os, sys, tempfile
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
+                        "addon", "globalPlugins", "jobFormFiller"))
+        from core import profile
+        self.p = profile
+        self.store = profile.ProfileStore(
+            os.path.join(tempfile.mkdtemp(), "p.dat"), profile.NullCrypto())
+        self.store.load()
+        self.store.add_profile("Me", {})
+        self.store.set_active("Me")
+
+    def test_explicit_and_inferred_types(self):
+        self.store.add_section("My jobs", "Work")
+        self.store.add_section("Education")               # inferred
+        self.store.add_row("Experience", {"job_title": "x"})  # auto-created
+        self.assertEqual(self.store.section_type("My jobs"), "Work")
+        self.assertEqual(self.store.section_type("Education"), "Education")
+        self.assertEqual(self.store.section_type("Experience"), "Work")
+        self.assertEqual(self.p.infer_section_type("Certifications"), "Certification")
+        self.assertEqual(self.p.infer_section_type("Publications"), "Other")
+
+    def test_fields_for_type(self):
+        self.assertIn("job_title", self.p.fields_for_type("Work"))
+        self.assertIn("qualification", self.p.fields_for_type("Education"))
+        self.assertEqual(self.p.fields_for_type("Other"),
+                         ["title", "detail", "start_date", "end_date"])
+        # a row's own keys are preserved on top of the type
+        self.assertIn("custom", self.p.fields_for_type("Skills", {"custom": "v"}))

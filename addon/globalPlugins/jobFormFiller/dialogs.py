@@ -688,10 +688,11 @@ class EntryFormDialog(wx.Dialog):
     date, or a specific month and year); other fields are text. 'present', a
     year alone, or 'Sep 2023' all round-trip. Returns the row via values()."""
 
-    def __init__(self, parent, section, row):
+    def __init__(self, parent, section, row, fields=None):
         super().__init__(
             parent, title=_("Entry in {section}").format(section=section))
-        self._fields = _fields_for(section, row or {})
+        self._fields = (fields if fields is not None
+                        else _fields_for(section, row or {}))
         self._ctrls = {}       # text fields:  field -> TextCtrl
         self._date_btns = {}   # date fields:  field -> Button
         self._date_vals = {}   # date fields:  field -> current value string
@@ -758,7 +759,9 @@ class EntriesDialog(wx.Dialog):
             _("&Entries:"), wx.ListBox, choices=self._lines())
         if self._rows():
             self._list.SetSelection(0)
+        # Enter or double-click opens the selected entry.
         self._list.Bind(wx.EVT_LISTBOX_DCLICK, self._onEdit)
+        self.Bind(wx.EVT_CHAR_HOOK, self._onCharHook)
 
         row = wx.BoxSizer(wx.HORIZONTAL)
         for label, handler in ((_("&Add entry"), self._onAdd),
@@ -773,6 +776,13 @@ class EntriesDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self._onClose, id=wx.ID_CLOSE)
         self.SetSizerAndFit(main)
         self._list.SetFocus()
+
+    def _onCharHook(self, evt):
+        if (evt.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER)
+                and self.FindFocus() is self._list and self._rows()):
+            self._onEdit(evt)
+        else:
+            evt.Skip()
 
     def _rows(self):
         return self._store.section_rows(self._section)
@@ -793,7 +803,10 @@ class EntriesDialog(wx.Dialog):
         return i if (i != wx.NOT_FOUND and self._rows()) else None
 
     def _onAdd(self, evt):
-        with EntryFormDialog(self, self._section, {}) as dlg:
+        fields = self._fields_for_new_entry()
+        if fields is None:
+            return
+        with EntryFormDialog(self, self._section, {}, fields=fields) as dlg:
             if dlg.ShowModal() != wx.ID_OK:
                 return
             row = dlg.values()
@@ -803,15 +816,34 @@ class EntriesDialog(wx.Dialog):
         self._refresh(len(self._rows()) - 1)
         ui.message(_("Added. {n} entries.").format(n=len(self._rows())))
 
+    def _fields_for_new_entry(self):
+        """Fields for a new entry: from the section's type, or asked each time in
+        an 'Other' section. None if the type choice is cancelled."""
+        t = self._store.section_type(self._section)
+        if t != "Other":
+            return profile.fields_for_type(t)
+        choices = ["Work", "Education", "Skills", "Certification", "Custom"]
+        with wx.SingleChoiceDialog(
+                self, _("What kind of entry is this?"),
+                _("Entry type"), choices) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return None
+            chosen = dlg.GetStringSelection()
+        return profile.fields_for_type(
+            "Other" if chosen == "Custom" else chosen)
+
     def _onEdit(self, evt):
         i = self._sel()
         if i is None:
             return
-        with EntryFormDialog(self, self._section, self._rows()[i]) as dlg:
+        row = self._rows()[i]
+        fields = profile.fields_for_type(
+            self._store.section_type(self._section), row)
+        with EntryFormDialog(self, self._section, row, fields=fields) as dlg:
             if dlg.ShowModal() != wx.ID_OK:
                 return
-            row = dlg.values()
-        self._store.update_row(self._section, i, row)
+            new = dlg.values()
+        self._store.update_row(self._section, i, new)
         self._refresh(i)
         ui.message(_("Entry updated."))
 
@@ -853,54 +885,31 @@ def _apply_import(store, fields, sections, take_personal, take_sections):
     return added
 
 
-class ImportPreviewDialog(wx.Dialog):
-    """Before importing, show what the CV holds and let you choose, with
-    checkboxes, exactly what to bring in. Ticked items REPLACE what you have;
-    unticked ones are left as they are. Nothing changes until you press Import."""
-
-    def __init__(self, parent, fields, sections):
-        super().__init__(parent, title=_("Import from CV"))
-        self._has_personal = bool(fields)
-        self._section_names = list(sections)
-        main = wx.BoxSizer(wx.VERTICAL)
-        main.Add(wx.StaticText(self, label=_(
-            "Your CV contains the following. Ticked items will replace what you "
-            "have now. Untick anything you want to keep, then press Import.")),
-            0, wx.ALL, 8)
-        labels = []
-        if self._has_personal:
-            names = ", ".join(announce.human(k) for k in fields)
-            labels.append(_("Personal information: {names}").format(names=names))
-        for sname in self._section_names:
-            labels.append(_("{name}: {n} entries").format(
-                name=sname, n=len(sections[sname])))
-        self._check = wx.CheckListBox(self, choices=labels)
-        for i in range(len(labels)):
-            self._check.Check(i, True)
-        main.Add(self._check, 1, wx.EXPAND | wx.ALL, 8)
-        main.Add(self.CreateButtonSizer(wx.OK | wx.CANCEL),
-                 0, wx.EXPAND | wx.ALL, 8)
-        ok = self.FindWindowById(wx.ID_OK)
-        if ok:
-            ok.SetLabel(_("Import"))
-        self.SetSizerAndFit(main)
-        self._check.SetFocus()
-
-    def take_personal(self):
-        return self._has_personal and self._check.IsChecked(0)
-
-    def take_sections(self):
-        base = 1 if self._has_personal else 0
-        return {self._section_names[i]
-                for i in range(len(self._section_names))
-                if self._check.IsChecked(base + i)}
+def _import_summary(store, fields, sections):
+    """A plain description of what importing this CV would change, so you can
+    say yes or no with your eyes open."""
+    lines = []
+    if fields:
+        lines.append(_("Personal information: {names}").format(
+            names=", ".join(announce.human(k) for k in fields)))
+    for sname, rows in sections.items():
+        have = len(store.section_rows(sname))
+        if have:
+            lines.append(_("{name}: replace your {have} entries with {n} from "
+                           "the CV").format(name=sname, have=have,
+                                            n=len(rows)))
+        else:
+            lines.append(_("{name}: add {n} entries").format(
+                name=sname, n=len(rows)))
+    return lines
 
 
 def import_cv_into_active(parent, store):
-    """Pick a CV, show a checklist of what it holds, and REPLACE the ticked
-    parts of the active profile with it. Returns the number of section entries
-    added, or -1 if cancelled or nothing could be read. Nothing is submitted
-    anywhere; you review the result in the list afterwards."""
+    """Pick a CV, describe what it would change, and on Yes REPLACE those parts
+    of the active profile with it (personal fields overwrite; a section's
+    entries are replaced). Returns the number of section entries added, or -1 if
+    cancelled or nothing could be read. Nothing is submitted anywhere; you
+    review the result in the list afterwards."""
     if store is None or store.active_name() is None:
         return -1
     with wx.FileDialog(
@@ -924,17 +933,46 @@ def import_cv_into_active(parent, store):
     if not fields and not sections:
         ui.message(_("Nothing could be read from that CV."))
         return -1
-    with ImportPreviewDialog(parent, fields, sections) as dlg:
-        if dlg.ShowModal() != wx.ID_OK:
+    message = (_("Importing this CV will make these changes:\n\n")
+               + "\n".join(_import_summary(store, fields, sections))
+               + _("\n\nAnything not mentioned is left as it is. Import now?"))
+    with wx.MessageDialog(parent, message, _("Import from CV"),
+                          wx.YES_NO | wx.ICON_QUESTION) as dlg:
+        if dlg.ShowModal() != wx.ID_YES:
             return -1
-        take_personal = dlg.take_personal()
-        take_sections = dlg.take_sections()
-    added = _apply_import(store, fields, sections, take_personal, take_sections)
+    added = _apply_import(store, fields, sections,
+                          take_personal=bool(fields),
+                          take_sections=set(sections))
     try:
         store.save()
     except Exception:
         log.error("JFF: save after in-dialog import failed", exc_info=True)
     return added
+
+
+class AddSectionDialog(wx.Dialog):
+    """Name and type for a new section. The type (Work, Education, Skills,
+    Certification, Other) decides its entries' fields; an 'Other' section asks
+    the entry type each time you add one."""
+
+    def __init__(self, parent):
+        super().__init__(parent, title=_("Add section"))
+        main = wx.BoxSizer(wx.VERTICAL)
+        helper = guiHelper.BoxSizerHelper(self, sizer=main)
+        self._name = helper.addLabeledControl(_("&Name:"), wx.TextCtrl)
+        self._type = helper.addLabeledControl(
+            _("&Type:"), wx.Choice, choices=profile.SECTION_TYPES)
+        self._type.SetSelection(0)
+        main.Add(self.CreateButtonSizer(wx.OK | wx.CANCEL),
+                 flag=wx.EXPAND | wx.ALL, border=8)
+        self.SetSizerAndFit(main)
+        self._name.SetFocus()
+
+    def name(self):
+        return self._name.GetValue().strip()
+
+    def section_type(self):
+        return profile.SECTION_TYPES[max(0, self._type.GetSelection())]
 
 
 class SectionsDialog(wx.Dialog):
@@ -951,11 +989,12 @@ class SectionsDialog(wx.Dialog):
         self._list = helper.addLabeledControl(
             _("&Sections:"), wx.ListBox, choices=self._items())
         self._list.SetSelection(0)
+        # Enter or double-click opens the selected item; no Open button needed.
         self._list.Bind(wx.EVT_LISTBOX_DCLICK, self._onOpen)
+        self.Bind(wx.EVT_CHAR_HOOK, self._onCharHook)
 
         row = wx.BoxSizer(wx.HORIZONTAL)
-        for label, handler in ((_("&Open"), self._onOpen),
-                               (_("&Import from CV..."), self._onImport),
+        for label, handler in ((_("&Import from CV..."), self._onImport),
                                (_("&Add section"), self._onAdd),
                                (_("Re&name"), self._onRename),
                                (_("&Remove"), self._onRemove)):
@@ -968,6 +1007,13 @@ class SectionsDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self._onClose, id=wx.ID_CLOSE)
         self.SetSizerAndFit(main)
         self._list.SetFocus()
+
+    def _onCharHook(self, evt):
+        if (evt.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER)
+                and self.FindFocus() is self._list):
+            self._onOpen(evt)
+        else:
+            evt.Skip()
 
     def _items(self):
         return [_PERSONAL] + self._store.section_names()
@@ -1019,14 +1065,14 @@ class SectionsDialog(wx.Dialog):
         self._list.SetFocus()
 
     def _onAdd(self, evt):
-        with wx.TextEntryDialog(
-                self, _("Name for the new section:"), _("Add section")) as dlg:
+        with AddSectionDialog(self) as dlg:
             if dlg.ShowModal() != wx.ID_OK:
                 return
-            name = dlg.GetValue().strip()
+            name = dlg.name()
+            stype = dlg.section_type()
         if not name or name == _PERSONAL or name in self._store.section_names():
             return
-        self._store.add_section(name)
+        self._store.add_section(name, stype)
         self._refresh(self._list.GetCount())   # select the new one
         ui.message(_("Added section {name}.").format(name=name))
 

@@ -2,6 +2,25 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.58
+
+### Simpler, clearer profile editing
+- Import from CV now asks a plain yes or no: it lists exactly what will change
+  (which personal fields, and which sections it will replace, with entry counts)
+  and only proceeds if you say yes. The tick-box version is gone.
+- Enter (or double-click) opens the selected item in every list, and the Open
+  button is gone, so lists work the way you expect.
+- The "My sections" menu item is gone; Edit profile already opens the same list
+  (Personal information, Education, Experience, and the rest), so there was no
+  reason to have both.
+
+### Sections now have a type
+- When you add a section you choose its type: Work, Education, Skills,
+  Certification, or Other. The type decides an entry's fields, so a Work entry
+  has job title, employer and start and end dates, an Education entry has
+  qualification, institution and dates, and so on. An Other section asks what
+  kind each new entry is, so you can mix. Existing and CV-imported sections get
+  a sensible type from their name automatically.
 ## 0.9.57
 
 ### Import from CV now asks first, and replaces what you choose

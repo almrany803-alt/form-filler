@@ -23,6 +23,42 @@ SECTION_TEMPLATES = {
     "Languages": ["language", "proficiency"],
 }
 
+# Sections have a type, chosen when you create them, which decides an entry's
+# fields. "Other" has no fixed shape, so its entries pick a type each time.
+SECTION_TYPES = ["Work", "Education", "Skills", "Certification", "Other"]
+
+SECTION_TYPE_FIELDS = {
+    "Work": ["job_title", "employer", "start_date", "end_date", "description"],
+    "Education": ["qualification", "institution", "field_of_study",
+                  "start_date", "end_date", "grade"],
+    "Skills": ["skill", "description"],
+    "Certification": ["name", "issuer", "date"],
+}
+
+_NAME_TO_TYPE = {
+    "experience": "Work", "work": "Work", "employment": "Work",
+    "work experience": "Work", "education": "Education", "skills": "Skills",
+    "certifications": "Certification", "certification": "Certification",
+}
+
+
+def infer_section_type(name):
+    """Best-effort type for a section created without one (old files, CV
+    seeding), from its name; anything unrecognised is 'Other'."""
+    return _NAME_TO_TYPE.get((name or "").strip().lower(), "Other")
+
+
+def fields_for_type(section_type, row=None):
+    """Which fields an entry of this type shows: the type's fields plus any the
+    row already has, and a small generic set for 'Other'/custom. Pure."""
+    fields = list(SECTION_TYPE_FIELDS.get(section_type, []))
+    for k in (row or {}):
+        if k not in fields:
+            fields.append(k)
+    if not fields:
+        fields = ["title", "detail", "start_date", "end_date"]
+    return fields
+
 
 def fields_for_section(section, row=None):
     """Which fields an entry in this section should show: the template for a
@@ -191,12 +227,23 @@ class ProfileStore:
         secs = self._sections_for(profile)
         return [s["name"] for s in secs] if secs else []
 
-    def add_section(self, name, profile=None):
-        """Add an empty section. No-op if one of that name already exists."""
+    def add_section(self, name, section_type=None, profile=None):
+        """Add an empty section with a type. No-op if one of that name exists.
+        When no type is given (old callers, CV seeding), infer it from the name."""
         secs = self._sections_for(profile)
         if secs is None or any(s["name"] == name for s in secs):
             return
-        secs.append({"name": name, "rows": []})
+        if section_type is None:
+            section_type = infer_section_type(name)
+        secs.append({"name": name, "type": section_type, "rows": []})
+
+    def section_type(self, name, profile=None):
+        """The section's stored type, or one inferred from its name for older
+        sections that predate types."""
+        s = self._get_section(name, profile)
+        if s is None:
+            return "Other"
+        return s.get("type") or infer_section_type(name)
 
     def remove_section(self, name, profile=None):
         secs = self._sections_for(profile)
@@ -231,7 +278,7 @@ class ProfileStore:
             return
         s = self._get_section(section, profile)
         if s is None:
-            self.add_section(section, profile)
+            self.add_section(section, profile=profile)
             s = self._get_section(section, profile)
         s["rows"].append(dict(row or {}))
 
