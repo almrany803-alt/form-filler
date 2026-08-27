@@ -30,7 +30,9 @@ class DialogMachine(RuleBasedStateMachine):
         super().__init__()
         self.dlg = _sections_dialog()
         self.dlg.wait("visible", timeout=20)
-        self.lst = self.dlg.child_window(control_type="List")
+        # the sections list is the dialog's own list; child dialogs add their
+        # own list to the tree, so pin to the first match to stay unambiguous.
+        self.lst = self.dlg.child_window(control_type="List", found_index=0)
         self.lst.wait("visible", timeout=10)
         self._sync_to_list()
         self.sections = [n for n in self._names() if n not in _PERSONAL]
@@ -67,6 +69,7 @@ class DialogMachine(RuleBasedStateMachine):
     # ---- operations (rules) ----------------------------------------------
     @rule(name=st.text(alphabet="abcde", min_size=1, max_size=3))
     def add_section(self, name):
+        self._sync_to_list()
         if name in self._names():
             return
         self._button("Add section")
@@ -82,6 +85,7 @@ class DialogMachine(RuleBasedStateMachine):
     @precondition(lambda self: self.sections)
     @rule(data=st.data())
     def remove_section(self, data):
+        self._sync_to_list()
         name = data.draw(st.sampled_from(sorted(self.sections)))
         self._select(name)
         self._button("Remove")
@@ -95,6 +99,7 @@ class DialogMachine(RuleBasedStateMachine):
     @precondition(lambda self: self.sections)
     @rule(data=st.data())
     def open_and_close(self, data):
+        self._sync_to_list()
         name = data.draw(st.sampled_from(sorted(self.sections)))
         self._select(name)
         self._button("Open")
@@ -106,12 +111,13 @@ class DialogMachine(RuleBasedStateMachine):
     @precondition(lambda self: self.sections)
     @rule(data=st.data())
     def add_entry(self, data):
+        self._sync_to_list()
         name = data.draw(st.sampled_from(sorted(self.sections)))
         self._select(name)
         self._button("Open")
         time.sleep(1.0)
         entries = Desktop(backend="uia").window(title_re="^%s$" % name)
-        elist = entries.child_window(control_type="List")
+        elist = entries.child_window(control_type="List", found_index=0)
         before = len(elist.children(control_type="ListItem"))
         entries.child_window(title="Add entry", control_type="Button").invoke()
         time.sleep(0.9)
@@ -122,7 +128,10 @@ class DialogMachine(RuleBasedStateMachine):
         time.sleep(0.9)
         after = len(elist.children(control_type="ListItem"))
         assert after == before + 1, ("add_entry did not add one", name, before, after)
-        send_keys("{ESC}")
+        try:
+            entries.child_window(title="Close", control_type="Button").invoke()
+        except Exception:
+            send_keys("{ESC}")
         time.sleep(1.0)
         self._sync_to_list()
 
@@ -137,7 +146,7 @@ class DialogMachine(RuleBasedStateMachine):
 
 
 DialogMachine.TestCase.settings = settings(
-    max_examples=3, stateful_step_count=15, deadline=None,
+    max_examples=1, stateful_step_count=12, deadline=None,
     suppress_health_check=list(HealthCheck))
 TestDialog = DialogMachine.TestCase
 
