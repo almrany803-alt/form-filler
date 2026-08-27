@@ -1758,6 +1758,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # adding blocks with the form's "Add another" control as needed.
         try:
             self._fill_repeating_sections(objs, ti)
+            # Work/Education entry fields are handled by the repeating pass, so
+            # they must not also appear in the personal "needs you" summary.
+            leftovers = [l for l in leftovers
+                         if rowfill.row_concept(l) is None]
         except Exception:
             log.error("JFF rowfill: repeating-section fill failed",
                       exc_info=True)
@@ -1833,26 +1837,31 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 except Exception:
                     log.error("JFF rowfill: write failed", exc_info=True)
 
-    _ADD_RE = re.compile(
+    _ADD_SPECIFIC = re.compile(
         r"\badd\b.*\b(another|more|experience|employment|job|education|"
-        r"qualification|entry|role|position)\b|\badd\b", re.I)
+        r"qualification|entry|role|position|work|course)\b", re.I)
+    _ADD_ANY = re.compile(r"\badd\b", re.I)
 
     def _find_add_button(self, ti, stype):
         """Find the form's 'Add another' button by scanning the document's
-        buttons for an add-like label, using the tree interceptor captured
-        during the scan (so it works after the checklist dialog closed)."""
+        buttons via the tree interceptor captured during the scan (so it works
+        after the checklist dialog closed). Prefer a specific 'add another/role/
+        experience' button over any bare 'Add', to avoid an unrelated one."""
         if ti is None:
             return None
         try:
             start = ti.makeTextInfo(textInfos.POSITION_FIRST)
+            buttons = []
             for item in ti._iterNodesByType("button", "next", start):
                 o = _obj_from_item(item)
                 if o is None:
                     continue
-                label = (_descriptor_from_object(o).label or "")
-                if self._ADD_RE.search(label):
-                    log.info("JFF rowfill: add button %r" % label)
-                    return o
+                buttons.append((o, _descriptor_from_object(o).label or ""))
+            for rx in (self._ADD_SPECIFIC, self._ADD_ANY):
+                for o, label in buttons:
+                    if rx.search(label):
+                        log.info("JFF rowfill: add button %r" % label)
+                        return o
         except Exception:
             log.error("JFF rowfill: add-button scan failed", exc_info=True)
         return None
