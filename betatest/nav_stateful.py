@@ -13,7 +13,7 @@ import time
 from pywinauto import Desktop
 from pywinauto.keyboard import send_keys
 
-from hypothesis import settings, HealthCheck
+from hypothesis import settings, HealthCheck, Phase
 from hypothesis import strategies as st
 from hypothesis.stateful import (RuleBasedStateMachine, rule, precondition,
                                  invariant)
@@ -49,9 +49,11 @@ class DialogMachine(RuleBasedStateMachine):
                 for it in self.lst.children(control_type="ListItem")]
 
     def _sync_to_list(self):
-        for _ in range(5):
+        for _ in range(6):
             try:
-                if self.lst.exists(timeout=1) and self.lst.is_visible():
+                # If the sections dialog is the active window, no child is on top
+                # and we are at the list, do NOT press Esc (that would close it).
+                if self.lst.exists(timeout=1) and self.dlg.is_active():
                     return
             except Exception:
                 pass
@@ -240,7 +242,8 @@ class DialogMachine(RuleBasedStateMachine):
 
 
 DialogMachine.TestCase.settings = settings(
-    max_examples=1, stateful_step_count=12, deadline=None,
+    max_examples=1, stateful_step_count=16, deadline=None,
+    phases=(Phase.explicit, Phase.reuse, Phase.generate, Phase.target),
     suppress_health_check=list(HealthCheck))
 TestDialog = DialogMachine.TestCase
 
