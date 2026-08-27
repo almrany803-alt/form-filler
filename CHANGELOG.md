@@ -2,6 +2,18 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.64
+
+### Fill repeating Work and Education blocks
+- When a form has a section you can repeat, several jobs or courses with an
+  "Add another" control (as Workday and some Greenhouse forms do), filling the
+  whole form now asks which of your saved entries to place, most recent first
+  and all ticked. It fills the blocks already on the form, adds more with the
+  form's own "Add another" button, and matches each field by what it is (job
+  title, employer, dates), so reordered or extra fields don't shift the data.
+  It reports how many it placed, never removes blocks you already have, and
+  never submits. Sections that aren't Work or Education, and "Add another"
+  controls for other things, are left alone.
 ## 0.9.63
 
 ### CV reader: dates written at the end of a header line

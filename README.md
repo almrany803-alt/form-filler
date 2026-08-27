@@ -8,8 +8,10 @@ and what it left for you. It never submits a form.
 ## What it does
 
 - One key, NVDA+J, opens a menu you can arrow through or drive by access key:
-  Fill this field, Fill all fields, Review fields, Profile (switch, create,
-  delete versions), Import from CV, My sections, Enter your details.
+  Fill this field, Fill all fields, Review fields, Profile (edit, switch, create,
+  delete versions), Import from CV, Enter your details. Editing your profile
+  opens the sections list (Personal information, then Experience, Education, and
+  the rest); Enter opens the highlighted item throughout.
 - Fills text fields, native dropdowns, radio groups, checkboxes, multi-selects,
   and dates, verifying each against the live accessibility state. Custom
   comboboxes (react-select and similar) are opened by keyboard, the way you do
@@ -34,12 +36,24 @@ and what it left for you. It never submits a form.
   postcode, country, nationality, organisation, date of birth, and passport
   fields (number, name, issuing country, issue and expiry dates).
 - Sections beyond the personal fields: Experience, Education, Skills,
-  Certifications, Languages, and any you add. Each is a list of entries you
-  manage in a shallow drill-down (sections, then entries, then one entry's
-  fields), reachable from the menu as My sections. A section you invent
+  Certifications, Languages, and any you add. Each has a type, chosen when you
+  create it (Work, Education, Skills, Certification, Languages, or Other), and the
+  type decides an entry's fields; an Other section asks the entry type each time.
+  You manage them in a shallow drill-down (sections, then entries, then one
+  entry's fields), reached through Edit profile. A section you invent
   (Publications, Volunteering) behaves exactly like the built-in ones.
+- Repeating Work and Education blocks: when a form has a section you can repeat
+  (several jobs or courses, with an "Add another" control, as Workday and some
+  Greenhouse forms do), filling the whole form asks which of your saved entries
+  to place, most recent first and all ticked. It fills the blocks already there,
+  adds more with the form's own "Add another", and matches each field by what it
+  is (job title, employer, dates), then tells you how many it placed. It never
+  removes blocks you already have and never submits.
 - Importing a CV fills those sections too, not just the personal fields, so you
-  start with entries to review and correct instead of a blank slate.
+  start with entries to review and correct instead of a blank slate. The reader
+  handles real-world CV layouts: dates in parentheses, on their own line, or at
+  the end of a header ("Developer, Globex 2018 to 2021"), and single graduation
+  dates.
 - When a form splits the phone across a country-code field and a number field,
   the dial code goes in one and the national number in the other, instead of the
   whole international number in both.
