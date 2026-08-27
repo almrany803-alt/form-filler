@@ -36,7 +36,9 @@ class NavMachine(RuleBasedStateMachine):
     def __init__(self):
         super().__init__()
         self.app = Application(backend="uia").start(
-            'python "%s" "%s"' % (HARNESS, os.path.abspath(ADDON_DIR)))
+            'python "%s" "%s"' % (HARNESS, os.path.abspath(ADDON_DIR)),
+            wait_for_idle=False)
+        time.sleep(2)
         self.win = self.app.window(title=TITLE)
         self.win.wait("visible ready", timeout=30)
         self.in_child = False
