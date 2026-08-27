@@ -76,16 +76,8 @@ def _load_dialogs(addon_dir):
     return dialogs, profile
 
 
-def main():
-    addon_dir = sys.argv[1] if len(sys.argv) > 1 else \
-        os.path.join("addon", "globalPlugins", "jobFormFiller")
-    dialogs, profile = _load_dialogs(os.path.abspath(addon_dir))
-
-    app = wx.App()
-    frame = wx.Frame(None, title="JFF harness")
-    _gui.mainFrame = frame
-    frame.Show()
-
+def _seed(profile):
+    import tempfile
     store = profile.ProfileStore(
         os.path.join(tempfile.mkdtemp(), "p.dat"), profile.NullCrypto())
     store.load()
@@ -94,12 +86,52 @@ def main():
     store.add_row("Experience", {"job_title": "Engineer", "employer": "Acme"})
     store.add_row("Experience", {"job_title": "Teacher", "employer": "School"})
     store.add_row("Education", {"qualification": "BSc", "institution": "Uni"})
+    return store
 
-    dlg = dialogs.SectionsDialog(frame, store)
+
+def _args():
+    positional = [a for a in sys.argv[1:] if not a.startswith("--")]
+    addon_dir = positional[0] if positional else os.path.join(
+        "addon", "globalPlugins", "jobFormFiller")
+    return os.path.abspath(addon_dir)
+
+
+def selftest():
+    dialogs, profile = _load_dialogs(_args())
+    app = wx.App()
+    frame = wx.Frame(None, title="JFF harness")
+    _gui.mainFrame = frame
+    dlg = dialogs.SectionsDialog(frame, _seed(profile))
+    print("SELFTEST OK; dialog title:", repr(dlg.GetTitle()))
+    lst = dlg._list
+    print("list class:", lst.__class__.__name__, "items:", lst.GetCount())
+
+
+def main():
+    dialogs, profile = _load_dialogs(_args())
+    app = wx.App()
+    frame = wx.Frame(None, title="JFF harness")
+    _gui.mainFrame = frame
+    frame.Show()
+    dlg = dialogs.SectionsDialog(frame, _seed(profile))
     dlg.Show()          # modeless so an external driver can act on it
     dlg.Raise()
     app.MainLoop()
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        if "--selftest" in sys.argv:
+            selftest()
+        else:
+            main()
+    except Exception:
+        import traceback
+        tb = traceback.format_exc()
+        try:
+            with open("harness_error.log", "w", encoding="utf-8") as f:
+                f.write(tb)
+        except Exception:
+            pass
+        sys.stderr.write(tb)
+        raise

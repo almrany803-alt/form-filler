@@ -30,6 +30,12 @@ jobs:
         run: |
           python -c "import sys; sys.argv=['h','addon/globalPlugins/jobFormFiller']; import importlib.util, os; print('harness present:', os.path.exists('betatest/dialog_harness.py'))"
 
+      - name: Self-test the harness (imports real dialogs, builds the dialog)
+        shell: pwsh
+        run: |
+          python betatest/dialog_harness.py addon/globalPlugins/jobFormFiller --selftest
+          if (Test-Path harness_error.log) { Write-Host "=== harness_error.log ==="; Get-Content harness_error.log }
+
       - name: Machine vs the FIXED dialogs (must find no bug)
         shell: pwsh
         run: |
