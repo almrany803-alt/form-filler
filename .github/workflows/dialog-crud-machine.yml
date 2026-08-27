@@ -1,0 +1,62 @@
+name: Dialog CRUD machine (Hypothesis + pywinauto)
+
+# Hypothesis generates random sequences of real dialog operations (add/remove
+# sections, open/close, add entries) driven through pywinauto against the live
+# dialogs, checking data and focus invariants after every step. Covers the CRUD
+# features, not just menu opening.
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  crud-machine:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install NVDA 2026.1.1
+        shell: pwsh
+        run: |
+          Invoke-WebRequest "https://download.nvaccess.org/releases/2026.1.1/nvda_2026.1.1.exe" -OutFile nvda_setup.exe
+          Start-Process -Wait -FilePath ".\nvda_setup.exe" -ArgumentList '--install-silent'
+          Start-Sleep -Seconds 5
+          Start-Process -Wait -FilePath "C:\Program Files\NVDA\nvda.exe" -ArgumentList '-q'
+          Start-Sleep -Seconds 3
+
+      - name: Install Hypothesis and pywinauto
+        shell: pwsh
+        run: pip install hypothesis pywinauto
+
+      - name: Load add-on and seed sections
+        shell: pwsh
+        run: |
+          $cfg = "$env:RUNNER_TEMP\nvdacfg"
+          New-Item -ItemType Directory -Force -Path "$cfg\scratchpad\globalPlugins" | Out-Null
+          Copy-Item -Recurse -Force "addon\globalPlugins\jobFormFiller" "$cfg\scratchpad\globalPlugins\"
+          Set-Content -Path "$cfg\nvda.ini" -Value "[development]`r`n`tenableScratchpadDir = True`r`n"
+          $env:JFF_CFG = $cfg
+          python betatest\profile_tool.py seed_sections
+
+      - name: Start NVDA
+        shell: pwsh
+        run: |
+          $cfg = "$env:RUNNER_TEMP\nvdacfg"
+          Start-Process -FilePath "C:\Program Files\NVDA\nvda.exe" -ArgumentList "-c `"$cfg`" -f `"$cfg\nvda.log`" -l 10 -m"
+          Start-Sleep -Seconds 20
+
+      - name: Open the sections dialog
+        shell: pwsh
+        run: pwsh -File betatest\drive_open_sections.ps1
+
+      - name: Run the Hypothesis + pywinauto CRUD machine
+        shell: pwsh
+        run: python betatest\nav_stateful.py -v
+
+      - name: Upload the NVDA log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-log-crud-machine
+          path: ${{ runner.temp }}\nvdacfg\nvda.log
+          if-no-files-found: warn
