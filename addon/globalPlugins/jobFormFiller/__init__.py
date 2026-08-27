@@ -1825,12 +1825,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     return name, rows
         return None, []
 
-    def _fill_block(self, block_objs, block_fields, values):
-        """Write a row's values into one block's field objects, by position."""
-        for k, obj in enumerate(block_objs):
-            if k >= len(block_fields):
-                break
-            v = values.get(block_fields[k])
+    def _fill_block(self, block, values):
+        """Write a row's values into one block, matching each field to what it
+        IS (its concept), not its position, so stray or reordered fields on real
+        forms don't shift the data. `block` is {concept: field_object}."""
+        for concept, obj in block.items():
+            v = values.get(concept)
             if v:
                 try:
                     self._write_field(obj, _descriptor_from_object(obj), str(v))
@@ -1866,10 +1866,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.error("JFF rowfill: add-button scan failed", exc_info=True)
         return None
 
-    def _section_block_objs(self, ti, stype):
-        """Re-enumerate the form via the captured tree interceptor and return the
-        field objects of the section of this type, as a flat list of all its
-        blocks, after the page has changed from adding blocks."""
+    def _section_blocks(self, ti, stype):
+        """Re-enumerate the form via the captured tree interceptor and group the
+        section's fields into blocks. Returns a list of {concept: field_object},
+        one per block. A repeat of a concept starts a new block, so blocks are
+        found by what the fields ARE, robust to field count and order."""
         if ti is None:
             return []
         try:
@@ -1878,24 +1879,31 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         except Exception:
             return []
         objs = [o for o in (_obj_from_item(it) for it in items) if o is not None]
-        out = []
+        started = False
+        blocks, cur = [], {}
         for o in objs:
             try:
                 c = rowfill.row_concept(_descriptor_from_object(o).label or "")
             except Exception:
                 c = None
             if c is None:
-                if out:
-                    break
+                if started and cur:
+                    break                 # end of the section's run
                 continue
-            if not out:
+            if not started:
                 is_work = c in ("job_title", "employer")
                 is_edu = c in ("institution", "qualification")
                 if (stype == "Work" and not is_work) or \
                    (stype == "Education" and not is_edu):
-                    continue
-            out.append(o)
-        return out
+                    continue              # a run of the other kind; skip
+                started = True
+            if c in cur:                  # concept repeats -> next block
+                blocks.append(cur)
+                cur = {}
+            cur[c] = o
+        if cur:
+            blocks.append(cur)
+        return blocks
 
     def _do_repeating_fill(self, run_objs, block_fields, blocks_present, stype,
                            ti):
@@ -1921,17 +1929,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 break
             time.sleep(1.0)
             added += 1
-        # Re-read the section's blocks now that the page has settled.
-        L = len(block_fields)
-        section_objs = self._section_block_objs(ti, stype) or run_objs
-        log.info("JFF rowfill: %d block-objs after %d adds (need %d)"
-                 % (len(section_objs), added, len(fills) * L))
+        # Re-read the section's blocks (by concept) now the page has settled.
+        blocks = self._section_blocks(ti, stype)
+        log.info("JFF rowfill: %d blocks after %d adds (need %d)"
+                 % (len(blocks), added, len(fills)))
         placed = 0
         for b, values in fills:
-            block = section_objs[b * L:(b + 1) * L]
-            if len(block) < 1:
+            if b >= len(blocks):
                 break
-            self._fill_block(block, block_fields, values)
+            self._fill_block(blocks[b], values)
             placed += 1
         total = len(chosen)
         if placed < total:
