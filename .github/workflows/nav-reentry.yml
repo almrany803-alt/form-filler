@@ -21,6 +21,8 @@ jobs:
         variant: [fixed, buggy]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Use the 0.9.53 (pre-fix) dialogs for the buggy variant
         if: matrix.variant == 'buggy'
