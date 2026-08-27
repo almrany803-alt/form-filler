@@ -71,6 +71,18 @@ class TestRealCVs(unittest.TestCase):
         self.assertEqual(secs["Experience"][1]["start_date"], "2017")
         self.assertEqual(len(secs["Languages"]), 2)
 
+
+    def test_priya_inline_trailing_dates(self):
+        # date range at the END of the header line, no parentheses, no separate
+        # line: "Senior Engineer, Acme Corp Jan 2019 to Present"
+        _, secs = _parse("priya_nair.txt")
+        self.assertEqual(len(secs["Experience"]), 2)
+        self.assertEqual(secs["Experience"][0]["start_date"], "Jan 2019")
+        self.assertEqual(secs["Experience"][0]["end_date"], "")   # Present
+        self.assertEqual(secs["Experience"][1]["start_date"], "2016")
+        self.assertEqual(len(secs["Education"]), 1)
+        self.assertEqual(secs["Education"][0]["end_date"], "2016")
+
     def test_marcus_parenthetical_year_ranges(self):
         _, secs = _parse("marcus_reid.txt")
         self.assertEqual(len(secs["Experience"]), 2)

@@ -261,6 +261,33 @@ def _looks_like_entry_header(line):
         "," in s or re.search(r"\s[\u2013\u2014-]\s", s) is not None)
 
 
+_STRICT_MONTH = (r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)"
+                 r"[a-z]*\.?")
+_STRICT_DATE = (r"(?:" + _STRICT_MONTH + r"\s+)?(?:19|20)\d\d"
+                r"|\d{1,2}/(?:19|20)\d\d|(?:19|20)\d\d")
+_TRAILING_RANGE = re.compile(
+    r"[\s,]+(" + _STRICT_DATE + r")\s*(?:to|until|[-\u2013\u2014])\s*"
+    r"(present|current|ongoing|now|" + _STRICT_DATE + r")\s*$", re.I)
+
+
+def _trailing_dates(line):
+    """A header with a date range at the END and no parentheses, like
+    'Developer, Globex 2018 to 2021' or 'Analyst, Acme Jan 2019 - Present'.
+    Returns (header_without_dates, start, end), or None. Only accepts a header
+    that still looks structured (has a comma or an en-dash) once the dates are
+    removed, so a sentence that merely mentions a range is not mistaken for one."""
+    m = _TRAILING_RANGE.search(line)
+    if not m:
+        return None
+    header = line[:m.start()].strip().strip(",").strip()
+    if not _looks_like_entry_header(header):
+        return None
+    end = m.group(2).strip()
+    if re.search(r"present|current|ongoing|now", end, re.I):
+        end = ""
+    return header, m.group(1).strip(), end
+
+
 def _split_header(header, key):
     """Split an entry header into fields, best effort. A 'Title - Company' style
     (en-dash or hyphen) is very common and puts the role or qualification first;
@@ -310,6 +337,15 @@ def _dated_entries(body, key):
             rows.append(cur)
             i += 1
             continue
+        if not _is_bullet(ln):
+            td = _trailing_dates(ln)
+            if td is not None:
+                header, s, e = td
+                cur = _split_header(header, key)
+                cur["start_date"], cur["end_date"] = s, e
+                rows.append(cur)
+                i += 1
+                continue
         if (i + 1 < n and not _is_bullet(ln) and _bare_dates(ln) is None
                 and _bare_dates(body[i + 1]) is not None):
             s, e = _bare_dates(body[i + 1])

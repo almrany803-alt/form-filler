@@ -2,6 +2,14 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.63
+
+### CV reader: dates written at the end of a header line
+- A header that puts the date range inline at the end, with no parentheses and
+  no separate line, like "Developer, Globex 2018 to 2021" or "Analyst, Acme Jan
+  2019 to Present", is now split into the entry and its dates. Real month names
+  are required there, so a company name is never mistaken for a date, and a
+  sentence that merely mentions a year range is not turned into an entry.
 ## 0.9.62
 
 ### Fix: form questions ending in a question mark now match
