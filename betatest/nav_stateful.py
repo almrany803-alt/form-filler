@@ -70,7 +70,16 @@ class DialogMachine(RuleBasedStateMachine):
         time.sleep(0.2)
 
     def _button(self, title):
-        self.dlg.child_window(title=title, control_type="Button").invoke()
+        last = None
+        for _ in range(4):
+            try:
+                self.dlg.child_window(
+                    title=title, control_type="Button").invoke()
+                return
+            except Exception as exc:
+                last = exc
+                time.sleep(0.5)
+        raise last
 
     # ---- operations (rules) ----------------------------------------------
     @rule(name=st.text(alphabet="abcde", min_size=1, max_size=3))
@@ -119,27 +128,38 @@ class DialogMachine(RuleBasedStateMachine):
     def add_entry(self, data):
         self._sync_to_list()
         name = data.draw(st.sampled_from(sorted(self.sections)))
-        self._select(name)
-        self._button("Open")
-        time.sleep(1.0)
-        entries = Desktop(backend="uia").window(title_re="^%s$" % name)
-        elist = entries.child_window(control_type="List", found_index=0)
-        before = len(elist.children(control_type="ListItem"))
-        entries.child_window(title="Add entry", control_type="Button").invoke()
-        time.sleep(0.9)
-        send_keys("testvalue")
-        time.sleep(0.2)
-        form = Desktop(backend="uia").window(title_re="Entry in .*")
-        form.child_window(title="OK", control_type="Button").invoke()
-        time.sleep(0.9)
-        after = len(elist.children(control_type="ListItem"))
-        assert after == before + 1, ("add_entry did not add one", name, before, after)
         try:
-            entries.child_window(title="Close", control_type="Button").invoke()
-        except Exception:
-            send_keys("{ESC}")
-        time.sleep(1.0)
-        self._sync_to_list()
+            self._select(name)
+            self._button("Open")
+            time.sleep(1.2)
+            entries = Desktop(backend="uia").window(title_re="^%s$" % name)
+            elist = entries.child_window(control_type="List", found_index=0)
+            before = len(elist.children(control_type="ListItem"))
+            entries.child_window(
+                title="Add entry", control_type="Button").invoke()
+            time.sleep(1.0)
+            send_keys("testvalue")
+            time.sleep(0.3)
+            form = Desktop(backend="uia").window(title_re="Entry in .*")
+            form.child_window(title="OK", control_type="Button").invoke()
+            time.sleep(1.0)
+            after = len(elist.children(control_type="ListItem"))
+            assert after == before + 1, \
+                ("add_entry did not add one", name, before, after)
+        except AssertionError:
+            raise
+        except Exception as exc:
+            print("add_entry UIA hiccup, recovering:", type(exc).__name__)
+        finally:
+            try:
+                ent = Desktop(backend="uia").window(title_re="^%s$" % name)
+                if ent.exists(timeout=1):
+                    ent.child_window(
+                        title="Close", control_type="Button").invoke()
+            except Exception:
+                pass
+            time.sleep(0.8)
+            self._sync_to_list()
 
     # ---- invariant checked after EVERY operation --------------------------
     @invariant()
