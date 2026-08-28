@@ -223,10 +223,20 @@ def choose_option(value: str, options: list[str], concept: str = "") -> OptionMa
         except Exception:
             pass
 
-    # 3. containment either way - a softer, flagged guess.
-    for i, o in enumerate(norm_opts):
-        if v and (v in o or o in v):
-            return OptionMatch(i, options[i], "guess")
+    # 3. containment - a softer, flagged guess. A single containing option is
+    # taken as a guess. If the value is contained in SEVERAL options it is
+    # ambiguous ("California" also sits inside "Lower California Sur"), so we
+    # prefer the one that starts with the value, and if that is still not unique
+    # we hand back rather than risk selecting the wrong option - some forms save
+    # a wrong pick with a mismatched hidden id, which is worse than no pick.
+    contains = [i for i, o in enumerate(norm_opts) if v and (v in o or o in v)]
+    if len(contains) == 1:
+        return OptionMatch(contains[0], options[contains[0]], "guess")
+    if len(contains) > 1:
+        prefixed = [i for i in contains if norm_opts[i].startswith(v)]
+        if len(prefixed) == 1:
+            return OptionMatch(prefixed[0], options[prefixed[0]], "guess")
+        return OptionMatch(None, "", "none")     # ambiguous - leave to the user
 
     # 4. no confident match - leave it to the user.
     return OptionMatch(None, "", "none")

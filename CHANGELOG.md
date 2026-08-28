@@ -2,6 +2,17 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.66
+
+### Dropdowns: safer option matching, no wrong picks
+- When your saved value isn't an exact option, the add-on used to take the first
+  option that merely contained it, which could pick the wrong one ("California"
+  also sits inside "Lower California Sur"). Now an exact or known-synonym match is
+  used as before, a single containing option is still taken as a helpful guess,
+  but when the value is contained in several options it prefers the one that
+  starts with your value and otherwise hands the field back to you. Some forms
+  save a wrong pick with a mismatched hidden value, so no pick is safer than a
+  wrong one.
 ## 0.9.65
 
 ### Dropdowns: wait on the control's own loading signal
