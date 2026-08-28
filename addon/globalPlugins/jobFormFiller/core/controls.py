@@ -247,7 +247,14 @@ def choose_option(value: str, options: list[str], concept: str = "") -> OptionMa
 def verify_selection(expected_label: str, control_value_after: str) -> str:
     """After we set a choice, the NVDA layer reads the control's value back and
     passes it here. A set can silently fail, so we never assume it worked.
-    Returns 'confirmed', 'mismatch', or 'unknown'."""
+    Returns 'confirmed', 'mismatch', or 'unknown'.
+
+    This stays permissive on containment on purpose: a control often reads a
+    chosen abbreviation back as its full display value ('UK' shows as 'United
+    Kingdom (UK)'). The wrong-option trap ('California' vs 'Lower California
+    Sur') is prevented earlier, at match time in choose_option, which hands back
+    rather than select an ambiguous option, so verify does not need to re-litigate
+    the match here."""
     if not control_value_after:
         return "unknown"                 # could not read it back
     if _norm(control_value_after) == _norm(expected_label):

@@ -2,6 +2,16 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.67
+
+### Multi-select re-reads between picks; values tidied before typing
+- Multi-select now re-reads the options before each value and counts a choice
+  as made when its option is ticked OR has moved into a chip. This handles the
+  chip style (Workday and similar) that re-renders after every addition, where
+  the old code reused stale references. The plain listbox style is unchanged.
+- Values are tidied just before typing: stray newlines, tabs, double spaces and
+  zero-width characters are removed, so a saved value can't trip a form's quiet
+  validator. Content, punctuation and phone formatting are left as they are.
 ## 0.9.66
 
 ### Dropdowns: safer option matching, no wrong picks

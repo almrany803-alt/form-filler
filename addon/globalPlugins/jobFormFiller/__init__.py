@@ -871,6 +871,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         return self._activate_radio(target)
 
     def _write_field(self, obj, fd, value):
+        value = matcher.normalize_value(value)
         target_id = fd.id
         moved = False
         for _attempt in range(3):
@@ -2667,24 +2668,31 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def _fill_multiselect(self, obj, values):
         """Select the option(s) matching the given value(s) in a multi-select,
-        without disturbing options already chosen (a multi-select adds to the
-        selection). Verifies each via the live selected state. Returns
-        (verdict, [selected labels])."""
-        # If focus landed on an option rather than the listbox itself, step up to
-        # the container so its options can be read.
+        without disturbing options already chosen. Handles BOTH styles: a listbox
+        where options stay and get checked, and a chip style (Workday, react
+        multi) that re-renders after each addition and moves the chosen option
+        out of the list into a chip. So we re-read the options before every value
+        (cached references would go stale on a re-render) and count a value as
+        selected if its option is now checked OR has left the list as a chip.
+        Returns (verdict, [selected labels])."""
         root = obj
         try:
             if obj.role == controlTypes.Role.LISTITEM and obj.parent is not None:
                 root = obj.parent
         except Exception:
             pass
-        labels, opts = self._read_option_children(root, "multi")
-        if not labels:
-            log.info("JFF multi: no options read")
-            return "unknown", []
-        log.info("JFF multi: %d option(s): %r" % (len(labels), labels[:20]))
         selected = []
         for value in values:
+            # Fresh read each time: a chip-style widget re-renders after each
+            # addition, so references from a previous pass are detached.
+            labels, opts = self._read_option_children(root, "multi")
+            if not labels:
+                lb = self._find_listbox(root)      # options may be in a popup
+                if lb is not None:
+                    labels, opts = self._read_option_children(lb, "multi")
+            if not labels:
+                log.info("JFF multi: no options read for %r" % (value,))
+                continue
             pick = controls.choose_option(value, labels)
             if pick.index is None or pick.index >= len(opts):
                 log.info("JFF multi: value=%r no match" % (value,))
@@ -2700,16 +2708,23 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                         KeyboardInputGesture.fromName("space").send()
                     except Exception:
                         log.error("JFF multi: select failed", exc_info=True)
+            # Wait for it to register: the option becomes checked (listbox) OR
+            # it leaves the list because a chip appeared (chip style).
             ok = False
-            for _k in range(8):
+            for _k in range(10):
+                time.sleep(0.08)
                 if self._live_checked(target):
                     ok = True
                     break
-                time.sleep(0.06)
+                now, _ = self._read_option_children(root, "multi")
+                if now and pick.label not in now and pick.label in labels:
+                    ok = True                      # consumed into a chip
+                    break
             if ok:
                 selected.append(pick.label)
             log.info("JFF multi: value=%r -> idx=%r label=%r selected=%s"
                      % (value, pick.index, pick.label, ok))
+            time.sleep(0.2)                        # let a re-render settle
         return ("confirmed" if selected else "none"), selected
 
     def _find_listbox(self, root, depth=0):

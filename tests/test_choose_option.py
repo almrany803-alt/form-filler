@@ -41,3 +41,25 @@ class TestChooseOption(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestNormalizeValueAndVerify(unittest.TestCase):
+    def test_normalize_value(self):
+        from core import matcher
+        self.assertEqual(matcher.normalize_value("  John   Smith  "), "John Smith")
+        self.assertEqual(matcher.normalize_value("+44 7700 900000"), "+44 7700 900000")
+        self.assertEqual(matcher.normalize_value("line1\nline2"), "line1 line2")
+        self.assertEqual(matcher.normalize_value("a\u200bb\tc"), "ab c")
+
+    def test_verify_selection_permissive_on_containment(self):
+        # verify stays permissive: an abbreviation reads back as its full value
+        self.assertEqual(
+            controls.verify_selection("UK", "United Kingdom (UK)"), "confirmed")
+        self.assertEqual(
+            controls.verify_selection("California", "California, United States"),
+            "confirmed")
+        self.assertEqual(
+            controls.verify_selection("California", "California"), "confirmed")
+        # a genuinely different read-back is a mismatch
+        self.assertEqual(
+            controls.verify_selection("California", "Texas"), "mismatch")

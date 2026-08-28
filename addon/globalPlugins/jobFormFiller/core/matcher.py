@@ -434,6 +434,22 @@ def _lexicon_hit(text: str):
     return best
 
 
+_WS_RE = re.compile(r"\s+")
+_CTRL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\u200b-\u200f\ufeff]")
+
+
+def normalize_value(value):
+    """Tidy a value just before it is typed into a field: strip control and
+    zero-width characters and collapse runs of whitespace to single spaces, so a
+    stray newline, tab or double space from a saved value cannot trip a form's
+    quiet validator. Content, punctuation and case are left untouched."""
+    if not value:
+        return value
+    v = _CTRL_RE.sub("", str(value))
+    v = _WS_RE.sub(" ", v)
+    return v.strip()
+
+
 def match_field(fd: FieldDescriptor) -> MatchResult:
     ac = (fd.autocomplete or "").strip().lower()
     if ac in _AUTOCOMPLETE:
