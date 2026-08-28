@@ -2128,6 +2128,24 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return [name], [child]
         return [], []
 
+    def _control_busy(self, obj):
+        """True while a dropdown is still loading its options (async), so we keep
+        waiting rather than conclude the menu is empty. Reads the control's own
+        BUSY state and that of its popup children."""
+        try:
+            S = controlTypes.State
+            if S.BUSY in obj.states:
+                return True
+            for child in (obj.children or []):
+                try:
+                    if S.BUSY in child.states:
+                        return True
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return False
+
     def _read_select_options(self, obj, arrow_open=False):
         """Read a dropdown's option labels by briefly opening it, then Escape to
         close, leaving the selection unchanged. Returns labels, or [].
@@ -2179,20 +2197,27 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 KeyboardInputGesture.fromName(opener).send()
             except Exception:
                 continue
-            # Async prompts (Workday) open an empty shell first and render their
-            # options a moment later, taking a beat to settle on expanded, so poll
-            # a few times before giving up instead of reading once. We only RE-READ
-            # here, never re-press: alt+downArrow and downArrow open the list, and
-            # if it is already open they only move the highlight, never commit.
-            # (Enter would commit a value, so we never send it to open.)
-            for _ in range(4):
+            # Async prompts (Workday and other network-backed dropdowns) open an
+            # empty shell first and render their options a moment later. Wait on
+            # the control's OWN loading signal rather than a fixed count: keep
+            # polling while it still reports busy, up to a longer cap for slow
+            # menus, and stop as soon as options appear. We only RE-READ here,
+            # never re-press: alt+downArrow and downArrow open the list, and if it
+            # is already open they only move the highlight, never commit. (Enter
+            # would commit a value, so we never send it to open.)
+            labels = []
+            for _attempt in range(12):        # up to ~3.5s for slow async
                 time.sleep(0.3)
                 labels = self._read_open_menu(obj)
                 if labels:
                     break
+                # Once it is no longer loading, more options are not coming, so
+                # stop soon rather than pay the whole wait on an empty menu.
+                if _attempt >= 2 and not self._control_busy(obj):
+                    break
             if labels:
                 log.info("JFF review: %s opened the menu, read %d option(s) "
-                         "(polled for async render)" % (opener, len(labels)))
+                         "(waited on busy state)" % (opener, len(labels)))
                 break
         # Diagnostic: if the menu opened but we still read nothing, dump what
         # object navigation and the display-model (screen-text) layer see, while

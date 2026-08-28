@@ -2,6 +2,14 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.65
+
+### Dropdowns: wait on the control's own loading signal
+- When a dropdown loads its options over the network (Workday and other
+  search-as-you-type menus), the add-on now waits on the control's busy state
+  rather than a fixed short delay, giving slow menus more time to render while
+  still moving on quickly from an empty one. This makes custom and async
+  dropdowns more reliable across every platform.
 ## 0.9.64
 
 ### Fill repeating Work and Education blocks
