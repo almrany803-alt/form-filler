@@ -48,8 +48,11 @@ class TestNormalizeValueAndVerify(unittest.TestCase):
         from core import matcher
         self.assertEqual(matcher.normalize_value("  John   Smith  "), "John Smith")
         self.assertEqual(matcher.normalize_value("+44 7700 900000"), "+44 7700 900000")
-        self.assertEqual(matcher.normalize_value("line1\nline2"), "line1 line2")
+        self.assertEqual(matcher.normalize_value("line1\nline2"), "line1\nline2")
         self.assertEqual(matcher.normalize_value("a\u200bb\tc"), "ab c")
+        # line breaks preserved (cover letters keep paragraphs)
+        self.assertEqual(matcher.normalize_value("Dear team,\n\nHi.\n"),
+                         "Dear team,\n\nHi.")
 
     def test_verify_selection_permissive_on_containment(self):
         # verify stays permissive: an abbreviation reads back as its full value

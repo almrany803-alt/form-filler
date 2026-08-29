@@ -15,9 +15,15 @@ and what it left for you. It never submits a form.
 - Fills text fields, native dropdowns, radio groups, checkboxes, multi-selects,
   and dates, verifying each against the live accessibility state. Custom
   comboboxes (react-select and similar) are opened by keyboard, the way you do
-  it by hand, and their options read from the live page. Date fields that a site
-  builds as a plain text box (SAP UI5 / SuccessFactors) are recognised by their
-  format and aria-roledescription.
+  it by hand, and their options read from the live page. For a dropdown whose
+  options load over the network, it waits on the control's own loading signal
+  rather than a fixed delay. When your value is not an exact option it matches
+  by known synonyms or a clear single choice, and hands the field back rather
+  than risk a wrong pick when several options could fit. Multi-selects are filled
+  one value at a time, coping with the chip style that redraws after each pick.
+  Values are tidied of stray whitespace before typing (line breaks in a cover
+  letter are kept). Date fields that a site builds as a plain text box (SAP UI5 /
+  SuccessFactors) are recognised by their format and aria-roledescription.
 - Fill this field (NVDA+J then F) always gives you a way to complete the field.
   When the add-on knows the answer it fills it; when it does not, it opens the
   right accessible editor on the spot instead of handing it back: Yes/No for a

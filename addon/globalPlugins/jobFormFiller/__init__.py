@@ -2212,9 +2212,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 labels = self._read_open_menu(obj)
                 if labels:
                     break
-                # Once it is no longer loading, more options are not coming, so
-                # stop soon rather than pay the whole wait on an empty menu.
-                if _attempt >= 2 and not self._control_busy(obj):
+                # Poll at least ~1.5s (the old floor) before giving up on a menu
+                # that isn't flagged busy, so a slow one that renders without a
+                # busy signal is not missed; keep waiting up to the cap while it
+                # still reports busy.
+                if _attempt >= 4 and not self._control_busy(obj):
                     break
             if labels:
                 log.info("JFF review: %s opened the menu, read %d option(s) "

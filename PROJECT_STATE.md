@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.53. Phases 5 (phone group), 6
+points to. Last updated at version 0.9.68. Phases 5 (phone group), 6
 (attachments), 7 (sections and CV seeding) and the language finish (27
 languages) are in; the repeating-row NVDA fill is parked.
 
@@ -113,6 +113,36 @@ The addon stores ISO internally and writes to each form field with the tested
 segment/text/custom-picker logic.
 
 ---
+
+## Combobox and ATS roadmap (phased)
+
+Grounded in reading browser autofill (Firefox reference), the open-source job
+autofillers (ApplyAI, laynef/AI-Job-Autofill, andrewmillercode/Autofill-Jobs,
+berellevy/job_app_filler) and a practitioner breakdown of Workday's widgets. The
+add-on's own architecture (keyboard-driven fill, a structural fingerprint
+database, deterministic at runtime with vision only for discovery) matches what
+those tools converged on, so this is refinement, not a rewrite.
+
+- Phase 1 - DONE. Strengthen the generic dropdown engine, which helps every
+  platform: wait on the control's busy/loading signal for async options; match
+  by exact/synonym and hand back on ambiguity rather than pick a wrong option;
+  fill multi-selects one value at a time, coping with the chip style that
+  redraws; normalise values (whitespace/control chars, line breaks kept) before
+  typing. Verify-back stays permissive on purpose because the wrong-option trap
+  is prevented at match time. (0.9.65-0.9.68.)
+- Phase 2 - NEXT. Detect the platform across many ATS (Workday, Greenhouse,
+  Lever, Ashby, SmartRecruiters, iCIMS, Taleo, BambooHR, Workable,
+  SuccessFactors) by URL host and DOM markers, so the fingerprint database can be
+  ATS-aware. Small and deterministic; the key that unlocks Phase 3.
+- Phase 3. Grow the fingerprint database one ATS at a time, easiest first
+  (Lever, Greenhouse, Ashby, SmartRecruiters, iCIMS, Taleo, then Workday). Public
+  platforms are CI-tested as added; login-walled ones seed from documented
+  patterns and grow from real use.
+- Phase 4. Close widget-type gaps and re-read the form after an answer that can
+  reveal hidden sub-fields.
+- Phase 5 (optional, later). The opt-in discovery loop that captures an unknown
+  field's structure offline so a fingerprint can be added; deterministic at
+  runtime.
 
 ## 2. How we work: the beta-tester approach
 

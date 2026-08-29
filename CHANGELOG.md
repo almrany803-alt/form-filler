@@ -2,6 +2,15 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.68
+
+### Phase 1 audit fixes
+- Value tidying now preserves line breaks, so a cover letter or any multi-line
+  answer keeps its paragraphs (the previous version flattened them). Stray tabs,
+  double spaces and zero-width characters are still removed.
+- The async-dropdown wait keeps its previous minimum before giving up on a menu
+  that isn't flagged busy, so a slow menu that renders without a busy signal is
+  not missed, while still extending the wait for ones that report loading.
 ## 0.9.67
 
 ### Multi-select re-reads between picks; values tidied before typing

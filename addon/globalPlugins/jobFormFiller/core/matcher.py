@@ -434,20 +434,22 @@ def _lexicon_hit(text: str):
     return best
 
 
-_WS_RE = re.compile(r"\s+")
+_INLINE_WS_RE = re.compile(r"[ \t]+")
 _CTRL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\u200b-\u200f\ufeff]")
 
 
 def normalize_value(value):
     """Tidy a value just before it is typed into a field: strip control and
-    zero-width characters and collapse runs of whitespace to single spaces, so a
-    stray newline, tab or double space from a saved value cannot trip a form's
-    quiet validator. Content, punctuation and case are left untouched."""
+    zero-width characters, collapse runs of spaces and tabs, and trim, so a
+    stray tab, double space or zero-width character from a saved value cannot
+    trip a form's quiet validator. Line breaks are PRESERVED, so a cover letter
+    or any multi-line answer keeps its paragraphs. Content, punctuation, case and
+    phone formatting are left untouched."""
     if not value:
         return value
-    v = _CTRL_RE.sub("", str(value))
-    v = _WS_RE.sub(" ", v)
-    return v.strip()
+    v = _CTRL_RE.sub("", str(value)).replace("\r\n", "\n").replace("\r", "\n")
+    lines = [_INLINE_WS_RE.sub(" ", ln).strip() for ln in v.split("\n")]
+    return "\n".join(lines).strip()
 
 
 def match_field(fd: FieldDescriptor) -> MatchResult:
