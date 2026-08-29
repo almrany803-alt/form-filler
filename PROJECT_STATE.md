@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.71. Phases 5 (phone group), 6
+points to. Last updated at version 0.9.72. Phases 5 (phone group), 6
 (attachments), 7 (sections and CV seeding) and the language finish (27
 languages) are in; the repeating-row NVDA fill is parked.
 
@@ -150,8 +150,13 @@ those tools converged on, so this is refinement, not a rewrite.
   Workday's name--name id pattern (the accessibility-layer equivalent). The
   Greenhouse entry was re-verified against a real live-form country-combobox
   signature and locked with a test. The matcher fails closed on unknown keys.
-- Phase 4 - NEXT. Close widget-type gaps and re-read the form after an answer
-  that can reveal hidden sub-fields.
+- Phase 4 - DONE. Re-read the form after an answer reveals hidden fields and
+  fill the newly-shown ones that match stored values. Additive pass (like the
+  repeating-section pass), bounded, never clobbers, leaves radios/multi/date for
+  the user. Proven on a live conditional-reveal test (choosing Yes reveals a City
+  field, which then fills). Widget-type coverage judged complete for now (the
+  existing kinds cover the researched Workday widgets; file upload can't be
+  auto-attached by an accessibility tool). (0.9.72.)
 - Phase 5 (optional, later). The opt-in discovery loop that captures an unknown
   field's structure offline so a fingerprint can be added; deterministic at
   runtime.

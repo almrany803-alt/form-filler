@@ -58,6 +58,10 @@ and what it left for you. It never submits a form.
   adds more with the form's own "Add another", and matches each field by what it
   is (job title, employer, dates), then tells you how many it placed. It never
   removes blocks you already have and never submits.
+- After the main fill, the add-on re-reads the form and fills fields that only
+  appear once a question is answered (a Yes/No that opens a sub-form, an
+  "other, please specify" box), so a conditional field is not silently
+  missed. It never overwrites a field that already has a value.
 - Importing a CV fills those sections too, not just the personal fields, so you
   start with entries to review and correct instead of a blank slate. The reader
   handles real-world CV layouts: dates in parentheses, on their own line, or at
