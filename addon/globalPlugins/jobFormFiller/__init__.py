@@ -35,9 +35,12 @@ except Exception:
 
 
 def _fd_summary(fd):
-    return ("label=%r aria=%r name=%r id=%r autocomplete=%r role=%r placeholder=%r"
-            % (fd.label, fd.aria_label, fd.name, fd.id,
-               fd.autocomplete, fd.role, fd.placeholder))
+    return ("label=%r aria=%r name=%r id=%r autocomplete=%r role=%r "
+            "placeholder=%r class=%r haspopup=%r states=%r"
+            % (fd.label, fd.aria_label, fd.name, fd.id, fd.autocomplete,
+               fd.role, fd.placeholder, getattr(fd, "dom_class", ""),
+               getattr(fd, "haspopup", ""),
+               tuple(getattr(fd, "states", ()) or ())))
 
 
 def _obj_from_item(item):

@@ -4,27 +4,51 @@
   "fingerprints": [
     {
       "id": "workday-source-prompt",
-      "when": {"platform": "workday", "id_contains": "source--source"},
+      "when": {
+        "platform": "workday",
+        "id_contains": "source--source"
+      },
       "kind": "async_combobox",
       "note": "Workday 'How Did You Hear About Us?' search prompt"
     },
     {
       "id": "workday-search-prompt",
-      "when": {"platform": "workday", "role": "editabletext", "placeholder": "search"},
+      "when": {
+        "platform": "workday",
+        "role": "editabletext",
+        "placeholder": "search"
+      },
       "kind": "async_combobox",
       "note": "Workday type-to-filter prompt (exposed as a plain text input)"
     },
     {
       "id": "workday-country-button",
-      "when": {"platform": "workday", "id_contains": "country--country", "role": "button"},
+      "when": {
+        "platform": "workday",
+        "id_contains": "country--country",
+        "role": "button"
+      },
       "kind": "button_dropdown",
       "note": "Workday country is a button that opens a listbox; activate then pick"
     },
     {
       "id": "workday-preferred-name-check",
-      "when": {"platform": "workday", "id_contains": "preferredcheck"},
+      "when": {
+        "platform": "workday",
+        "id_contains": "preferredcheck"
+      },
       "kind": "checkbox",
       "note": "Workday 'I have a preferred name' box; boolean, never fill with a name"
+    },
+    {
+      "when": {
+        "platform": "greenhouse",
+        "class_contains": "select__",
+        "role": "combobox"
+      },
+      "kind": "async_combobox",
+      "note": "Greenhouse react-select searchable dropdown (from a real live log)",
+      "id": "greenhouse-react-select"
     }
   ]
 }

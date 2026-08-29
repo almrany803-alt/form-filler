@@ -87,3 +87,32 @@ class TestDatabaseIntegrity(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _FDsig:
+    def __init__(self, **kw):
+        self.id = ""; self.role = ""; self.placeholder = ""
+        self.dom_class = ""; self.haspopup = ""; self.states = ()
+        for k, v in kw.items():
+            setattr(self, k, v)
+
+
+class TestGreenhouseFingerprintAndGating(unittest.TestCase):
+    """Growth from a real log: the Greenhouse react-select entry, and that
+    entries are platform-gated so they never misfire elsewhere."""
+
+    def test_greenhouse_react_select_classifies(self):
+        fd = _FDsig(id="country", role="combobox",
+                    dom_class="select__input", haspopup="menu")
+        m = fingerprints.match_fingerprint(fd, "greenhouse")
+        self.assertIsNotNone(m)
+        self.assertEqual(m["kind"], "async_combobox")
+
+    def test_same_shape_other_platform_no_misfire(self):
+        fd = _FDsig(id="country", role="combobox",
+                    dom_class="select__input", haspopup="menu")
+        self.assertIsNone(fingerprints.match_fingerprint(fd, "lever"))
+
+    def test_unknown_field_no_match(self):
+        fd = _FDsig(id="email", role="editabletext", dom_class="form-control")
+        self.assertIsNone(fingerprints.match_fingerprint(fd, "greenhouse"))

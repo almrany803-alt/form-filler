@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.69. Phases 5 (phone group), 6
+points to. Last updated at version 0.9.70. Phases 5 (phone group), 6
 (attachments), 7 (sections and CV seeding) and the language finish (27
 languages) are in; the repeating-row NVDA fill is parked.
 
@@ -135,10 +135,16 @@ those tools converged on, so this is refinement, not a rewrite.
   SuccessFactors, plus Jobvite and Recruitee) by URL host and DOM markers, in a
   pure, unit-tested module (core/platforms.py), so the fingerprint database can
   be ATS-aware. The key that unlocks Phase 3. (0.9.69.)
-- Phase 3 - NEXT. Grow the fingerprint database one ATS at a time, easiest first
-  (Lever, Greenhouse, Ashby, SmartRecruiters, iCIMS, Taleo, then Workday). Public
-  platforms are CI-tested as added; login-walled ones seed from documented
-  patterns and grow from real use.
+- Phase 3 - IN PROGRESS. Grow the fingerprint database. Reality check: the easy
+  platforms (Lever, Greenhouse) already pass on heuristics, so the database
+  matters most for the hard, login-walled ones (Workday, iCIMS, Taleo) that CI
+  cannot reach. So this phase made the add-on FINGERPRINT-READY: every field-read
+  log now carries the full signature (id, role, placeholder, class, haspopup,
+  states), so one real run on a hard platform yields ready-to-add entries. Added
+  a Greenhouse react-select entry built from a real live log, platform-gated and
+  unit-tested. Hard-platform entries grow from real logs and real use. (0.9.70.)
+- Phase 4 - NEXT. Close widget-type gaps and re-read the form after an answer
+  that can reveal hidden sub-fields.
 - Phase 4. Close widget-type gaps and re-read the form after an answer that can
   reveal hidden sub-fields.
 - Phase 5 (optional, later). The opt-in discovery loop that captures an unknown

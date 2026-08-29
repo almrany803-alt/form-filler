@@ -2,6 +2,17 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.70
+
+### Phase 3: groundwork for growing the field database
+- Every field the add-on reads is now logged with its full signature (id, role,
+  placeholder, class, popup and states). This means a single real run on a hard
+  platform (like Workday) produces exactly what's needed to teach the add-on that
+  platform's widgets, without guesswork.
+- Added a Greenhouse dropdown entry built from a real live run, so that
+  platform's searchable dropdowns are recognised explicitly. Entries are tied to
+  a specific platform, so they never affect another. Nothing you see changes; the
+  groundwork is for reliably learning the harder platforms from real use.
 ## 0.9.69
 
 ### Phase 2: recognises many ATS platforms

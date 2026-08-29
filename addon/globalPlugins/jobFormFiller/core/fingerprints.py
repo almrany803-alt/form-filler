@@ -11,6 +11,15 @@ crowd-sourced database worthwhile (the ad-blocker filter-list model).
 The data lives in field_fingerprints.json next to this file so it can be updated
 and shared on its own, without touching code. Vision (opt-in) is what discovers
 new fingerprints to add; this database is what applies them, free and offline.
+
+Growing it by hand from a real log (the honest path for login-walled platforms
+like Workday and iCIMS that CI cannot reach): run the add-on on the real form,
+open the NVDA log, and read the "JFF read:" lines. Each carries the full
+signature (label, id, role, placeholder, class, haspopup, states). Add a "when"
+entry keyed on the STABLE signals for that widget (platform plus an id or class
+pattern plus role) mapping to the correct widget kind. Keep entries structural
+(id or class patterns, not exact hashed ids) so one entry covers the platform
+across every employer. The Greenhouse react-select entry was built this way.
 """
 
 import os
