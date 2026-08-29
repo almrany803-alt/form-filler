@@ -2,6 +2,15 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.72
+
+### Phase 4: fills fields revealed by your answers
+- Some questions reveal new fields once answered (a Yes/No that opens a
+  sub-form, an "other, please specify" box). After the main fill, the add-on now
+  re-reads the form and fills any newly-shown field that matches your details and
+  is still empty. It is bounded, never overwrites a field that already has a
+  value, and leaves radios, multi-selects and dates for you, as the main pass
+  does.
 ## 0.9.71
 
 ### Phase 3 audit + source review (no behaviour change)

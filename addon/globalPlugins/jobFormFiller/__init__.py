@@ -1431,10 +1431,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # have not used yet, so we must capture the objects while positions are
         # still valid.
         objs = []
+        seen_ids = set()
         for item in items:
             o = _obj_from_item(item)
             if o is not None:
                 objs.append(o)
+                oid = (getattr(o, "IA2Attributes", {}) or {}).get("id", "")
+                if oid:
+                    seen_ids.add(oid)
         log.info("JFF form: found %d form fields, resolved %d objects"
                  % (len(items), len(objs)))
         filled, guessed, leftovers, prefilled = [], [], [], []
@@ -1739,6 +1743,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.error("JFF rowfill: repeating-section fill failed",
                       exc_info=True)
 
+        # Some answers reveal new fields (a Yes/No that opens a sponsorship
+        # sub-form, an "other, please specify" box). Re-scan and fill any that
+        # appeared and match a stored value; bounded so it settles.
+        try:
+            revealed = self._fill_revealed_fields(ti, seen_ids)
+            if revealed:
+                filled.extend(revealed)
+        except Exception:
+            log.error("JFF reveal: pass failed", exc_info=True)
+
         summary = announce.build_summary(filled, guessed, leftovers)
         if native_date_left:
             summary += " " + _("For the date, put your cursor on it and press "
@@ -1751,6 +1765,90 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         wx.CallLater(400, ui.message, summary)
 
     # --- repeating Work / Education blocks -----------------------------------
+    def _fill_revealed_fields(self, ti, seen_ids):
+        """After the main fill, an answer can reveal new fields (a Yes/No that
+        opens a sub-form, an 'other, please specify' box). Re-scan the form and
+        fill any newly-appeared fields that match a stored value. Bounded to a
+        couple of passes so it settles; returns the list of concept keys filled.
+        Never fills a field that already holds a value."""
+        filled_keys = []
+        for _pass in range(2):
+            try:
+                start = ti.makeTextInfo(textInfos.POSITION_FIRST)
+                items = list(ti._iterNodesByType("formField", "next", start))
+            except Exception:
+                break
+            new_objs = []
+            for it in items:
+                o = _obj_from_item(it)
+                if o is None:
+                    continue
+                oid = (getattr(o, "IA2Attributes", {}) or {}).get("id", "")
+                if oid and oid in seen_ids:
+                    continue
+                new_objs.append((o, oid))
+            if not new_objs:
+                break
+            filled_this_pass = 0
+            for o, oid in new_objs:
+                if oid:
+                    seen_ids.add(oid)
+                try:
+                    key = self._fill_one_revealed(o)
+                except Exception:
+                    log.error("JFF reveal: fill failed", exc_info=True)
+                    key = None
+                if key:
+                    filled_keys.append(key)
+                    filled_this_pass += 1
+            if filled_this_pass == 0:
+                break
+        if filled_keys:
+            log.info("JFF reveal: filled %d newly-shown field(s): %r"
+                     % (len(filled_keys), filled_keys))
+        return filled_keys
+
+    def _fill_one_revealed(self, obj):
+        """Fill a single newly-revealed field if it matches a stored value and is
+        still empty. Handles the common revealed kinds (text, dropdown,
+        checkbox); leaves radios, multi-selects and dates for the user, as the
+        main pass does. Returns the concept key on success, else None."""
+        fd = _descriptor_from_object(obj)
+        result = matcher.match_field(fd)
+        if result.key is None:
+            return None
+        value = self._value_for(result.key)
+        if not value:
+            return None
+        kind = self._classify(fd)
+        if kind == controls.CHECKBOX:
+            if not _is_boolean_value(value):
+                return None
+            return (result.key if self._fill_checkbox(obj, fd, value)
+                    == "confirmed" else None)
+        if kind in (controls.NATIVE_SELECT, controls.ARIA_COMBOBOX):
+            try:
+                existing = obj.value
+            except Exception:
+                existing = None
+            if existing and not _is_placeholder_value(existing):
+                return None                       # a real selection: leave it
+            concept = result.key if result.key in ("country",
+                                                   "nationality") else ""
+            _pick, verdict = self._fill_native_select(obj, value, concept)
+            return result.key if verdict == "confirmed" else None
+        if kind == controls.TEXT:
+            try:
+                existing = obj.value
+            except Exception:
+                existing = None
+            if existing and str(existing).strip():
+                return None                       # don't clobber
+            return (result.key
+                    if self._write_field(obj, fd, str(value)) is not False
+                    else None)
+        return None                               # radio/multi/date: leave it
+
     def _fill_repeating_sections(self, objs, ti):
         """Find runs of consecutive fields that map to Work or Education entry
         fields, and fill each as a repeating section from the stored entries."""

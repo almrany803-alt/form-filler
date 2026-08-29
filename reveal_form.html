@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Conditional reveal</title></head>
+<body>
+  <h1>Application</h1>
+  <p><label>First name <input id="first_name" type="text"></label></p>
+  <fieldset>
+    <legend>Are you authorized to work?</legend>
+    <label><input type="radio" name="wa" value="yes" id="wa_yes"> Yes</label>
+    <label><input type="radio" name="wa" value="no" id="wa_no"> No</label>
+  </fieldset>
+  <!-- revealed only after "Yes" is chosen -->
+  <div id="extra" style="display:none">
+    <p><label>City <input id="city" type="text"></label></p>
+  </div>
+  <script>
+    document.getElementById("wa_yes").addEventListener("change", function () {
+      if (this.checked) document.getElementById("extra").style.display = "block";
+    });
+  </script>
+</body>
+</html>
