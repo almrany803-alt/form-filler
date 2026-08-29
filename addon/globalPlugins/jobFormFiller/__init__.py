@@ -977,10 +977,56 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             except Exception:
                 log.error("JFF scan: could not write the report", exc_info=True)
                 path = ""
+        # Phase 5 (opt-in, offline): alongside the scan, capture custom widgets
+        # the fingerprint database does not cover yet, as a shareable file, so
+        # new fingerprints can be added for hard platforms. Read-only: it only
+        # reads signatures we already have and writes a local file.
+        n_unknown = 0
+        try:
+            from .core import discovery
+
+            class _Shim:
+                def __init__(self, sig):
+                    self.id = sig.get("id", "")
+                    self.role = sig.get("role", "")
+                    self.placeholder = sig.get("placeholder", "")
+                    self.dom_class = sig.get("class", "")
+                    self.haspopup = sig.get("haspopup", "")
+                    self.states = tuple(sig.get("states") or ())
+
+            sigs, platform = [], ""
+            for obj in objs:
+                fd = _descriptor_from_object(obj)
+                platform = platform or self._detect_platform(fd)
+                sigs.append({
+                    "id": fd.id or "", "role": fd.role or "",
+                    "placeholder": fd.placeholder or "",
+                    "class": getattr(fd, "dom_class", "") or "",
+                    "haspopup": getattr(fd, "haspopup", "") or "",
+                    "states": tuple(getattr(fd, "states", ()) or ()),
+                    "label": fd.label or "",
+                })
+
+            def _matched(sig):
+                return fingerprints.match_fingerprint(
+                    _Shim(sig), platform) is not None
+
+            records = discovery.build_records(sigs, platform, _matched)
+            n_unknown = len(records)
+            if records and folder:
+                import json
+                dpath = os.path.join(folder, "discovery-%s.json" % stamp)
+                with open(dpath, "w", encoding="utf-8") as f:
+                    json.dump({"platform": platform, "fields": records},
+                              f, indent=2)
+        except Exception:
+            log.error("JFF discovery: could not write", exc_info=True)
         if path:
+            extra = (_(" {n} unknown field(s) saved for review.").format(
+                n=n_unknown) if n_unknown else "")
             ui.message(_("Scanned {n} fields. Saved to the jobFormFiller folder "
                          "in {where}. It is also in the NVDA log.").format(
-                         n=len(lines), where=folder))
+                         n=len(lines), where=folder) + extra)
         else:
             ui.message(_("Scanned {n} fields. The report is in the NVDA log."
                          ).format(n=len(lines)))

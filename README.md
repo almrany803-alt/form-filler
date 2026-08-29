@@ -91,6 +91,11 @@ and what it left for you. It never submits a form.
 
 The menu key is changeable in NVDA's Input Gestures, under "Job Form Filler".
 
+- Scan this form writes a plain report of every field, and (opt-in, offline) a
+  discovery file listing any custom widgets no built-in rule covers yet, each
+  with a suggested rule stub, so the add-on can be taught new platforms. It is
+  read-only: Scan never fills or submits, and nothing leaves your computer.
+
 ## Your data stays yours
 
 Your details are stored encrypted on your own machine (Windows DPAPI). The

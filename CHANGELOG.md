@@ -2,6 +2,15 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.73
+
+### Phase 5: opt-in discovery of unknown fields
+- The Scan action now also writes a small, offline discovery file listing any
+  custom widgets the add-on's built-in rules don't cover yet, each with a
+  suggested rule stub. This is how the add-on learns hard platforms: run Scan on
+  a form it struggles with and send the file. It is read-only and local: Scan
+  never fills or submits, it never guesses how to fill an unknown widget, and
+  nothing leaves your computer.
 ## 0.9.72
 
 ### Phase 4: fills fields revealed by your answers

@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.72. Phases 5 (phone group), 6
+points to. Last updated at version 0.9.73. Phases 5 (phone group), 6
 (attachments), 7 (sections and CV seeding) and the language finish (27
 languages) are in; the repeating-row NVDA fill is parked.
 
@@ -157,9 +157,12 @@ those tools converged on, so this is refinement, not a rewrite.
   field, which then fills). Widget-type coverage judged complete for now (the
   existing kinds cover the researched Workday widgets; file upload can't be
   auto-attached by an accessibility tool). (0.9.72.)
-- Phase 5 (optional, later). The opt-in discovery loop that captures an unknown
-  field's structure offline so a fingerprint can be added; deterministic at
-  runtime.
+- Phase 5 - DONE. Opt-in, offline discovery: the Scan action now also writes a
+  discovery file listing custom widgets no fingerprint covers yet, each with a
+  suggested fingerprint stub (kind left as REVIEW - we never guess how to fill an
+  unknown widget). Pure logic in core/discovery.py, unit-tested; read-only, local,
+  and only inside the user-triggered Scan. This is how the hard-platform database
+  grows from real use. (0.9.73.)
 
 ## 2. How we work: the beta-tester approach
 
