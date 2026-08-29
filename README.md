@@ -23,7 +23,10 @@ and what it left for you. It never submits a form.
   one value at a time, coping with the chip style that redraws after each pick.
   Values are tidied of stray whitespace before typing (line breaks in a cover
   letter are kept). Date fields that a site builds as a plain text box (SAP UI5 /
-  SuccessFactors) are recognised by their format and aria-roledescription.
+  SuccessFactors) are recognised by their format and aria-roledescription. The
+  add-on also recognises which ATS a form runs on (Workday, Greenhouse, Lever,
+  Ashby, SmartRecruiters, iCIMS, Taleo, SuccessFactors, BambooHR, Workable and
+  more) so it can handle each the way it builds its fields.
 - Fill this field (NVDA+J then F) always gives you a way to complete the field.
   When the add-on knows the answer it fills it; when it does not, it opens the
   right accessible editor on the spot instead of handing it back: Yes/No for a
