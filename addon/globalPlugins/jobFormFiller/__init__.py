@@ -23,7 +23,8 @@ from scriptHandler import script
 from keyboardHandler import KeyboardInputGesture
 import addonHandler
 
-from .core import matcher, controls, announce, profile, fingerprints, rowfill
+from .core import (matcher, controls, announce, profile, fingerprints,
+                        rowfill, platforms)
 from . import dialogs
 
 try:
@@ -1115,43 +1116,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def _detect_platform(self, fd):
         """Identify the ATS platform so dates and dropdowns can be routed the way
-        each platform builds them. Detects by page URL first (Workday and Taleo
-        hide their markup markers from NVDA), then by markup. Returns a short name
-        or ''."""
-        url = self._page_url()
-        if url:
-            if "myworkdayjobs" in url or ".workday." in url:
-                return "workday"
-            if "taleo.net" in url:
-                return "taleo"
-            if "successfactors" in url or "sapsf." in url:
-                return "successfactors"
-            if "icims.com" in url:
-                return "icims"
-            if "greenhouse.io" in url or "boards.greenhouse" in url:
-                return "greenhouse"
-            if "lever.co" in url:
-                return "lever"
-        cls = (getattr(fd, "dom_class", "") or "").lower()
-        idn = (fd.id or "").lower()
-        hay = cls + " " + idn
-        if "select__" in cls or "greenhouse" in hay:
-            return "greenhouse"
-        if "ui5" in cls or "sapm" in cls or "sf" == idn[:2] or "fbclc" in idn:
-            return "successfactors"
-        # Workday's markup markers aren't exposed to NVDA and its classes are
-        # hashed, but its field ids use a distinctive name--name pattern
-        # (source--source, country--country, phoneNumber--countryPhoneCode). Use
-        # that so a saved Workday page is still recognised without the live URL.
-        if "--" in idn or "wd-" in cls or "workday" in hay:
-            return "workday"
-        if "select2" in cls:
-            return "select2"
-        if "taleo" in hay:
-            return "taleo"
-        if "icims" in hay:
-            return "icims"
-        return ""
+        each platform builds them. Delegates to the pure detector (page URL first,
+        then DOM markers). Returns a short name or ''."""
+        return platforms.detect(self._page_url() or "",
+                                getattr(fd, "dom_class", "") or "",
+                                fd.id or "")
 
     def _is_date_picker(self, fd):
         """A date-picker combobox opens a calendar (a dialog or grid popup) and is

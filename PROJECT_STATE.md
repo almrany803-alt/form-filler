@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.68. Phases 5 (phone group), 6
+points to. Last updated at version 0.9.69. Phases 5 (phone group), 6
 (attachments), 7 (sections and CV seeding) and the language finish (27
 languages) are in; the repeating-row NVDA fill is parked.
 
@@ -130,11 +130,12 @@ those tools converged on, so this is refinement, not a rewrite.
   redraws; normalise values (whitespace/control chars, line breaks kept) before
   typing. Verify-back stays permissive on purpose because the wrong-option trap
   is prevented at match time. (0.9.65-0.9.68.)
-- Phase 2 - NEXT. Detect the platform across many ATS (Workday, Greenhouse,
+- Phase 2 - DONE. Detect the platform across many ATS (Workday, Greenhouse,
   Lever, Ashby, SmartRecruiters, iCIMS, Taleo, BambooHR, Workable,
-  SuccessFactors) by URL host and DOM markers, so the fingerprint database can be
-  ATS-aware. Small and deterministic; the key that unlocks Phase 3.
-- Phase 3. Grow the fingerprint database one ATS at a time, easiest first
+  SuccessFactors, plus Jobvite and Recruitee) by URL host and DOM markers, in a
+  pure, unit-tested module (core/platforms.py), so the fingerprint database can
+  be ATS-aware. The key that unlocks Phase 3. (0.9.69.)
+- Phase 3 - NEXT. Grow the fingerprint database one ATS at a time, easiest first
   (Lever, Greenhouse, Ashby, SmartRecruiters, iCIMS, Taleo, then Workday). Public
   platforms are CI-tested as added; login-walled ones seed from documented
   patterns and grow from real use.

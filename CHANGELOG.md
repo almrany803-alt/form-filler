@@ -2,6 +2,15 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.69
+
+### Phase 2: recognises many ATS platforms
+- The add-on now identifies which applicant tracking system a form runs on, from
+  the page address and page markers: Workday, Greenhouse, Lever, Ashby,
+  SmartRecruiters, iCIMS, Taleo, SuccessFactors, BambooHR, Workable, and a couple
+  more. This is the groundwork for handling each platform's widgets the way it
+  builds them. It changes nothing you see yet; it is the map the next step fills
+  in.
 ## 0.9.68
 
 ### Phase 1 audit fixes
