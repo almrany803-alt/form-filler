@@ -85,6 +85,23 @@ class TestDatabaseIntegrity(unittest.TestCase):
             fingerprints.match_fingerprint(fd, platform="workday", db=db))
 
 
+
+class TestRealGreenhouseSignals(unittest.TestCase):
+    """Signals taken verbatim from a live Greenhouse (Monzo) form log."""
+
+    def test_country_react_select_is_a_combobox(self):
+        # JFF read: id='country' role='combobox' class='select__input' haspopup='menu'
+        fd = FakeFD(id="country", role="combobox", dom_class="select__input",
+                    haspopup="menu")
+        r = fingerprints.match_fingerprint(fd, platform="greenhouse")
+        self.assertIsNotNone(r)
+        self.assertEqual(r["kind"], "async_combobox")
+
+    def test_greenhouse_entry_not_applied_off_platform(self):
+        # the same field on an unknown platform must NOT match the gh entry
+        fd = FakeFD(id="country", role="combobox", dom_class="select__input")
+        self.assertIsNone(fingerprints.match_fingerprint(fd, platform=""))
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.70. Phases 5 (phone group), 6
+points to. Last updated at version 0.9.71. Phases 5 (phone group), 6
 (attachments), 7 (sections and CV seeding) and the language finish (27
 languages) are in; the repeating-row NVDA fill is parked.
 
@@ -143,10 +143,15 @@ those tools converged on, so this is refinement, not a rewrite.
   states), so one real run on a hard platform yields ready-to-add entries. Added
   a Greenhouse react-select entry built from a real live log, platform-gated and
   unit-tested. Hard-platform entries grow from real logs and real use. (0.9.70.)
+  Audit + source review (0.9.71): read the open-source autofillers' code
+  (ApplyAI, laynef, andrewmillercode, berellevy, jasonchen270). Confirmed the
+  fingerprint approach matches what they do, and that their key Workday signal,
+  data-automation-id, is DOM-only and NOT exposed to NVDA, so we correctly key on
+  Workday's name--name id pattern (the accessibility-layer equivalent). The
+  Greenhouse entry was re-verified against a real live-form country-combobox
+  signature and locked with a test. The matcher fails closed on unknown keys.
 - Phase 4 - NEXT. Close widget-type gaps and re-read the form after an answer
   that can reveal hidden sub-fields.
-- Phase 4. Close widget-type gaps and re-read the form after an answer that can
-  reveal hidden sub-fields.
 - Phase 5 (optional, later). The opt-in discovery loop that captures an unknown
   field's structure offline so a fingerprint can be added; deterministic at
   runtime.

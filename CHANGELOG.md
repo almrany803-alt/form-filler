@@ -2,6 +2,16 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.71
+
+### Phase 3 audit + source review (no behaviour change)
+- Reviewed the open-source autofillers' code (ApplyAI, laynef, andrewmillercode,
+  berellevy, jasonchen270) to compare how they handle each ATS. Confirmed our
+  fingerprint approach matches theirs, and that their key Workday signal
+  (data-automation-id) is DOM-only and not exposed to a screen reader, so we
+  correctly key on Workday's own field-id pattern instead. Re-verified the
+  Greenhouse entry against a real live-form signature and added tests. Nothing
+  you see changes; this hardens and documents the groundwork.
 ## 0.9.70
 
 ### Phase 3: groundwork for growing the field database

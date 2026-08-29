@@ -20,6 +20,14 @@ entry keyed on the STABLE signals for that widget (platform plus an id or class
 pattern plus role) mapping to the correct widget kind. Keep entries structural
 (id or class patterns, not exact hashed ids) so one entry covers the platform
 across every employer. The Greenhouse react-select entry was built this way.
+
+Why our signals differ from the open-source DOM tools: tools like
+jasonchen270/workday-autofill and berellevy/job_app_filler key Workday fields on
+data-automation-id, because they run in JavaScript over the DOM. This add-on
+runs at the accessibility layer, where Chrome does NOT expose data-automation-id
+to NVDA. Workday's field id (its name--name pattern, e.g. source--source) IS
+exposed, so we key on that instead: the accessibility-layer equivalent of the
+same idea. Confirmed by reading their source and the live IA2 attribute logs.
 """
 
 import os
