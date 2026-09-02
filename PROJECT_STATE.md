@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.73. Phases 5 (phone group), 6
+points to. Last updated at version 0.9.74. Phases 5 (phone group), 6
 (attachments), 7 (sections and CV seeding) and the language finish (27
 languages) are in; the repeating-row NVDA fill is parked.
 
@@ -113,6 +113,21 @@ The addon stores ISO internally and writes to each form field with the tested
 segment/text/custom-picker logic.
 
 ---
+
+## Line-by-line audit (0.9.74)
+
+A full adversarial read of every core module and the NVDA fill paths, run
+against the unit suite and the live forms. Eleven defects found and fixed, all
+locked with regression tests (tests/test_audit_regressions.py): a never-submit
+gap (Enter pressed blind on an editable combobox), third-party fields (referee,
+emergency contact, manager) filled with the user's own details, mid-word option
+matching ("No" inside "Not applicable"), personal fields dropped from the summary
+or mistaken for a Work block on a single section word, substring platform
+detection ("clever.co" as Lever), no read-back or tidying on the main text path,
+the clipboard not preserved, the Scan report leaking values, a lowercased
+regex inverting \D, and the repeating-blocks checklist missing NVDA's
+prePopup/postPopup (it could stay behind the browser and hang the fill).
+Known, deliberate: the NVDA log still records filled values for diagnostics.
 
 ## Combobox and ATS roadmap (phased)
 
