@@ -62,6 +62,13 @@ and what it left for you. It never submits a form.
   appear once a question is answered (a Yes/No that opens a sub-form, an
   "other, please specify" box), so a conditional field is not silently
   missed. It never overwrites a field that already has a value.
+- Fields about someone else (a referee, a reference, an emergency contact, a
+  manager, a parent or guardian, next of kin) are never filled with your own
+  name, email or phone; they are left for you, however personal their words
+  look.
+- Your clipboard is preserved: the add-on pastes to fill, but puts back
+  whatever you had copied, so a fill neither destroys your clipboard nor leaves
+  your own details sitting on it.
 - Importing a CV fills those sections too, not just the personal fields, so you
   start with entries to review and correct instead of a blank slate. The reader
   handles real-world CV layouts: dates in parentheses, on their own line, or at
