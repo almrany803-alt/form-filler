@@ -26,6 +26,9 @@ All notable changes to Job Form Filler. Newest first.
   back, and your details are not left on the clipboard.
 - The Scan report names the field it would fill rather than writing your actual
   value into a file meant to be shared.
+- The repeating-blocks checklist is now brought to the foreground the way the
+  add-on's other dialogs are, so it cannot be left behind the browser with the
+  fill waiting on it (seen once in a live run).
 - A shared fingerprint using an id pattern with an uppercase escape (\D, \S) now
   works; lowercasing the pattern had inverted its meaning.
 ## 0.9.73

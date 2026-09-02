@@ -18,8 +18,12 @@ await page.locator(".company").first().focus();
 await sleep(4000);
 nvda("A");
 await sleep(4500);
-plain("ENTER");
-await sleep(11000);
+// Accept the checklist. The dialog opens after the main pass, whose timing
+// varies on CI, so send Enter at a few points; an early Enter lands harmlessly
+// in the page (the fixture has no <form>), a late one dismisses the dialog.
+plain("ENTER"); await sleep(2500);
+plain("ENTER"); await sleep(2500);
+plain("ENTER"); await sleep(9000);
 const comp = await page.locator(".company").evaluateAll((els) => els.map((e) => e.value));
 const jts = await page.locator(".jt").evaluateAll((els) => els.map((e) => e.value));
 console.log("=== ATS-labelled employment blocks ===");

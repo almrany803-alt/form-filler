@@ -983,15 +983,24 @@ def choose_entries(parent, section_name, rows):
     if not rows:
         return []
     labels = [announce.entry_summary(r) or _("(entry)") for r in rows]
-    with wx.MultiChoiceDialog(
-            parent,
-            _("Which {name} entries should go on this form? "
-              "Most recent first.").format(name=section_name),
-            _("Fill {name}").format(name=section_name), labels) as dlg:
-        dlg.SetSelections(list(range(len(rows))))     # all ticked by default
-        if dlg.ShowModal() != wx.ID_OK:
-            return None
-        picks = dlg.GetSelections()
+    # prePopup/postPopup are NVDA's way of bringing a dialog launched from NVDA
+    # to the foreground reliably. Without them Windows can leave the browser in
+    # front, the dialog never gets focus, and the fill hangs waiting on it
+    # (seen live: "Foreground took too long to change"). Every other dialog here
+    # already does this.
+    gui.mainFrame.prePopup()
+    try:
+        with wx.MultiChoiceDialog(
+                parent,
+                _("Which {name} entries should go on this form? "
+                  "Most recent first.").format(name=section_name),
+                _("Fill {name}").format(name=section_name), labels) as dlg:
+            dlg.SetSelections(list(range(len(rows))))   # all ticked by default
+            if dlg.ShowModal() != wx.ID_OK:
+                return None
+            picks = dlg.GetSelections()
+    finally:
+        gui.mainFrame.postPopup()
     return [rows[i] for i in picks]
 
 

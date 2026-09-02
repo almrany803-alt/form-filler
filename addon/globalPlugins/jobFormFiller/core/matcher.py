@@ -469,16 +469,22 @@ _THIRD_PARTY = (
 )
 
 
+_THIRD_PARTY_NORM = None   # built on first use: (" phrase ",) tuples
+
+
 def _names_third_party(*texts) -> bool:
     """True if any of the field's texts contains a whole-word third-party
     marker, so a personal key must not be applied."""
+    global _THIRD_PARTY_NORM
+    if _THIRD_PARTY_NORM is None:
+        _THIRD_PARTY_NORM = tuple(" " + _norm(w) + " " for w in _THIRD_PARTY)
     for text in texts:
         t = _norm(text)
         if not t:
             continue
         padded = " " + t + " "
-        for w in _THIRD_PARTY:
-            if (" " + _norm(w) + " ") in padded:
+        for w in _THIRD_PARTY_NORM:
+            if w in padded:
                 return True
     return False
 
