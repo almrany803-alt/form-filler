@@ -452,7 +452,43 @@ def normalize_value(value):
     return "\n".join(lines).strip()
 
 
+# Words that mark a field as being about SOMEONE ELSE. A label like "Name of
+# referee", "Emergency contact phone" or "Manager's email" contains a personal
+# word (name, phone, email) but must never be filled with the user's own
+# details, so any hit here overrides a personal match and hands the field back.
+# Whole-word matched; "contact" alone is deliberately absent because "Contact
+# email" is the user's own.
+_THIRD_PARTY = (
+    "referee", "referees", "reference", "references", "emergency",
+    "next of kin", "kin", "manager", "managers", "supervisor", "supervisors",
+    "line manager", "parent", "parents", "guardian", "guardians", "spouse",
+    "partner", "husband", "wife", "recruiter", "agency", "agent", "witness",
+    "dependant", "dependent", "dependants", "dependents", "child", "children",
+    "their", "contact person", "point of contact", "doctor", "physician",
+    "employer contact", "hr contact",
+)
+
+
+def _names_third_party(*texts) -> bool:
+    """True if any of the field's texts contains a whole-word third-party
+    marker, so a personal key must not be applied."""
+    for text in texts:
+        t = _norm(text)
+        if not t:
+            continue
+        padded = " " + t + " "
+        for w in _THIRD_PARTY:
+            if (" " + _norm(w) + " ") in padded:
+                return True
+    return False
+
+
 def match_field(fd: FieldDescriptor) -> MatchResult:
+    # A field about someone else (a referee, an emergency contact, a manager)
+    # is never one of the user's own, however personal its words look.
+    if _names_third_party(fd.label, fd.aria_label, fd.name, fd.id,
+                          fd.placeholder):
+        return MatchResult(None, "none", "third-party", "")
     ac = (fd.autocomplete or "").strip().lower()
     if ac in _AUTOCOMPLETE:
         return MatchResult(_AUTOCOMPLETE[ac], "strong", "autocomplete", "*")

@@ -81,8 +81,10 @@ def _matches(when, sig):
             if want_l not in sig["id"]:
                 return False
         elif key == "id_regex":
+            # Match case-insensitively but never lowercase the PATTERN itself:
+            # that would turn \D into \d and \S into \s, inverting their meaning.
             try:
-                if not re.search(want_l, sig["id"]):
+                if not re.search(str(want), sig["id"], re.IGNORECASE):
                     return False
             except re.error:
                 return False

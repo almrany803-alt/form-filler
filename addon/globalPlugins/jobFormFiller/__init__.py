@@ -222,12 +222,27 @@ def _descriptor_from_object(obj):
 
 
 def _paste_into_focused(obj, value):
-    """Insert text the same way AI-Hub inserts transcriptions: copy then paste,
-    so the page's own input events fire and React/Workday state updates.
+    """Insert text by copy then paste, so the page's own input events fire and
+    React/Workday state updates. The user's clipboard is preserved: whatever they
+    had copied is put back after the paste, so a whole-form fill neither destroys
+    their clipboard nor leaves their own email or phone sitting on it.
     Layout note: on Arabic/Hebrew/Farsi layouts the paste key differs; the real
     build resolves it the way clipContentsDesigner resolves copy/cut."""
+    old = None
+    try:
+        old = api.getClipData()
+    except Exception:
+        old = None                       # empty or non-text clipboard
     api.copyToClip(value)
     KeyboardInputGesture.fromName("control+v").send()
+    # Give the app a moment to consume the paste before the clipboard changes
+    # back, otherwise it could paste the restored (old) contents instead.
+    time.sleep(0.15)
+    if isinstance(old, str) and old:
+        try:
+            api.copyToClip(old)
+        except Exception:
+            pass
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
@@ -841,6 +856,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             time.sleep(0.05)
             _paste_into_focused(obj, value)          # fires the menu filter
             time.sleep(0.45)
+            # NEVER press Enter blind. Enter on a combobox whose menu did not
+            # open lands on a bare input and can submit the whole form. Only
+            # commit when the menu is open and holds a matching option; else
+            # close it with Escape and report no selection.
+            labels = self._read_open_menu(obj) or []
+            pick = controls.choose_option(value, labels) if labels else None
+            if not labels or pick is None or pick.index is None:
+                log.info("JFF combo: no open menu match for %r, not pressing "
+                         "Enter (would risk submitting)" % value)
+                KeyboardInputGesture.fromName("escape").send()
+                time.sleep(0.1)
+                return False
             KeyboardInputGesture.fromName("enter").send()   # select the match
             time.sleep(0.25)
         except Exception:
@@ -918,7 +945,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 self._value_for(result.key) or ""):
             action = "leave for you (checkbox, not a yes/no value)"
         elif result.key and self._value_for(result.key):
-            action = "fill from profile: %s" % self._value_for(result.key)
+            # Name the field, not the value: this report is meant to be SENT
+            # for help, so it must not carry the user's email, phone or address.
+            action = "fill from profile (%s)" % result.key
         elif result.key:
             action = "identified as %s, nothing saved, offer editor" % result.key
         elif cc == controls.CHECKBOX:
@@ -1769,7 +1798,25 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                              "skipping to stay safe" % (target_id, foc_id))
                     leftovers.append(fd.label or announce.human(result.key))
                     continue
+                value = matcher.normalize_value(value)   # tidy before typing
                 _paste_into_focused(obj, value)
+                # Read back: a paste can be silently ignored (some React-
+                # controlled inputs), so confirm the field now holds something
+                # before counting it as filled, rather than assuming it worked.
+                took = False
+                for _k in range(6):
+                    try:
+                        if (obj.value or "").strip():
+                            took = True
+                            break
+                    except Exception:
+                        pass
+                    time.sleep(0.06)
+                if not took:
+                    log.info("JFF form action: write of %r did not take, "
+                             "left for you" % result.key)
+                    leftovers.append(fd.label or announce.human(result.key))
+                    continue
                 log.info("JFF form action: filled %r with %r" % (result.key, value))
                 (guessed if result.confidence == "guess" else filled).append(result.key)
             except Exception:
@@ -1780,11 +1827,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # courses). Ask which stored entries to place and fill each block,
         # adding blocks with the form's "Add another" control as needed.
         try:
-            self._fill_repeating_sections(objs, ti)
-            # Work/Education entry fields are handled by the repeating pass, so
-            # they must not also appear in the personal "needs you" summary.
-            leftovers = [l for l in leftovers
-                         if rowfill.row_concept(l) is None]
+            handled = self._fill_repeating_sections(objs, ti)
+            # Keep exactly the fields the repeating pass handled out of the
+            # personal "needs you" summary, and nothing else: a personal field
+            # whose label merely contains a section word ('Title', 'Available
+            # start date', 'Skills') must still be reported.
+            if handled:
+                leftovers = [l for l in leftovers if l not in handled]
         except Exception:
             log.error("JFF rowfill: repeating-section fill failed",
                       exc_info=True)
@@ -1897,7 +1946,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def _fill_repeating_sections(self, objs, ti):
         """Find runs of consecutive fields that map to Work or Education entry
-        fields, and fill each as a repeating section from the stored entries."""
+        fields, and fill each as a repeating section from the stored entries.
+        Returns the set of field labels that were part of a handled section, so
+        the caller can keep exactly those (and nothing else) out of the personal
+        "needs you" summary.
+
+        A run only counts as a section when it carries the strong pair: a job
+        title AND an employer (Work), or an institution AND a qualification
+        (Education). Single section-like words are common in personal fields
+        (a 'Title' salutation, 'Available start date', 'Skills'), so one of them
+        alone must never start a section fill."""
         concepts = []
         for o in objs:
             try:
@@ -1905,7 +1963,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     _descriptor_from_object(o).label or ""))
             except Exception:
                 concepts.append(None)
-        i, n, done = 0, len(objs), 0
+        handled = set()
+        i, n = 0, len(objs)
         while i < n:
             if concepts[i] is None:
                 i += 1
@@ -1914,9 +1973,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             while j < n and concepts[j] is not None:
                 j += 1
             run_keys = concepts[i:j]
-            if "job_title" in run_keys or "employer" in run_keys:
+            if "job_title" in run_keys and "employer" in run_keys:
                 stype = "Work"
-            elif "institution" in run_keys or "qualification" in run_keys:
+            elif "institution" in run_keys and "qualification" in run_keys:
                 stype = "Education"
             else:
                 stype = None
@@ -1926,12 +1985,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     try:
                         if self._do_repeating_fill(
                                 objs[i:j], block_fields, present, stype, ti):
-                            done += 1
+                            for o in objs[i:j]:
+                                try:
+                                    lbl = _descriptor_from_object(o).label
+                                    if lbl:
+                                        handled.add(lbl)
+                                except Exception:
+                                    pass
                     except Exception:
                         log.error("JFF rowfill: fill of %s failed" % stype,
                                   exc_info=True)
             i = j
-        return done
+        return handled
 
     def _stored_section_for_type(self, stype):
         """The user's section of this type with entries: (name, rows)."""
@@ -1996,31 +2061,40 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         except Exception:
             return []
         objs = [o for o in (_obj_from_item(it) for it in items) if o is not None]
-        started = False
-        blocks, cur = [], {}
+        # Split the form into runs of consecutive section-like fields.
+        runs, cur = [], []
         for o in objs:
             try:
                 c = rowfill.row_concept(_descriptor_from_object(o).label or "")
             except Exception:
                 c = None
             if c is None:
-                if started and cur:
-                    break                 # end of the section's run
+                if cur:
+                    runs.append(cur)
+                    cur = []
                 continue
-            if not started:
-                is_work = c in ("job_title", "employer")
-                is_edu = c in ("institution", "qualification")
-                if (stype == "Work" and not is_work) or \
-                   (stype == "Education" and not is_edu):
-                    continue              # a run of the other kind; skip
-                started = True
-            if c in cur:                  # concept repeats -> next block
-                blocks.append(cur)
-                cur = {}
-            cur[c] = o
+            cur.append((c, o))
         if cur:
-            blocks.append(cur)
-        return blocks
+            runs.append(cur)
+        # The section is the first run carrying the strong pair. A lone 'Title'
+        # (a salutation) or 'Start date' (availability) near the top of a form is
+        # NOT the section and must never be filled with a job title.
+        need = (("job_title", "employer") if stype == "Work"
+                else ("institution", "qualification"))
+        for run in runs:
+            keys = [c for c, _o in run]
+            if not all(k in keys for k in need):
+                continue
+            blocks, blk = [], {}
+            for c, o in run:
+                if c in blk:              # concept repeats -> next block
+                    blocks.append(blk)
+                    blk = {}
+                blk[c] = o
+            if blk:
+                blocks.append(blk)
+            return blocks
+        return []
 
     def _do_repeating_fill(self, run_objs, block_fields, blocks_present, stype,
                            ti):

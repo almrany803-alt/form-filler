@@ -198,6 +198,25 @@ def _norm(s: str) -> str:
     return " ".join((s or "").lower().replace("_", " ").replace("-", " ").split())
 
 
+def _contains_words(needle: str, hay: str) -> bool:
+    """True if needle appears in hay as whole word(s), never inside a longer
+    word: so 'no' does not match 'not applicable' or 'prefer not to say', and
+    'nothing' does not match 'no'. Punctuation still counts as a boundary, so
+    'uk' does match 'united kingdom (uk)'."""
+    if not needle or not hay:
+        return False
+    # whole word(s) anywhere: 'uk' in 'united kingdom (uk)', 'bachelor' in
+    # 'bachelor of science'.
+    if re.search(r"(?<!\w)" + re.escape(needle) + r"(?!\w)", hay):
+        return True
+    # A longer value may also be the START of a word ('calif' in 'california').
+    # Short values may not, because that is exactly how 'no' would wrongly
+    # match 'not applicable' or 'norway'.
+    if len(needle) >= 4 and re.search(r"(?<!\w)" + re.escape(needle), hay):
+        return True
+    return False
+
+
 def choose_option(value: str, options: list[str], concept: str = "") -> OptionMatch:
     """Pick the option that best matches the user's value.
     options are the labels as they appear in the form (possibly another language).
@@ -229,7 +248,8 @@ def choose_option(value: str, options: list[str], concept: str = "") -> OptionMa
     # prefer the one that starts with the value, and if that is still not unique
     # we hand back rather than risk selecting the wrong option - some forms save
     # a wrong pick with a mismatched hidden id, which is worse than no pick.
-    contains = [i for i, o in enumerate(norm_opts) if v and (v in o or o in v)]
+    contains = [i for i, o in enumerate(norm_opts)
+                if v and (_contains_words(v, o) or _contains_words(o, v))]
     if len(contains) == 1:
         return OptionMatch(contains[0], options[contains[0]], "guess")
     if len(contains) > 1:
@@ -259,6 +279,6 @@ def verify_selection(expected_label: str, control_value_after: str) -> str:
         return "unknown"                 # could not read it back
     if _norm(control_value_after) == _norm(expected_label):
         return "confirmed"
-    if _norm(expected_label) in _norm(control_value_after):
+    if _contains_words(_norm(expected_label), _norm(control_value_after)):
         return "confirmed"
     return "mismatch"

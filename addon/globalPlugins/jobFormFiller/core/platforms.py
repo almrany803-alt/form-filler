@@ -7,34 +7,59 @@ NVDA); the markup fallback lets a saved or embedded page still be recognised.
 Returns a short platform name, or '' when nothing matches.
 """
 
-# Host substrings -> platform. Checked in order; each is specific enough not to
-# collide with the others.
-_URL_MARKERS = [
-    ("myworkdayjobs", "workday"),
-    (".workday.", "workday"),
-    ("job-boards.greenhouse", "greenhouse"),
-    ("boards.greenhouse", "greenhouse"),
+# Host suffixes -> platform, matched against the parsed HOST only, at a label
+# boundary (the host equals the suffix or ends with "." + suffix). Never a raw
+# substring test on the whole URL: that misread "clever.co" as Lever and a page
+# whose query string merely mentioned greenhouse.io as Greenhouse.
+_HOST_SUFFIXES = [
+    ("myworkdayjobs.com", "workday"),
+    ("workday.com", "workday"),
     ("greenhouse.io", "greenhouse"),
     ("lever.co", "lever"),
     ("ashbyhq.com", "ashby"),
     ("smartrecruiters.com", "smartrecruiters"),
     ("icims.com", "icims"),
     ("taleo.net", "taleo"),
-    ("successfactors", "successfactors"),
-    ("sapsf.", "successfactors"),
     ("bamboohr.com", "bamboohr"),
     ("workable.com", "workable"),
     ("jobvite.com", "jobvite"),
     ("recruitee.com", "recruitee"),
 ]
+# Whole host labels -> platform, for vendors that use several TLDs
+# (successfactors.com and .eu; sapsf) or appear as a label (myworkdayjobs).
+_HOST_LABELS = [
+    ("myworkdayjobs", "workday"),
+    ("workday", "workday"),
+    ("successfactors", "successfactors"),
+    ("sapsf", "successfactors"),
+]
+
+
+def _host(url):
+    """The lower-cased hostname of a URL, or '' if it cannot be parsed."""
+    from urllib.parse import urlparse
+    u = (url or "").strip()
+    if not u:
+        return ""
+    if "://" not in u:
+        u = "https://" + u
+    try:
+        return (urlparse(u).hostname or "").lower()
+    except Exception:
+        return ""
 
 
 def detect(url="", dom_class="", field_id=""):
-    """Best-effort platform name from the page URL, then DOM markers."""
-    u = (url or "").lower()
-    for marker, name in _URL_MARKERS:
-        if marker in u:
-            return name
+    """Best-effort platform name from the page host, then DOM markers."""
+    host = _host(url)
+    if host:
+        for suffix, name in _HOST_SUFFIXES:
+            if host == suffix or host.endswith("." + suffix):
+                return name
+        labels = host.split(".")
+        for label, name in _HOST_LABELS:
+            if label in labels:
+                return name
 
     cls = (dom_class or "").lower()
     idn = (field_id or "").lower()

@@ -2,6 +2,32 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.74
+
+### Line-by-line audit: ten fixes
+- Never submit: pressing Enter to commit an editable dropdown now happens only
+  when its menu is confirmed open with a matching option; otherwise it closes the
+  menu with Escape. Pressing Enter blind could have submitted a form.
+- Fields about someone else (a referee, emergency contact, manager, parent or
+  guardian, next of kin) are no longer filled with your own name, email or
+  phone; they are left for you.
+- Option matching no longer matches a short value inside a longer word ("No"
+  inside "Not applicable" or "Prefer not to say"), so those hand back instead of
+  picking wrong; "Calif" still finds "California".
+- A personal field whose label merely contains a section word ("Title",
+  "Available start date", "Skills") is no longer dropped from the needs-you
+  summary, and can no longer be mistaken for a Work/Education block.
+- Platform detection reads the page's host at a word boundary, so "clever.co"
+  is not Lever and a page mentioning greenhouse.io in its address is not
+  Greenhouse.
+- The main fill now tidies each value before typing and reads the field back to
+  confirm the text actually took, instead of assuming it did.
+- Your clipboard is preserved around each paste: whatever you had copied is put
+  back, and your details are not left on the clipboard.
+- The Scan report names the field it would fill rather than writing your actual
+  value into a file meant to be shared.
+- A shared fingerprint using an id pattern with an uppercase escape (\D, \S) now
+  works; lowercasing the pattern had inverted its meaning.
 ## 0.9.73
 
 ### Phase 5: opt-in discovery of unknown fields
