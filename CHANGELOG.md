@@ -2,6 +2,21 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.75
+
+### Audit pass 1: the fill implementations
+- Native dropdowns: disabled options (the usual "Select..." placeholder) are no
+  longer counted, which kept the keyboard fallback one option off and let a
+  disabled option be chosen.
+- Search-as-you-type dropdowns: the highlight is moved to the chosen option
+  before Enter, so when the typed text matches several options the intended one
+  is committed, not just the first.
+- Fill this field on a text box now replaces its content (and tidies and reads
+  the value back) instead of pasting into whatever was already there.
+- Radio questions laid out flat under one container are kept apart by their
+  shared html name, so answering one can't re-select an option of another.
+- A blank or whitespace-only saved value is treated as no value, so it can never
+  select a blank placeholder option.
 ## 0.9.74
 
 ### Line-by-line audit: ten fixes

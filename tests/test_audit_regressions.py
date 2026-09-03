@@ -86,3 +86,12 @@ class TestFingerprintRegexNotLowercased(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestPass1EmptyValueGuard(unittest.TestCase):
+    """Pass 1: a blank value must never match a blank placeholder option."""
+
+    def test_empty_or_whitespace_value_never_matches(self):
+        for v in ("", "   ", "--"):
+            m = controls.choose_option(v, ["--", "Yes", "No"])
+            self.assertIsNone(m.index, repr(v))

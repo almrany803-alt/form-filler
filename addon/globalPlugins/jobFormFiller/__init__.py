@@ -1465,6 +1465,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if not key:
             return None
         v = self._profile.get(key)
+        if isinstance(v, str):
+            v = v.strip() or None        # a whitespace-only value is no value
         if not v and key == "full_name":
             given = (self._profile.get("given_name") or "").strip()
             family = (self._profile.get("family_name") or "").strip()
@@ -2143,10 +2145,26 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     # --- text ----------------------------------------------------------------
     def _fill_text(self, obj, fd, result, value):
+        """Explicit 'fill this field': replace the field's content with the
+        value (select-all then paste via _write_field, which also normalises and
+        verifies focus), then read it back. The old direct paste inserted at the
+        cursor, so a field that already held text got the value appended."""
         try:
-            _paste_into_focused(obj, value)
+            ok = self._write_field(obj, fd, value)
         except Exception:
-            log.error("JFF action: paste FAILED for %r" % result.key, exc_info=True)
+            ok = False
+            log.error("JFF action: write FAILED for %r" % result.key, exc_info=True)
+        took = False
+        if ok is not False:
+            for _k in range(6):
+                try:
+                    if (obj.value or "").strip():
+                        took = True
+                        break
+                except Exception:
+                    pass
+                time.sleep(0.06)
+        if not took:
             ui.message(_("Could not fill {field}.").format(
                 field=announce.human(result.key)))
             return
@@ -2239,6 +2257,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             except Exception:
                 nm = ""
             if role in (LI, MI) and nm:
+                # Skip disabled options: they can't be chosen, and a native
+                # select's Home/Down keys skip them too, so leaving them in
+                # would put the keyboard fallback one option off (the common
+                # disabled "Select..." placeholder at position 0 did exactly that).
+                try:
+                    if controlTypes.State.UNAVAILABLE in c.states:
+                        continue
+                except Exception:
+                    pass
                 labels.append(nm)
                 opts.append(c)
             elif role in CONTAINERS:
@@ -2757,6 +2784,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             chain.append((getattr(prole, "name", "?"), pname))
             # count radios directly under this parent
             radios = self._collect_radios(parent)
+            # Radios of one question share an html name. On a flat layout where
+            # two questions' radios sit under one parent, keep only the ones
+            # that share the focused radio's name, so answering the second
+            # question can never re-select an option of the first.
+            try:
+                my_name = (getattr(obj, "IA2Attributes", {}) or {}).get(
+                    "html-input-name", "")
+            except Exception:
+                my_name = ""
+            if my_name:
+                same = [r for r in radios if (getattr(r, "IA2Attributes", {})
+                        or {}).get("html-input-name", "") == my_name]
+                if len(same) >= 2:
+                    radios = same
             if len(radios) >= 2:
                 group = parent
                 log.info("JFF radio: group at role=%s name=%r with %d options; "
@@ -3015,6 +3056,27 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             obj.setFocus()
             api.setFocusObject(obj)
             time.sleep(0.05)
+            # Enter commits whatever is HIGHLIGHTED, and the typed value can
+            # filter to several options with the exact match not first
+            # ("Bachelor" among "Bachelor of Arts", "Bachelor of Science").
+            # So move the highlight to the chosen option first: follow the
+            # live aria-activedescendant when the widget exposes it, else
+            # arrow down from the first option by the pick's index.
+            target = controls._norm(pick.label)
+            hl, _o = self._active_descendant(obj)
+            if hl:
+                for _step in range(len(labels)):
+                    if controls._norm(hl) == target:
+                        break
+                    KeyboardInputGesture.fromName("downArrow").send()
+                    time.sleep(0.08)
+                    hl, _o = self._active_descendant(obj)
+                    if not hl:
+                        break
+            else:
+                for _step in range(pick.index):
+                    KeyboardInputGesture.fromName("downArrow").send()
+                    time.sleep(0.06)
             KeyboardInputGesture.fromName("enter").send()
             time.sleep(0.35)
         except Exception:

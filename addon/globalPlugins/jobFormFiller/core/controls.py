@@ -222,6 +222,8 @@ def choose_option(value: str, options: list[str], concept: str = "") -> OptionMa
     options are the labels as they appear in the form (possibly another language).
     concept lets us use a locale alias table, e.g. concept='country'."""
     v = _norm(value)
+    if not v:
+        return OptionMatch(None, "", "none")   # nothing to match; never pick a blank option
     norm_opts = [_norm(o) for o in options]
 
     # 1. exact match on the value itself.
