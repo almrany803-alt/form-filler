@@ -32,7 +32,7 @@ def _class_token(cls):
     """Pick a stable, human-looking class token (BEM 'block__el' or a short
     hyphenated name), skipping long hashed blobs, or '' if none fits."""
     for c in (cls or "").split():
-        if "__" in c and 4 <= len(c) <= 30:
+        if "__" in c and 4 <= len(c) <= 30 and not _looks_hashed(c):
             return c
     for c in (cls or "").split():
         if "-" in c and 4 <= len(c) <= 24 and not _looks_hashed(c):

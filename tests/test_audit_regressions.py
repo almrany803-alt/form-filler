@@ -95,3 +95,31 @@ class TestPass1EmptyValueGuard(unittest.TestCase):
         for v in ("", "   ", "--"):
             m = controls.choose_option(v, ["--", "Yes", "No"])
             self.assertIsNone(m.index, repr(v))
+
+
+class TestPass5And6(unittest.TestCase):
+    """Passes 5-6: CV title lines are not names; location fields with a
+    different referent (birth, study, the job's location) hand back;
+    '00' is the international phone prefix."""
+
+    def test_cv_title_not_taken_as_name(self):
+        from core import cvparse
+        self.assertEqual(cvparse.parse_cv_text(
+            "Curriculum Vitae\nJohn Smith\nj@x.com").get("full_name"), "John Smith")
+        self.assertEqual(cvparse.parse_cv_text(
+            "PERSONAL PROFILE\n\nAmy Lee").get("full_name"), "Amy Lee")
+
+    def test_different_referent_hands_back(self):
+        FD = matcher.FieldDescriptor
+        for l in ["Country of birth", "City of birth", "Country of study",
+                  "Which city are you applying for", "Previous address"]:
+            self.assertIsNone(matcher.match_field(FD(label=l)).key, l)
+        for l in ["Country", "Country of residence", "Current city", "Town"]:
+            self.assertIsNotNone(matcher.match_field(FD(label=l)).key, l)
+
+    def test_00_international_prefix(self):
+        from core import countries
+        self.assertEqual(countries.phone_parts("00 44 7700 900000"),
+                         ("+44", "7700900000"))
+        self.assertEqual(countries.phone_parts("07700 900000"),
+                         ("", "07700900000"))

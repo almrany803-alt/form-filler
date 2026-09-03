@@ -2,6 +2,19 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.78
+
+### Audit passes 5 and 6: parser, small modules, lexicon
+- A location asked with a different meaning is no longer filled with your
+  current details: "Country of birth", "City of birth", "Country of study",
+  "Previous address" and "Which city are you applying for" are left for you.
+  Plain "Country", "Country of residence" and "Current city" still fill.
+- Importing a CV that opens with "Curriculum Vitae" or "Personal Profile" no
+  longer takes that heading as your name; the parser skips document titles.
+- A phone written with the "00" international prefix is recognised as
+  international, so its country code splits off correctly.
+- Discovery no longer suggests a hashed styling class as a stable signal, and
+  the CV reader closes the PDF it opened.
 ## 0.9.77
 
 ### Audit pass 4: the dialogs

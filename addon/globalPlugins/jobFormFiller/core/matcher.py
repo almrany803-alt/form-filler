@@ -489,12 +489,52 @@ def _names_third_party(*texts) -> bool:
     return False
 
 
+# Qualifiers that change WHAT a location field asks for, so the user's current
+# details must not be used: "Country of birth" is not the country they live in
+# (for a Saudi national in Bristol, filling "United Kingdom" there is wrong),
+# "City of study" is not their city, "Which city are you applying for" is the
+# job's. Whole-word matched on the label; plain "Country", "Current city" and
+# "Country of residence" still fill.
+_DIFFERENT_REFERENT = (
+    "birth", "born", "of origin", "of study", "studied", "applying for",
+    "applied for", "applying to", "previous", "former", "prior",
+    "job location", "work location", "office location", "relocate",
+    "relocation", "preferred location", "where would you like",
+    "of employment", "of work", "of education", "graduated",
+)
+_LOCATION_KEYS = ("city", "country", "postcode", "address_line1",
+                  "address_line2", "address_line3", "address_level1",
+                  "address_level3", "address_housenumber")
+
+
+def _changes_referent(*texts) -> bool:
+    for text in texts:
+        t = _norm(text)
+        if not t:
+            continue
+        padded = " " + t + " "
+        for w in _DIFFERENT_REFERENT:
+            if (" " + _norm(w) + " ") in padded:
+                return True
+    return False
+
+
 def match_field(fd: FieldDescriptor) -> MatchResult:
     # A field about someone else (a referee, an emergency contact, a manager)
     # is never one of the user's own, however personal its words look.
     if _names_third_party(fd.label, fd.aria_label, fd.name, fd.id,
                           fd.placeholder):
         return MatchResult(None, "none", "third-party", "")
+    result = _match_field_inner(fd)
+    # A location asked with a different referent (of birth, of study, the job's
+    # location) must not be filled with the user's current details.
+    if result.key in _LOCATION_KEYS and _changes_referent(
+            fd.label, fd.aria_label, fd.placeholder):
+        return MatchResult(None, "none", "different-referent", "")
+    return result
+
+
+def _match_field_inner(fd: FieldDescriptor) -> MatchResult:
     ac = (fd.autocomplete or "").strip().lower()
     if ac in _AUTOCOMPLETE:
         return MatchResult(_AUTOCOMPLETE[ac], "strong", "autocomplete", "*")

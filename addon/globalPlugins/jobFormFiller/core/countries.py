@@ -179,6 +179,11 @@ def phone_parts(phone: str):
     digits = re.sub(r"\D", "", raw)
     if not digits:
         return "", ""
+    # "00" is the international prefix in the UK and most of Europe: "00 44
+    # 7700 900000" is the same number as "+44 7700 900000". Treat it as such.
+    if not raw.startswith("+") and digits.startswith("00") and len(digits) > 4:
+        raw = "+" + digits[2:]
+        digits = digits[2:]
     if not raw.startswith("+"):
         return "", digits
     plus = "+" + digits

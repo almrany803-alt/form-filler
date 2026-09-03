@@ -127,6 +127,22 @@ def _is_cjk_char(ch) -> bool:
             or 0x4E00 <= o <= 0x9FFF or 0xF900 <= o <= 0xFAFF)
 
 
+_CV_TITLES = {
+    "curriculum vitae", "cv", "resume", "résumé", "resumé", "personal profile",
+    "personal details", "personal information", "contact details",
+    "contact information", "profile", "summary", "personal statement",
+    "about me", "candidate profile",
+}
+
+
+def _is_cv_title(line: str) -> bool:
+    """A document heading like 'Curriculum Vitae' or 'Personal Profile', which
+    must never be mistaken for the person's name."""
+    t = re.sub(r"[^\w\s]", "", (line or "")).strip().lower()
+    t = re.sub(r"\s+", " ", t)
+    return t in _CV_TITLES
+
+
 def _looks_like_name(line: str) -> bool:
     line = line.strip()
     if not line or any(ch.isdigit() for ch in line) or "@" in line:
@@ -161,12 +177,20 @@ def parse_cv_text(text: str) -> dict:
             result["phone"] = m.group(1).strip()
             break
 
-    # name: first non-empty line that looks like a name.
+    # name: the first non-empty line that looks like a name, skipping document
+    # titles. Many CVs open with "Curriculum Vitae" or "Personal Profile", two
+    # capitalised words that pass the name test, and the old code stopped at
+    # the first non-empty line, so the title was imported as the person's name.
+    seen = 0
     for ln in lines:
-        if ln.strip():
-            if _looks_like_name(ln):
-                result["full_name"] = ln.strip()
-            break
+        if not ln.strip():
+            continue
+        if _is_cv_title(ln):
+            continue
+        seen += 1
+        if _looks_like_name(ln):
+            result["full_name"] = ln.strip()
+        break
 
     # sections: collect lines under a recognised heading until the next heading.
     sections = {}
@@ -472,7 +496,10 @@ def _pdf_text(path: str) -> str:
             sys.path.insert(0, lib)
         import pymupdf
     doc = pymupdf.open(path)
-    return "\n".join(page.get_text() for page in doc)
+    try:
+        return "\n".join(page.get_text() for page in doc)
+    finally:
+        doc.close()
 
 
 def _docx_text(path: str) -> str:
