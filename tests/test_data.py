@@ -9,12 +9,11 @@ import cvparse
 
 
 class ReversibleCrypto(prof.Crypto):
-    """A test stand-in that TRANSFORMS the bytes (so we can prove the file is
-    not plaintext) yet round-trips. It is not real security - DPAPI is - but it
-    lets us assert the store encrypts at rest rather than writing plaintext."""
-    def encrypt(self, data: bytes) -> bytes:
+    """A test stand-in that transforms the bytes on the way out and back, to
+    prove the store round-trips through its hook."""
+    def encode(self, data: bytes) -> bytes:
         return bytes((b ^ 0x5A) for b in data)
-    def decrypt(self, data: bytes) -> bytes:
+    def decode(self, data: bytes) -> bytes:
         return bytes((b ^ 0x5A) for b in data)
 
 

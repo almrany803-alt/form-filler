@@ -289,8 +289,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         super().__init__(*args, **kwargs)
         self._layerActive = False
         self._layerGen = 0
-        # Encrypted profile store, in NVDA's config dir. On Windows the crypto is
-        # DPAPI (tied to the user account); the store logic itself is our tested
+        # Profile store, in NVDA's config dir: details saved on the user's
+        # own device, never sent anywhere.
         # code. self._profile is the active profile the fill commands read.
         try:
             import addonHandler
