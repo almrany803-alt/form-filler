@@ -58,23 +58,60 @@ def _digits(s):
     return "".join(c for c in (s or "") if c.isdigit())
 
 
+from .core import dates as _dates
+
+
+def _date_order_from_hint(text):
+    return _dates.order_from_hint(text)
+
+
+def _date_separator_from_hint(text, default="/"):
+    return _dates.separator_from_hint(text, default)
+
+
+def _format_date(y, m, d, order, sep):
+    return _dates.format_date(y, m, d, order, sep)
+
+
+def _digits(s):
+    return _dates.digits(s)
+
+
+_DATE_FMT_RE = re.compile(r"([dmy]{1,4})([/.\-])([dmy]{1,4})\2([dmy]{1,4})", re.I)
+
+
+def _date_format_token(text):
+    """The format pattern inside a hint, e.g. the 'mm/dd/yyyy' in
+    'Date (mm/dd/yyyy)'. Prose around it ('Date', 'Your', 'e.g.') must not
+    contribute letters or separators, which it did when the whole hint was
+    scanned: 'Date (mm/dd/yyyy)' read as day-first from the D in 'Date'."""
+    m = _DATE_FMT_RE.search(text or "")
+    return m
+
+
 def _date_order_from_hint(text):
     """Read a day/month/year order from a format hint like 'DD/MM/YYYY' or
-    'mm-dd-yyyy'. Returns 'DMY', 'MDY', 'YMD', or '' if none is discernible."""
+    'mm-dd-yyyy'. Returns 'DMY', 'MDY', 'YMD', or '' if none is discernible.
+    Uses only the format token, falling back to whole-word day/month/year."""
+    m = _date_format_token(text)
+    if m:
+        order = "".join(g[0].upper() for g in (m.group(1), m.group(3), m.group(4)))
+        return order if set(order) == {"D", "M", "Y"} else ""
+    words = re.findall(r"\b(day|month|year)\b", (text or "").lower())
     order = ""
-    for ch in (text or "").lower():
-        u = ch.upper()
-        if u in ("D", "M", "Y") and u not in order:
+    for w in words:
+        u = w[0].upper()
+        if u not in order:
             order += u
-        if len(order) == 3:
-            break
     return order if set(order) == {"D", "M", "Y"} else ""
 
 
 def _date_separator_from_hint(text, default="/"):
-    for ch in (text or ""):
-        if ch in "/-.":
-            return ch
+    """The separator of the format token ('.' in 'dd.mm.yyyy'), never a stray
+    one from prose ('e.g. 15/03/1990' used to return '.' from the 'e.g.')."""
+    m = _date_format_token(text)
+    if m:
+        return m.group(2)
     return default
 
 
@@ -1120,15 +1157,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         year dropdowns, common on ATS forms and not just for birth dates), return
         'day'/'month'/'year', else None. Recognised by class ('date day'/'date
         month'/'date year') or id, since these segments carry no label."""
-        hay = " ".join([(fd.id or ""),
-                        (getattr(fd, "dom_class", "") or "")]).lower()
-        if "date" not in hay and not any(w in hay
-                                         for w in ("birth", "dob", "bday")):
-            return None
-        for seg in ("day", "month", "year"):
-            if seg in hay:
-                return seg
-        return None
+        return _dates.segment_from(fd.id, getattr(fd, "dom_class", ""))
 
     def _is_dob_field(self, fd):
         """True when a date field is specifically a date of birth, so we fill it
@@ -3186,6 +3215,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if len(parts) != 3:
             return "date_of_birth", "none"
         y, m, d = parts
+        m, d = m.zfill(2), d.zfill(2)      # auto-advance needs two digits each
         seq = ""
         for seg in segs:
             t = self._date_segment_type(seg)

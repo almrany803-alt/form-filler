@@ -2,6 +2,22 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.76
+
+### Audit passes 2 and 3: profile store and dates
+- Dates typed into a text box now take their day/month/year order and separator
+  only from the field's format pattern ("mm/dd/yyyy"), never from surrounding
+  words. "Date (mm/dd/yyyy)" was being read as day-first from the D in "Date",
+  and "e.g. 15/03/1990" gave "." as the separator. A wrong order would have
+  passed the check, which compares digits regardless of order.
+- Split date controls with ids like birthday_day, birthday_month, birthday_year
+  now fill each segment correctly; "birthday" contains "day", so all three used
+  to be treated as the day.
+- A date of birth stored without zero-padding no longer mis-types a native date
+  input's segments.
+- The date helpers moved to their own tested module (they had no tests).
+- Documentation corrected: your details are stored on your device as plain data,
+  by decision; earlier text wrongly said they were encrypted.
 ## 0.9.75
 
 ### Audit pass 1: the fill implementations
