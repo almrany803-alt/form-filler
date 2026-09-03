@@ -75,16 +75,13 @@ def fields_for_section(section, row=None):
 
 
 class Crypto:
-    """Interface. encrypt/decrypt operate on bytes and must round-trip."""
-    def encrypt(self, data: bytes) -> bytes: raise NotImplementedError
-    def decrypt(self, data: bytes) -> bytes: raise NotImplementedError
+    """Pass-through hook: bytes go to and from disk unchanged."""
+    def encode(self, data: bytes) -> bytes: return data
+    def decode(self, data: bytes) -> bytes: return data
 
 
 class NullCrypto(Crypto):
-    """Plain storage: no encryption. Used for the profile store, which holds
-    ordinary contact details (not secrets), and for tests."""
-    def encrypt(self, data: bytes) -> bytes: return data
-    def decrypt(self, data: bytes) -> bytes: return data
+    """The store keeps details exactly as they are."""
 
 
 def default_crypto() -> Crypto:
@@ -108,7 +105,7 @@ class ProfileStore:
             return self._data
         with open(self.path, "rb") as f:
             raw = f.read()
-        text = self.crypto.decrypt(raw).decode("utf-8")
+        text = self.crypto.decode(raw).decode("utf-8")
         self._data = json.loads(text)
         # Backward compatible: profiles saved before sections existed have no
         # "sections" key; give them an empty one so the section methods work.
@@ -117,7 +114,7 @@ class ProfileStore:
 
     def save(self):
         text = json.dumps(self._data, ensure_ascii=False).encode("utf-8")
-        blob = self.crypto.encrypt(text)
+        blob = self.crypto.encode(text)
         tmp = self.path + ".tmp"
         with open(tmp, "wb") as f:
             f.write(blob)
