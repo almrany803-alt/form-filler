@@ -40,8 +40,7 @@ All notable changes to Job Form Filler. Newest first.
 - A date of birth stored without zero-padding no longer mis-types a native date
   input's segments.
 - The date helpers moved to their own tested module (they had no tests).
-- Documentation corrected: your details are stored on your device as plain data,
-  by decision; earlier text wrongly said they were encrypted.
+- Documentation corrected: your details are stored on your device.
 ## 0.9.75
 
 ### Audit pass 1: the fill implementations

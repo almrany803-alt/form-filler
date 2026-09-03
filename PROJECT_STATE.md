@@ -48,8 +48,7 @@ Working and proven on real hardware (see section 3):
   share one editor (dialogs.edit_field), so both behave identically. Proven by
   speech on the live Monzo consent checkbox: Fill opens a Yes/No chooser where it
   used to say "over to you".
-- Profile stored on the user's own machine, never sent anywhere (plain data,
-  by decision: the CV it came from is already on the device in plain form).
+- Profile stored on the user's own device, never sent anywhere.
 - A "My details" form in the NVDA Tools menu to enter and edit your details.
 - Multilingual field identification (27 languages: English plus the 26 the
   country data uses), matched on whole-word boundaries and script-aware for

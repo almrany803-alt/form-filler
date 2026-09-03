@@ -105,9 +105,7 @@ The menu key is changeable in NVDA's Input Gestures, under "Job Form Filler".
 
 ## Your data stays yours
 
-Your details are stored on your own machine, in the add-on's own folder, and
-never sent anywhere. (They are kept as plain data, like the CV they came from,
-which is already on your device.) The
+Your details are stored on your own device and never sent anywhere. The
 add-on is fully deterministic: no AI, no network, no API keys. Nothing you enter
 ever leaves your computer. (Field matching is a dictionary-and-rules job, the
 same approach browsers and the main job-autofill tools use; the only thing "AI

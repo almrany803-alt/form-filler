@@ -1,11 +1,7 @@
 # profile.py - the local store for the user's details.
 #
-# Holds one or more profiles (UK, Gulf, Arabic) with one active, saved as plain
-# JSON on the user's own machine and never sent anywhere. By decision the store
-# is NOT encrypted: it holds ordinary contact details taken from a CV that is
-# already on the device in plain form. The Crypto slot is pluggable and a working
-# DPAPI implementation is kept below, so encryption can be switched on later
-# if the store ever holds anything more sensitive.
+# Holds one or more profiles (UK, Gulf, Arabic) with one active, saved as JSON
+# on the user's own device and never sent anywhere.
 
 import json
 import os
