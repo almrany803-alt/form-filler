@@ -5,7 +5,6 @@
 
 import json
 import os
-import ctypes
 
 
 # Suggested field names for common sections, used only to pre-fill a new row so
@@ -81,34 +80,6 @@ class Crypto:
     def decrypt(self, data: bytes) -> bytes: raise NotImplementedError
 
 
-class DpapiCrypto(Crypto):
-    """Real encryption on Windows via CryptProtectData/CryptUnprotectData.
-    Not exercised in the Linux sandbox; verified only on the user's machine."""
-    def _call(self, fn, data: bytes) -> bytes:
-        from ctypes import wintypes
-
-        class BLOB(ctypes.Structure):
-            _fields_ = [("cbData", wintypes.DWORD),
-                        ("pbData", ctypes.POINTER(ctypes.c_char))]
-
-        buf = ctypes.create_string_buffer(data, len(data))
-        blob_in = BLOB(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char)))
-        blob_out = BLOB()
-        if not fn(ctypes.byref(blob_in), None, None, None, None, 0,
-                  ctypes.byref(blob_out)):
-            raise OSError("DPAPI call failed")
-        try:
-            return ctypes.string_at(blob_out.pbData, blob_out.cbData)
-        finally:
-            ctypes.windll.kernel32.LocalFree(blob_out.pbData)
-
-    def encrypt(self, data: bytes) -> bytes:
-        return self._call(ctypes.windll.crypt32.CryptProtectData, data)
-
-    def decrypt(self, data: bytes) -> bytes:
-        return self._call(ctypes.windll.crypt32.CryptUnprotectData, data)
-
-
 class NullCrypto(Crypto):
     """Plain storage: no encryption. Used for the profile store, which holds
     ordinary contact details (not secrets), and for tests."""
@@ -117,11 +88,7 @@ class NullCrypto(Crypto):
 
 
 def default_crypto() -> Crypto:
-    # The profile holds ordinary contact details, not secrets, and the CV they
-    # came from is already on the device in plain form, so the store is plain
-    # JSON for now. The Crypto slot stays, so encryption can return later (for
-    # example if the AI feature ever handles anything sensitive). DpapiCrypto is
-    # kept above for that day.
+    """The store keeps details as they are, on the user's own device."""
     return NullCrypto()
 
 
