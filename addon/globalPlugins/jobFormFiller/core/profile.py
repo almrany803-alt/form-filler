@@ -1,9 +1,11 @@
-# profile.py - the encrypted store for the user's details.
+# profile.py - the local store for the user's details.
 #
-# Holds one or more profiles (UK, Gulf, Arabic) with one active. Everything is
-# written encrypted at rest. Encryption is pluggable so the STORE LOGIC is
-# testable off Windows, while the real add-on uses Windows DPAPI, which ties
-# the data to the current Windows user account with no key for us to manage.
+# Holds one or more profiles (UK, Gulf, Arabic) with one active, saved as plain
+# JSON on the user's own machine and never sent anywhere. By decision the store
+# is NOT encrypted: it holds ordinary contact details taken from a CV that is
+# already on the device in plain form. The Crypto slot is pluggable and a working
+# DPAPI implementation is kept below, so encryption can be switched on later
+# if the store ever holds anything more sensitive.
 
 import json
 import os
