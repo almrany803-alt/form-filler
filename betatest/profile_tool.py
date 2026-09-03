@@ -1,4 +1,4 @@
-"""Seed and check the encrypted profile for the dialog scenario stories.
+"""Seed and check the profile store for the dialog tests.
 Usage: python profile_tool.py seed
        python profile_tool.py check <cancel|edit|unicode>
 Config dir from JFF_CFG."""

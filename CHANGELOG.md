@@ -2,6 +2,20 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.80
+
+### Audit: plugin glue, and a consolidated dialog test
+- Every text write now reads the field back, so "Applied" and "filled" are
+  only reported when the value actually took, in the review dialog, the
+  revealed-field pass, the repeating blocks and Fill this field alike.
+- The New profile prompt, the Delete profile confirmation and the Choose your CV
+  dialog are brought to the front the way the add-on's other dialogs are, so
+  none can be left behind the browser.
+- A blank profile name, or a save that fails after creating, deleting or
+  switching a profile, is now announced instead of passing silently.
+- One live keyboard test of the current dialog replaces the retired ones:
+  details typed and saved, Cancel not saving, a section removed, an entry
+  edited, a profile created and deleted.
 ## 0.9.79
 
 ### Audit follow-up

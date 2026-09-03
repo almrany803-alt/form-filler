@@ -490,6 +490,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             self._store.save()
         except Exception:
             log.error("JFF: could not save active profile", exc_info=True)
+            ui.message(_("Switched, but the choice could not be saved to disk."))
         self._profile = self._store.get_active() or {}
         ui.message(_("Switched to {name}.").format(name=name))
 
@@ -506,14 +507,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def _onNewProfile(self):
         if self._store is None:
             return
-        with wx.TextEntryDialog(
-                gui.mainFrame,
-                _("Name for this version (for example Work or Teaching):"),
-                _("New profile")) as dlg:
-            if dlg.ShowModal() != wx.ID_OK:
-                return
-            name = dlg.GetValue().strip()
+        gui.mainFrame.prePopup()      # bring the prompt to the front reliably
+        try:
+            with wx.TextEntryDialog(
+                    gui.mainFrame,
+                    _("Name for this version (for example Work or Teaching):"),
+                    _("New profile")) as dlg:
+                if dlg.ShowModal() != wx.ID_OK:
+                    return
+                name = dlg.GetValue().strip()
+        finally:
+            gui.mainFrame.postPopup()
         if not name:
+            ui.message(_("Enter a name for the profile. Nothing was created."))
             return
         name = self._uniqueProfileName(name)
         self._store.add_profile(name, {})
@@ -522,6 +528,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             self._store.save()
         except Exception:
             log.error("JFF: could not save new profile", exc_info=True)
+            ui.message(_("Created, but it could not be saved to disk; it will "
+                         "be lost when NVDA restarts."))
         self._profile = self._store.get_active() or {}
         ui.message(_("New profile {name}.").format(name=name))
         self._onDetails(None)
@@ -531,18 +539,23 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             ui.message(_("No profile to delete."))
             return
         name = self._store.active_name()
-        with wx.MessageDialog(
-                gui.mainFrame,
-                _("Delete the profile {name}? This cannot be undone.").format(
-                    name=name),
-                _("Delete profile"), wx.YES_NO | wx.ICON_WARNING) as dlg:
-            if dlg.ShowModal() != wx.ID_YES:
-                return
+        gui.mainFrame.prePopup()
+        try:
+            with wx.MessageDialog(
+                    gui.mainFrame,
+                    _("Delete the profile {name}? This cannot be undone.").format(
+                        name=name),
+                    _("Delete profile"), wx.YES_NO | wx.ICON_WARNING) as dlg:
+                if dlg.ShowModal() != wx.ID_YES:
+                    return
+        finally:
+            gui.mainFrame.postPopup()
         self._store.delete_profile(name)
         try:
             self._store.save()
         except Exception:
             log.error("JFF: could not save after delete", exc_info=True)
+            ui.message(_("Deleted, but the change could not be saved to disk."))
         self._profile = self._store.get_active() or {}
         ui.message(_("Deleted {name}.").format(name=name))
 
@@ -550,13 +563,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if self._store is None:
             return
         # 1. Pick the CV.
-        with wx.FileDialog(
-                gui.mainFrame, _("Choose your CV"),
-                wildcard=_("CV files (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt"),
-                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fd:
-            if fd.ShowModal() != wx.ID_OK:
-                return
-            path = fd.GetPath()
+        gui.mainFrame.prePopup()
+        try:
+            with wx.FileDialog(
+                    gui.mainFrame, _("Choose your CV"),
+                    wildcard=_("CV files (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt"),
+                    style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fd:
+                if fd.ShowModal() != wx.ID_OK:
+                    return
+                path = fd.GetPath()
+        finally:
+            gui.mainFrame.postPopup()
         # 2. Parse it.
         try:
             from .core import cvparse, countries
@@ -978,8 +995,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         KeyboardInputGesture.fromName("control+a").send()
         if value:
             _paste_into_focused(obj, value)
-        else:
-            KeyboardInputGesture.fromName("delete").send()
+            # Read back: a paste can be silently ignored, so only report True
+            # when the field now holds something. Every caller (review
+            # writeback, reveal, repeating blocks, fill this field) inherits it.
+            for _k in range(6):
+                try:
+                    if (obj.value or "").strip():
+                        return True
+                except Exception:
+                    pass
+                time.sleep(0.06)
+            log.info("JFF write: value for %r did not take" % target_id)
+            return False
+        KeyboardInputGesture.fromName("delete").send()
         return True
 
     def _scan_line(self, obj, idx):
