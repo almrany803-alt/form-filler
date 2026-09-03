@@ -260,26 +260,35 @@ def _descriptor_from_object(obj):
 
 def _paste_into_focused(obj, value):
     """Insert text by copy then paste, so the page's own input events fire and
-    React/Workday state updates. The user's clipboard is preserved: whatever they
-    had copied is put back after the paste, so a whole-form fill neither destroys
-    their clipboard nor leaves their own email or phone sitting on it.
+    React/Workday state updates. The user's clipboard is saved once before a
+    fill and restored once after it (see _save_clipboard/_restore_clipboard):
+    restoring after EVERY paste raced the browser while it was still handling
+    the clipboard and made pastes silently not land.
     Layout note: on Arabic/Hebrew/Farsi layouts the paste key differs; the real
     build resolves it the way clipContentsDesigner resolves copy/cut."""
-    old = None
-    try:
-        old = api.getClipData()
-    except Exception:
-        old = None                       # empty or non-text clipboard
     api.copyToClip(value)
     KeyboardInputGesture.fromName("control+v").send()
-    # Give the app a moment to consume the paste before the clipboard changes
-    # back, otherwise it could paste the restored (old) contents instead.
-    time.sleep(0.15)
-    if isinstance(old, str) and old:
-        try:
-            api.copyToClip(old)
-        except Exception:
-            pass
+
+
+def _save_clipboard():
+    """The user's current clipboard text, or None if empty or not text."""
+    try:
+        old = api.getClipData()
+        return old if isinstance(old, str) and old else None
+    except Exception:
+        return None
+
+
+def _restore_clipboard(old):
+    """Put the user's clipboard back after a fill, so a fill neither destroys
+    what they had copied nor leaves their own email or phone on it. Called once,
+    after every paste has been read back, so it cannot race a paste."""
+    if old is None:
+        return
+    try:
+        api.copyToClip(old)
+    except Exception:
+        pass
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
@@ -427,14 +436,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                         winUser.setForegroundWindow(savedForeground)
                     except Exception:
                         pass
-                if kind == "field":
-                    self.script_fillField(None, focus=savedFocus)
-                elif kind == "form":
-                    self.script_fillForm(None, focus=savedFocus)
-                elif kind == "scan":
-                    self._scanForm(savedFocus)
-                else:
-                    self._openReview(savedFocus)
+                # Save the user's clipboard once here and put it back once at
+                # the end, after every paste has been read back. (Restoring
+                # after each paste raced the browser and lost pastes.)
+                old_clip = _save_clipboard()
+                try:
+                    self._runAction(kind, savedFocus)
+                finally:
+                    wx.CallLater(700, _restore_clipboard, old_clip)
             wx.CallAfter(runFill)
             return
         after = {
@@ -446,6 +455,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         }.get(kind)
         if after:
             wx.CallAfter(after)
+
+    def _runAction(self, kind, savedFocus):
+        """Dispatch one menu action. Kept separate so the clipboard save and
+        restore in the menu handler wrap every kind of fill in one place."""
+        if kind == "field":
+            self.script_fillField(None, focus=savedFocus)
+        elif kind == "form":
+            self.script_fillForm(None, focus=savedFocus)
+        elif kind == "scan":
+            self._scanForm(savedFocus)
+        else:
+            self._openReview(savedFocus)
 
     def _setMenuAction(self, *action):
         self._menuAction = action

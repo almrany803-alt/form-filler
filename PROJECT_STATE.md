@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.74. Phases 5 (phone group), 6
+points to. Last updated at version 0.9.79. Phases 5 (phone group), 6
 (attachments), 7 (sections and CV seeding) and the language finish (27
 languages) are in; the repeating-row NVDA fill is parked.
 
@@ -114,20 +114,37 @@ segment/text/custom-picker logic.
 
 ---
 
-## Line-by-line audit (0.9.74)
+## Line-by-line audit (0.9.74 to 0.9.79)
 
-A full adversarial read of every core module and the NVDA fill paths, run
-against the unit suite and the live forms. Eleven defects found and fixed, all
-locked with regression tests (tests/test_audit_regressions.py): a never-submit
-gap (Enter pressed blind on an editable combobox), third-party fields (referee,
-emergency contact, manager) filled with the user's own details, mid-word option
-matching ("No" inside "Not applicable"), personal fields dropped from the summary
-or mistaken for a Work block on a single section word, substring platform
-detection ("clever.co" as Lever), no read-back or tidying on the main text path,
-the clipboard not preserved, the Scan report leaking values, a lowercased
-regex inverting \D, and the repeating-blocks checklist missing NVDA's
-prePopup/postPopup (it could stay behind the browser and hang the fill).
-Known, deliberate: the NVDA log still records filled values for diagnostics.
+The whole add-on was read in seven passes: a first risk-based pass, then the
+fill implementations, the profile store, the date cluster, the dialogs, the
+parser and small modules, and the lexicon. Every file was covered; a few glue
+functions in the plugin (review-flow plumbing, menu and profile-switch
+handlers, _classify, _form_field_objs) had a lighter read. Around thirty
+defects were found and fixed, each locked with a regression test
+(tests/test_audit_regressions.py, test_dates.py, additions to test_cvsections.py).
+Highlights: a never-submit gap (Enter pressed blind on an editable combobox);
+third-party fields (referee, emergency contact, manager) filled with the user's
+own details; "Country of birth" filled with the current country; mid-word option
+matching ("No" inside "Not applicable"); "Date (mm/dd/yyyy)" read day-first,
+invisible to the digit-set verify; "birthday_month" treated as the day segment;
+"Curriculum Vitae" imported as a name; disabled dropdown options throwing the
+keyboard fallback off by one; "fill this field" appending instead of replacing;
+silent failures in the dialogs; the repeating-blocks checklist missing NVDA's
+prePopup/postPopup. The profile store keeps details on the device; all
+encryption wording was removed by decision.
+
+One audit regression, caught by an unwatched workflow: restoring the clipboard
+after every paste raced the browser and lost pastes (Beta fill test). Fixed by
+saving the clipboard once before a fill and restoring once after (0.9.79).
+
+Test hygiene: eleven workflows had been red for over a week and were drowning
+the signal. Nine drove the pre-0.9.58 dialog layout (superseded by the Dialog
+0958 test) or had never passed (superseded by the beta review scripts and the
+live Greenhouse/Lever tests); all retired. Coverage gap to re-add against the
+current dialog if wanted: keyboard entry of personal details, cancel-does-not-
+save, section delete, entry edit, and profile create/delete.
+Known and deliberate: the NVDA log records filled values for diagnostics.
 
 ## Combobox and ATS roadmap (phased)
 

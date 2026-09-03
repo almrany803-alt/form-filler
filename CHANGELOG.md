@@ -2,6 +2,15 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.79
+
+### Audit follow-up
+- Your clipboard is now saved once before a fill and put back once after it.
+  Restoring it after every paste, added in 0.9.74, raced the browser and could
+  make a paste silently not land.
+- Retired eleven test workflows that had been failing for over a week because
+  they drove the old dialog layout or had never passed; the current-flow tests
+  and live-form tests cover them.
 ## 0.9.78
 
 ### Audit passes 5 and 6: parser, small modules, lexicon
