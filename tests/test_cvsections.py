@@ -180,3 +180,27 @@ class TestSectionTypes(unittest.TestCase):
                          ["title", "detail", "start_date", "end_date"])
         # a row's own keys are preserved on top of the type
         self.assertIn("custom", self.p.fields_for_type("Skills", {"custom": "v"}))
+
+
+class TestAuditPass4Dialogs(unittest.TestCase):
+    """Audit pass 4: impossible dates are rejected; month abbreviations match
+    only at a word start. Skipped where wx is absent (sandbox); runs in CI."""
+
+    def setUp(self):
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
+                                        "addon", "globalPlugins", "jobFormFiller"))
+        try:
+            import dialogs
+            self.d = dialogs
+        except Exception:
+            self.skipTest("wx not available")
+
+    def test_impossible_date_is_empty(self):
+        years = ["Year", "2000", "1999"]
+        self.assertEqual(self.d._dob_iso(31, 2, 1, years), "")     # 31 Feb
+        self.assertEqual(self.d._dob_iso(29, 2, 1, years), "2000-02-29")  # leap
+        self.assertEqual(self.d._dob_iso(29, 2, 2, years), "")     # 1999 not leap
+
+    def test_month_abbrev_at_word_start_only(self):
+        self.assertEqual(self.d._parse_monthyear("Summary 2020"), (False, 0, 2020))
+        self.assertEqual(self.d._parse_monthyear("Mar 2020"), (False, 3, 2020))

@@ -278,6 +278,10 @@ def _dob_iso(day_sel, month_sel, year_idx, years):
     """ISO date from three choice selections (0 == unset), or '' if incomplete."""
     if day_sel <= 0 or month_sel <= 0 or year_idx <= 0:
         return ""
+    try:
+        datetime.date(int(years[year_idx]), month_sel, day_sel)   # 31 Feb -> ''
+    except (ValueError, TypeError):
+        return ""
     return "%s-%02d-%02d" % (years[year_idx], month_sel, day_sel)
 
 
@@ -300,7 +304,7 @@ def _parse_monthyear(value):
     month = 0
     low = v.lower()
     for i, name in enumerate(_MONTHS):
-        if name.lower()[:3] in low:
+        if re.search(r"\b" + name.lower()[:3], low):   # 'mar' not inside 'summary'
             month = i + 1
             break
     ym = re.search(r"(?:19|20)\d\d", v)
@@ -502,7 +506,13 @@ def edit_field(parent, name, kind, options, current):
             if dlg.ShowModal() != wx.ID_OK:
                 return None
             iso = dlg.GetISO()
-            return iso or None      # ignore an incomplete date, don't clear
+            if not iso:
+                # Never fail silently: an incomplete pick or an impossible date
+                # (31 February) saves nothing, so say so.
+                ui.message(_("Choose a day, month and year that make a real "
+                             "date. Nothing was changed."))
+                return None
+            return iso
 
     # text: the default, and where single/multi fall back when we could not read
     # any options to offer (so the user can still type a value).
@@ -948,6 +958,9 @@ def import_cv_into_active(parent, store):
         store.save()
     except Exception:
         log.error("JFF: save after in-dialog import failed", exc_info=True)
+        ui.message(_("Imported, but the details could not be saved to disk; "
+                     "they will be lost when NVDA restarts. Check the "
+                     "jobFormFiller folder is writable."))
     return added
 
 
@@ -1099,7 +1112,16 @@ class SectionsDialog(wx.Dialog):
                 return
             name = dlg.name()
             stype = dlg.section_type()
-        if not name or name == _PERSONAL or name in self._store.section_names():
+        if not name:
+            ui.message(_("Enter a name for the section. Nothing was added."))
+            return
+        if name == _PERSONAL:
+            ui.message(_("That name is reserved for your personal details. "
+                         "Nothing was added."))
+            return
+        if name in self._store.section_names():
+            ui.message(_("A section called {name} already exists. Nothing was "
+                         "added.").format(name=name))
             return
         self._store.add_section(name, stype)
         self._refresh(self._list.GetCount())   # select the new one

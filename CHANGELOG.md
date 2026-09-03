@@ -2,6 +2,17 @@
 
 All notable changes to Job Form Filler. Newest first.
 
+## 0.9.77
+
+### Audit pass 4: the dialogs
+- No more silent failures. Adding a section with a blank, reserved or duplicate
+  name now says why nothing was added; the date picker says so when a pick is
+  incomplete; and if an import cannot be saved to disk you are told, instead of
+  the details quietly vanishing on the next restart.
+- The date picker no longer accepts an impossible date such as 31 February,
+  which every form would have rejected.
+- A career date's month is read only at the start of a word, so a stray
+  "summary" can't be taken for March.
 ## 0.9.76
 
 ### Audit passes 2 and 3: profile store and dates
