@@ -2,7 +2,7 @@
 
 A living snapshot of the project, written so a future chat, or another person,
 can pick it up cold. If you are that reader: start here, then open the files it
-points to. Last updated at version 0.9.79. Phases 5 (phone group), 6
+points to. Last updated at version 0.9.80. Phases 5 (phone group), 6
 (attachments), 7 (sections and CV seeding) and the language finish (27
 languages) are in; the repeating-row NVDA fill is parked.
 
@@ -114,7 +114,7 @@ segment/text/custom-picker logic.
 
 ---
 
-## Line-by-line audit (0.9.74 to 0.9.79)
+## Line-by-line audit (0.9.74 to 0.9.80)
 
 The whole add-on was read in seven passes: a first risk-based pass, then the
 fill implementations, the profile store, the date cluster, the dialogs, the
@@ -141,9 +141,12 @@ saving the clipboard once before a fill and restoring once after (0.9.79).
 Test hygiene: eleven workflows had been red for over a week and were drowning
 the signal. Nine drove the pre-0.9.58 dialog layout (superseded by the Dialog
 0958 test) or had never passed (superseded by the beta review scripts and the
-live Greenhouse/Lever tests); all retired. Coverage gap to re-add against the
-current dialog if wanted: keyboard entry of personal details, cancel-does-not-
-save, section delete, entry edit, and profile create/delete.
+live Greenhouse/Lever tests); all retired. The coverage they gave is now one consolidated live test of the current
+dialog (dialog-flow-test.yml: details typed and saved, Cancel not saving, a
+section removed, an entry edited, a profile created then deleted), judged by
+the store on disk and by speech. The last glue pass (0.9.80) added a read-back
+to _write_field for every caller and prePopup/postPopup to the New/Delete
+profile and CV file dialogs. Every file has now been read.
 Known and deliberate: the NVDA log records filled values for diagnostics.
 
 ## Combobox and ATS roadmap (phased)
