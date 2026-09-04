@@ -295,7 +295,7 @@ and asserts nothing crashes.
 
 Also verified in CI (`dialog-test.yml`): the "My details" dialog driven entirely
 by keyboard, open it, tab through the fields typing each, press Enter to save,
-then read the encrypted profile back off disk and confirm it holds exactly what
+then read the profile back off disk and confirm it holds exactly what
 was typed. The dialog is opened via a test-bound key; navigating the actual NVDA
 Tools menu to open it is the one interaction step not yet automated (fiddly to
 drive blind, but not impossible). Further dialog "stories" are verified in
@@ -341,10 +341,9 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
   Japanese, which have no word spaces and so match by substring, the same trick
   the country matcher uses.
 
-- **Store the profile as plain JSON.** It holds ordinary contact details, not
-  secrets, and the CV they came from is already on the device in plain form, so
-  encryption buys little here. The pluggable crypto slot stays for later, if the
-  tool ever handles anything sensitive.
+- **Store the profile as plain JSON on the device.** It holds ordinary contact
+  details taken from a CV that is already on the device, and is never sent
+  anywhere.
 
 - **Never guess.** Fields the matcher cannot confidently identify are declined
   and reported ("2 need you: ..."), never filled with a wrong value.
@@ -383,8 +382,8 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
 - `addon/globalPlugins/jobFormFiller/core/` — the pure-Python brain, no NVDA
   imports, fully testable: `matcher.py` (multilingual field matcher, 9-language
   lexicon), `controls.py` (classify a control, choose an option, verify),
-  `announce.py` (spoken summaries + the audit summary), `profile.py` (encrypted
-  ProfileStore + DPAPI), `cvparse.py` (extract text from docx/pdf/txt + parse CV
+  `announce.py` (spoken summaries + the audit summary), `profile.py` (the on-device
+  ProfileStore), `cvparse.py` (extract text from docx/pdf/txt + parse CV
   sections), `audit.py` (duplicate/extra/mismatch detector).
 - `tests/` — 96 pure-Python checks (matcher, data, cv extract, audit, langs, and
   `test_adversarial.py` sabotage/hostile-input cases), all runnable without NVDA.
@@ -392,7 +391,7 @@ plus an apostrophe/CJK surname round-trip through save and reload byte-for-byte
   `fill_messy.mjs` (messy stress), `fill_journey.mjs` (tabbing + multi-section),
   `fill_abuse.mjs` (abuse/survival), `warmup.mjs` (cold-start warm-up), the forms
   (`test_form.html`, `messy_form.html`, `multi_form.html`), `send_nvda_key.ps1`
-  (injects NVDA+Shift+<key> at OS level), `seed_profile.py` (seeds an encrypted
+  (injects NVDA+Shift+<key> at OS level), `seed_profile.py` (seeds a
   profile as the runner user).
 - `.github/workflows/` — `tests.yml` (Linux, brain), `nvda-load.yml` (Windows,
   real NVDA load), `beta-fill.yml` (Windows, real Chrome fill), `dialog-test.yml`
@@ -591,7 +590,7 @@ Still to finish Phase 4, agreed to do last:
   not needed. Live-tested.
 - Phase 7, sections (0.9.50-0.9.52): a section data model (add/rename/remove
   sections and rows, free-form fields, backward compatible), a three-level
-  drill-down UI reachable as My sections, and CV seeding that fills Experience,
+  drill-down UI reached through Edit profile, and CV seeding that fills Experience,
   Education, Skills, Certifications and Languages on import. Proven on real NVDA
   by speech: import journey, add, delete, edit, and read-back all confirmed
   (`import-sections-journey.yml`, `section-crud.yml`, `section-edit.yml`,
